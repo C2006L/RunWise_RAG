@@ -99,7 +99,6 @@ def main():
         embedding=embeddings,
         persist_directory=str(chroma_path),
     )
-    vectorstore.persist()
 
     print("=" * 50)
     print("索引构建完成!")

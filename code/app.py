@@ -1,6 +1,7 @@
 """
 RunWise RAG - Streamlit 聊天界面
 面向大学生跑者的训练与恢复知识问答助手
+赛博运动风 V5 版本
 """
 
 import os
@@ -39,18 +40,18 @@ CUSTOM_CSS = """
 :root {
     --accent: #00FF7F;
     --accent-dim: rgba(0,255,127,0.5);
-    --accent-glow: rgba(0,255,127,0.12);
+    --accent-glow: rgba(0,255,127,0.15);
     --accent-soft: rgba(0,255,127,0.06);
     --accent2: #818CF8;
     --gradient-brand: linear-gradient(135deg, #00FF7F 0%, #7C3AED 100%);
     --gradient-brand-text: linear-gradient(135deg, #4ADE80 0%, #22D3EE 50%, #818CF8 100%);
-    --bg: #0A0A0A;
+    --bg: #050505;
     --bg-surface: #181818;
     --bg-elevated: #2A2A2A;
-    --bg-glass: rgba(255,255,255,0.025);
-    --border: rgba(255,255,255,0.06);
-    --border-hover: rgba(255,255,255,0.12);
-    --text: #F5F5F5;
+    --bg-glass: rgba(30,30,30,0.6);
+    --border: rgba(255,255,255,0.1);
+    --border-hover: rgba(255,255,255,0.15);
+    --text: #E2E8F0;
     --text-secondary: #A1A1AA;
     --text-muted: #52525B;
 }
@@ -59,21 +60,113 @@ CUSTOM_CSS = """
 
 .stApp {
     background: var(--bg) !important;
-    color: var(--text);
+    color: var(--text) !important;
     font-family: 'Inter', 'Noto Sans SC', sans-serif;
 }
 
-.stApp > header { background-color: transparent !important; }
+.stApp [data-testid="stAppViewContainer"] {
+    background: var(--bg) !important;
+}
+
+.stApp > header {
+    background-color: transparent !important;
+    border-bottom: none !important;
+}
+
+.stApp > header [data-testid="stToolbar"] {
+    position: fixed !important;
+    top: 10px !important;
+    left: 10px !important;
+    z-index: 99999 !important;
+    background: rgba(30,30,30,0.9) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 10px !important;
+    padding: 4px !important;
+}
+
+.stApp > header [data-testid="stToolbar"] button {
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-muted) !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+}
+
+.stApp > header [data-testid="stToolbar"] button:hover {
+    background: rgba(0,255,127,0.08) !important;
+    color: var(--accent) !important;
+}
+
+footer { visibility: hidden !important; height: 0 !important; }
+div[data-testid="stDecoration"] { display: none !important; }
+div[data-testid="stAppDeployButton"] { display: none !important; }
+[data-testid="stAppView"] > div > div:last-child { visibility: hidden !important; height: 0 !important; overflow: hidden !important; }
 
 section[data-testid="stSidebar"] {
-    background: rgba(10,10,10,0.98) !important;
+    background: rgba(5,5,5,0.95) !important;
+    backdrop-filter: blur(12px) !important;
     border-right: 1px solid var(--border) !important;
 }
 
-.hero-center {
-    text-align: center;
-    padding: 48px 0 16px;
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] { display: none !important; }
+
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {
+    padding-top: 0 !important;
 }
+
+.sidebar-brand { text-align: center; padding: 16px 0 20px; }
+
+.sidebar-brand-name {
+    font-family: 'Inter', sans-serif; font-size: 1.1rem; font-weight: 900; font-style: italic;
+    background: var(--gradient-brand-text); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.sidebar-brand-sub { font-size: 0.55rem; color: var(--text-muted); margin-top: 3px; letter-spacing: 3px; text-transform: uppercase; }
+.sidebar-divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+section[data-testid="stSidebar"] [data-testid="stButton"] {
+    display: block !important;
+    margin-bottom: 2px !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stButton"] > button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    background: transparent !important;
+    border: none !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 10px 10px 0 !important;
+    padding: 12px 16px 12px 18px !important;
+    text-align: left !important;
+    font-size: 0.86rem !important;
+    font-weight: 500 !important;
+    color: #71717A !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    letter-spacing: 0.3px !important;
+    width: 100% !important;
+    line-height: 1.4 !important;
+    min-height: 44px !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stButton"] > button:hover {
+    color: #A1A1AA !important;
+    background: rgba(255,255,255,0.04) !important;
+    border-left: 3px solid rgba(0,255,127,0.3) !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stButton"] > button:active {
+    transform: none !important;
+}
+
+.hero-center { text-align: center; padding: 48px 0 16px; }
 
 .hero-title {
     font-family: 'Inter', sans-serif;
@@ -86,7 +179,6 @@ section[data-testid="stSidebar"] {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     line-height: 1.1;
-    filter: drop-shadow(0 0 30px rgba(0,255,127,0.12));
 }
 
 .hero-sub {
@@ -95,14 +187,9 @@ section[data-testid="stSidebar"] {
     margin-top: 14px;
     margin-bottom: 32px;
     letter-spacing: 1.5px;
-    font-weight: 400;
-    line-height: 1.6;
 }
 
-.hero-sub .hero-sub-sep {
-    margin: 0 8px;
-    opacity: 0.3;
-}
+.hero-sub .hero-sub-sep { margin: 0 8px; opacity: 0.3; }
 
 @keyframes scanLine {
     0% { background-position: -200% 0; }
@@ -116,437 +203,245 @@ section[data-testid="stSidebar"] {
     background: linear-gradient(90deg, transparent 0%, transparent 40%, var(--accent) 50%, transparent 60%, transparent 100%);
     background-size: 200% 100%;
     animation: scanLine 8s linear infinite;
-    opacity: 0.3;
+    opacity: 0.4;
 }
 
-.status-bar {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    padding: 0 0 36px;
-}
+.status-bar { display: flex; justify-content: center; gap: 10px; padding: 0 0 36px; }
 
 .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(20,20,20,0.8);
-    border: 1px solid rgba(255,255,255,0.03);
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.60rem;
-    color: var(--text-muted);
-    letter-spacing: 0.3px;
-    transition: all 0.25s ease;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(30,30,30,0.6); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 20px;
+    padding: 3px 10px; font-size: 0.60rem; color: var(--text-muted);
 }
 
-.status-badge:hover {
-    border-color: rgba(0,255,127,0.10);
-    background: rgba(0,255,127,0.02);
-}
-
-.status-badge svg {
-    width: 10px;
-    height: 10px;
-    stroke: var(--accent);
-    stroke-width: 2;
-    fill: none;
-    opacity: 0.5;
-}
-
-.status-badge .badge-val {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 0.60rem;
-}
-
-.quick-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin: 0 auto 40px;
-    max-width: 640px;
-}
-
-.quick-card {
-    background: rgba(30,30,30,0.5);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
-    padding: 16px 18px;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 60px;
-    position: relative;
-    overflow: hidden;
-}
-
-.quick-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 14px;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(0,255,127,0.15) 0%, rgba(129,140,248,0.10) 50%, transparent 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.quick-card:hover {
-    border-color: rgba(0,255,127,0.15);
-    background: rgba(30,30,30,0.7);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(0,0,0,0.35);
-}
-
-.quick-card:hover::before {
-    opacity: 1;
-}
-
-.quick-card .q-label {
-    font-size: 0.64rem;
-    color: var(--accent);
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    margin-bottom: 3px;
-    opacity: 0.6;
-    transition: opacity 0.25s ease;
-}
-
-.quick-card:hover .q-label {
-    opacity: 0.9;
-}
-
-.quick-card .q-text {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    line-height: 1.45;
-    text-align: left;
-    flex: 1;
-}
-
-.quick-card:hover .q-text {
-    color: var(--text);
-}
-
-.quick-card .q-arrow {
-    flex-shrink: 0;
-    margin-left: 10px;
-    opacity: 0;
-    transform: translateX(-4px);
-    transition: all 0.3s ease;
-}
-
-.quick-card:hover .q-arrow {
-    opacity: 0.5;
-    transform: translateX(0);
-}
-
-.quick-card .q-arrow svg {
-    width: 14px;
-    height: 14px;
-    stroke: var(--accent);
-    stroke-width: 2;
-    fill: none;
-}
+.status-badge svg { width: 10px; height: 10px; stroke: var(--accent); stroke-width: 2; fill: none; opacity: 0.6; }
+.status-badge .badge-val { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 600; font-size: 0.60rem; }
 
 .source-tag {
-    display: inline-block;
-    background: rgba(0,255,127,0.06);
-    color: var(--accent);
-    border: 1px solid rgba(0,255,127,0.12);
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 0.72rem;
-    font-family: 'JetBrains Mono', monospace;
-    margin: 2px 3px 2px 0;
+    display: inline-block; background: rgba(0,255,127,0.06); color: var(--accent);
+    border: 1px solid rgba(0,255,127,0.12); border-radius: 4px;
+    padding: 2px 8px; font-size: 0.72rem; font-family: 'JetBrains Mono', monospace; margin: 2px 3px 2px 0;
 }
 
 .warning-strip {
-    background: rgba(251,191,36,0.06);
-    border-left: 3px solid #FBBF24;
-    border-radius: 0 8px 8px 0;
-    padding: 10px 16px;
-    color: #FCD34D;
-    font-size: 0.88rem;
-    margin-bottom: 12px;
+    background: rgba(251,191,36,0.06); border-left: 3px solid #FBBF24;
+    border-radius: 0 8px 8px 0; padding: 10px 16px; color: #FCD34D; font-size: 0.88rem; margin-bottom: 12px;
 }
 
-div.stChatMessage {
-    background: var(--bg-glass) !important;
-    border-radius: 12px !important;
-    border: none !important;
-    margin-bottom: 6px;
-    padding: 16px 20px !important;
+[data-testid="stChatMessage"], div.stChatMessage {
+    background: rgba(30,30,30,0.4) !important; backdrop-filter: blur(12px) !important;
+    border-radius: 12px !important; border: 1px solid rgba(255,255,255,0.06) !important;
+    margin-bottom: 6px; padding: 16px 20px !important;
 }
 
-div.stChatMessage[data-testid="user-chat-message"] {
-    background: rgba(0,255,127,0.03) !important;
-    border-left: 2px solid rgba(0,255,127,0.15) !important;
+[data-testid="user-chat-message"], div.stChatMessage[data-testid="user-chat-message"] {
+    background: rgba(0,255,127,0.04) !important; border-left: 2px solid rgba(0,255,127,0.2) !important;
 }
 
 .input-disclaimer {
-    text-align: center;
-    font-size: 0.60rem;
-    color: var(--text-muted);
-    opacity: 0.35;
-    margin-top: 8px;
-    max-width: 760px;
-    margin-left: auto;
-    margin-right: auto;
+    text-align: center; font-size: 0.58rem; color: var(--text-muted);
+    opacity: 0.3; margin-top: 8px; max-width: 720px; margin-left: auto; margin-right: auto;
 }
 
 div[data-testid="stBottomBlockContainer"] {
-    background: rgba(10,10,10,0.96) !important;
-    backdrop-filter: blur(28px) !important;
-    -webkit-backdrop-filter: blur(28px) !important;
-    border-top: 1px solid rgba(255,255,255,0.03) !important;
-    padding: 14px 0 20px !important;
+    background: rgba(5,5,5,0.96) !important; backdrop-filter: blur(20px) !important;
+    border-top: 1px solid rgba(255,255,255,0.04) !important; padding: 18px 0 24px !important;
 }
 
-div.stChatInput {
-    border-radius: 14px;
-    margin: 0 auto;
-    max-width: 720px;
-    padding: 0 !important;
+[data-testid="stChatInput"] {
+    border-radius: 24px; margin: 0 auto; max-width: 720px; padding: 0 !important;
 }
 
-div.stChatInput > div > div {
-    background: #181818 !important;
-    border: 1px solid rgba(255,255,255,0.05) !important;
-    border-radius: 14px;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 3px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-    padding: 4px 4px !important;
+[data-testid="stChatInput"] > div > div {
+    background: #121212 !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    padding: 8px 8px !important;
 }
 
-div.stChatInput > div > div:focus-within {
-    border-color: var(--accent) !important;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,255,127,0.1);
+[data-testid="stChatInput"] > div > div:focus-within {
+    border: 1px solid #00FF7F !important;
+    box-shadow: 0 0 10px rgba(0,255,127,0.3), 0 4px 20px rgba(0,0,0,0.4) !important;
 }
 
-div.stChatInput textarea {
+[data-testid="stChatInput"] textarea {
     font-family: 'Inter', 'Noto Sans SC', sans-serif !important;
-    font-size: 0.90rem !important;
-    color: var(--text) !important;
-    caret-color: var(--accent) !important;
-    background: transparent !important;
-    line-height: 1.5;
-    min-height: 28px !important;
+    font-size: 0.95rem !important; color: #E2E8F0 !important;
+    caret-color: #00FF7F !important; background: transparent !important;
+    line-height: 1.6; min-height: 32px !important;
 }
 
-div.stChatInput textarea::placeholder {
-    color: var(--text-muted) !important;
-}
+[data-testid="stChatInput"] textarea::placeholder { color: var(--text-muted) !important; }
 
-div.stChatInput button[data-testid="stChatInputSubmitButton"] {
+[data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] {
     background: var(--bg-elevated) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
+    border-radius: 12px !important;
+    width: 38px !important; height: 38px !important;
+    min-width: 38px !important; min-height: 38px !important;
     padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
     color: var(--text-muted) !important;
-    transition: all 0.25s ease !important;
+    transition: all 0.3s ease !important;
+    opacity: 0.4 !important;
 }
 
-div.stChatInput button[data-testid="stChatInputSubmitButton"]:hover {
-    background: var(--accent) !important;
-    border-color: var(--accent) !important;
+[data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"]:not(:disabled) {
+    background: rgba(0,255,127,0.12) !important;
+    border: 1px solid rgba(0,255,127,0.4) !important;
+    color: #00FF7F !important;
+    box-shadow: 0 0 14px rgba(0,255,127,0.2) !important;
+    opacity: 1 !important;
+}
+
+[data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"]:not(:disabled):hover {
+    background: #00FF7F !important;
+    border-color: #00FF7F !important;
     color: #000 !important;
-    box-shadow: 0 0 16px rgba(0,255,127,0.35) !important;
+    box-shadow: 0 0 24px rgba(0,255,127,0.5) !important;
+    transform: scale(1.08) !important;
 }
 
-div.stChatInput button[data-testid="stChatInputSubmitButton"] svg {
-    color: inherit !important;
+[data-testid="stChatInput"] button[data-testid="stChatInputSubmitButton"] svg {
+    color: inherit !important; fill: currentColor !important;
 }
 
-.sidebar-brand {
-    text-align: center;
-    padding: 16px 0 20px;
-}
+.api-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+.api-dot-on { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.api-dot-off { background: #EF4444; box-shadow: 0 0 8px rgba(239,68,68,0.5); }
 
-.sidebar-brand-name {
-    font-family: 'Inter', sans-serif;
-    font-size: 1.1rem;
-    font-weight: 900;
-    font-style: italic;
-    background: var(--gradient-brand-text);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
+.footer-line { text-align: center; color: var(--text-muted); font-size: 0.62rem; padding: 24px 0 8px; letter-spacing: 1px; opacity: 0.3; }
 
-.sidebar-brand-sub {
-    font-size: 0.55rem;
-    color: var(--text-muted);
-    margin-top: 3px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-}
+div[data-testid="stExpander"] { background: rgba(30,30,30,0.5); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 10px; }
+div[data-testid="stExpander"] summary p { color: var(--text-secondary) !important; font-size: 0.78rem !important; }
 
-.sidebar-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 12px 0;
-}
-
-.kb-title {
-    font-size: 9px;
-    color: var(--accent);
-    font-weight: 500;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    padding-left: 14px;
-    opacity: 0.7;
-}
-
-section[data-testid="stSidebar"] .stButton > button {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    background: transparent !important;
-    border: none !important;
-    border-left: 2px solid transparent !important;
-    border-radius: 0 8px 8px 0 !important;
-    padding: 10px 12px 10px 14px !important;
-    text-align: left !important;
-    font-size: 0.80rem !important;
-    font-weight: 500 !important;
-    color: var(--text-muted) !important;
-    transition: all 0.2s ease !important;
-    box-shadow: none !important;
-    letter-spacing: 0.2px !important;
-    width: 100% !important;
-    line-height: 1.4 !important;
-}
-
-section[data-testid="stSidebar"] .stButton > button:hover {
-    color: var(--accent) !important;
-    background: rgba(0,255,127,0.05) !important;
-    border-left: 2px solid var(--accent) !important;
-    box-shadow: none !important;
-    transform: none !important;
-}
-
-section[data-testid="stSidebar"] .stButton > button:active {
-    transform: none !important;
-}
-
-.api-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    margin-right: 6px;
-}
-
-.api-dot-on { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-.api-dot-off { background: #EF4444; box-shadow: 0 0 6px rgba(239,68,68,0.4); }
-
-.footer-line {
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 0.65rem;
-    padding: 24px 0 8px;
-    letter-spacing: 1px;
-    opacity: 0.35;
-}
-
-div[data-testid="stExpander"] {
-    background: var(--bg-glass);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-}
-
-div[data-testid="stExpander"] summary p {
-    color: var(--text-secondary) !important;
-    font-size: 0.78rem !important;
-}
-
-.stSlider label { color: var(--text-muted) !important; font-size: 0.75rem !important; }
-.stSlider [data-baseweb="slider"] { --slider-color: var(--accent) !important; }
+.stSlider label, [data-testid="stSlider"] label { color: var(--text-muted) !important; font-size: 0.75rem !important; }
+.stSlider [data-baseweb="slider"], [data-testid="stSlider"] [data-baseweb="slider"] { --slider-color: var(--accent) !important; }
 
 h1, h2, h3, h4, h5, h6 { color: var(--text) !important; }
-.stMarkdown { color: var(--text); }
-.stAlert { border-radius: 8px; }
+.stMarkdown, [data-testid="stMarkdown"] { color: var(--text); }
+.stAlert, [data-testid="stAlert"] { border-radius: 8px; }
 
-.stButton > button {
-    background: var(--bg-glass) !important;
-    border: 1px solid var(--border) !important;
+[data-testid="stButton"] > button {
+    background: rgba(30,30,30,0.5) !important; backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--border) !important; color: var(--text-secondary) !important;
+    border-radius: 8px !important; font-size: 0.80rem !important; transition: all 0.2s ease !important;
+}
+
+[data-testid="stButton"] > button:hover {
+    border-color: rgba(0,255,127,0.3) !important; color: var(--text) !important;
+    box-shadow: 0 0 12px var(--accent-glow) !important;
+}
+
+section[data-testid="stSidebar"] .streamlit-expanderHeader { background: transparent !important; border: none !important; font-size: 0.72rem !important; }
+
+.stSpinner > div { border-color: var(--accent) transparent transparent transparent !important; }
+
+.page-title { font-size: 1.4rem; font-weight: 700; color: var(--text); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.page-subtitle { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 24px; }
+
+.file-list-item { background: rgba(30,30,30,0.4); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.file-list-item:hover { border-color: rgba(0,255,127,0.2); background: rgba(30,30,30,0.6); }
+
+.config-card { background: rgba(30,30,30,0.5); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.config-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.config-value { font-size: 0.90rem; color: var(--text); font-family: 'JetBrains Mono', monospace; }
+
+[data-testid="stHorizontalBlock"] [data-testid="stButton"] button {
+    background: rgba(30,30,30,0.4) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(0,255,127,0.2) !important;
+    border-radius: 16px !important;
+    padding: 20px 24px !important;
+    min-height: 120px !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    white-space: pre-line !important;
+    word-break: break-word !important;
+    line-height: 1.5 !important;
+    font-size: 0.82rem !important;
     color: var(--text-secondary) !important;
-    border-radius: 8px !important;
-    font-size: 0.80rem !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 0 0 rgba(0,255,127,0) !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-.stButton > button:hover {
-    border-color: rgba(0,255,127,0.3) !important;
+[data-testid="stHorizontalBlock"] [data-testid="stButton"] button:hover {
+    background: rgba(40,40,40,0.6) !important;
+    border: 1px solid rgba(0,255,127,0.5) !important;
+    box-shadow: 0 4px 20px rgba(0,255,127,0.12) !important;
+    transform: translateY(-3px) !important;
     color: var(--text) !important;
-    box-shadow: 0 0 8px var(--accent-glow) !important;
 }
 
-section[data-testid="stSidebar"] .streamlit-expanderHeader {
-    background: transparent !important;
-    border: none !important;
-    font-size: 0.72rem !important;
+[data-testid="stHorizontalBlock"] [data-testid="stButton"] button p {
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+[data-testid="stHorizontalBlock"] [data-testid="stButton"] button p:first-child {
+    display: block !important;
 }
 
-.quick-card {
-    animation: fadeInUp 0.4s ease both;
+.quick-card-title {
+    color: #00FF7F !important;
+    font-weight: 700 !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 6px !important;
+    opacity: 0.9 !important;
 }
 
-.quick-card:nth-child(1) { animation-delay: 0.05s; }
-.quick-card:nth-child(2) { animation-delay: 0.10s; }
-.quick-card:nth-child(3) { animation-delay: 0.15s; }
-.quick-card:nth-child(4) { animation-delay: 0.20s; }
+.quick-card-desc {
+    color: #A1A1AA !important;
+    font-weight: 400 !important;
+    font-size: 0.82rem !important;
+    line-height: 1.5 !important;
+}
 </style>
 """
 
 LUCIDE_ICONS = {
-    "file-text": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+    "message-circle": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>',
+    "database": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>',
+    "file-text": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+    "settings": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 0-1 1.73V10a2 2 0 0 0 1 1.73l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 0 1-1.73V6.56a2 2 0 0 0-1-1.73l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+    "file-code": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/></svg>',
+    "history": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
+    "wrench": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 0-7.94-7.94l-3.77 3.77a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0Z"/><path d="M8.56 2.75a4.5 4.5 0 0 0-5.81 5.81l1.87 1.87a1 1 0 0 0 1.4 0l5.2-5.2a1 1 0 0 0 0-1.4Z"/><path d="M3.5 15a1 1 0 0 0 0 1.4l5.2 5.2a1 1 0 0 0 1.4 0l1.87-1.87a4.5 4.5 0 0 0-5.81-5.81Z"/></svg>',
+    "file-text-2": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
     "layers": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22.4 12.08-8.58 3.91a2 2 0 0 1-1.66 0l-8.58-3.9"/><path d="m22.4 17.08-8.58 3.91a2 2 0 0 1-1.66 0l-8.58-3.9"/></svg>',
     "brain": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg>',
-    "database": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>',
+    "database-2": '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>',
     "arrow-up-right": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>',
-    "shield": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>',
-    "medal": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.3A2 2 0 0 1 6.05 2h11.9a2 2 0 0 1 1.66.89l1.6 2.63a2 2 0 0 1 .14 2.2L16.79 15"/><circle cx="12" cy="17" r="5"/><path d="M12 14v2l1.5.5"/></svg>',
-    "graduation-cap": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>',
-    "heart-pulse": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>',
-    "apple": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1.2 0-2.4-.6-3-1.5A6.5 6.5 0 0 0 5.5 6 5.5 5.5 0 0 0 3 10c0 4 2.5 8 5.5 11 1 1 2.5 2 3.5 2s2.5-1 3.5-2c3-3 5.5-7 5.5-11a5.5 5.5 0 0 0-2.5-4A6.5 6.5 0 0 0 15 1.5c-.6.9-1.8 1.5-3 1.5Z"/></svg>',
-    "target": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
-    "bandage": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>',
-    "trophy": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>',
+    "calendar-days": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>',
+    "activity": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>',
+    "gauge": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12l-3-3"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
+    "footprints": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16h4v-2.38c0-2.12-1.03-3.12-1-5.62.03-2.72 1.49-6 4.5-6 1.87 0 2.5 1.8 2.5 3.5 0 3.11-2 5.66-2 8.68V16h4"/></svg>',
 }
 
-KB_FILE_ICONS = {
-    "伤病预防": "bandage",
-    "大学生跑步指南": "graduation-cap",
-    "恢复与营养": "apple",
-    "比赛准备": "trophy",
-    "训练基础": "heart-pulse",
-    "训练计划": "target",
-}
+NAV_MENU = [
+    ("message-circle", "对话"),
+    ("database", "现有知识库"),
+    ("file-text", "知识库文件"),
+    ("settings", "模型配置"),
+    ("file-code", "提示词模板"),
+    ("history", "对话历史"),
+    ("wrench", "开发者工具"),
+]
+
+QUICK_QUESTIONS = [
+    ("calendar-days", "训练计划", "帮我制定本周的排酸跑计划？"),
+    ("activity", "伤病恢复", "刚跑完膝盖外侧疼，可能是什么原因？"),
+    ("gauge", "配速建议", "半马目标1h45m，前5公里该怎么跑？"),
+    ("footprints", "跑者装备", "新手怎么选缓震跑鞋和竞速鞋？"),
+]
 
 
 @st.cache_resource
@@ -615,15 +510,73 @@ def get_knowledge_files():
     data_path = DATA_DIR.resolve()
     if not data_path.exists():
         return []
-    return sorted([f.name for f in data_path.iterdir() if f.suffix in (".md", ".txt")])
+    files = []
+    for f in sorted(data_path.rglob("*")):
+        if f.suffix.lower() in (".md", ".txt") and f.is_file():
+            files.append(f.relative_to(data_path))
+    return files
 
 
-QUICK_QUESTIONS = [
-    ("训练计划", "帮我制定本周的排酸跑计划？"),
-    ("伤病恢复", "刚跑完膝盖外侧疼，可能是什么原因？"),
-    ("配速建议", "半马目标1h45m，前5公里该怎么跑？"),
-    ("跑者装备", "新手怎么选缓震跑鞋和竞速鞋？"),
-]
+def render_sidebar_nav():
+    with st.sidebar:
+        st.markdown(
+            """
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-name">RUNWISE</div>
+                <div class="sidebar-brand-sub">Knowledge Runner</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+
+        if "nav_page" not in st.session_state:
+            st.session_state.nav_page = "对话"
+
+        for icon_key, label in NAV_MENU:
+            if st.button(
+                label,
+                key=f"nav_{label}",
+                use_container_width=True,
+            ):
+                st.session_state.nav_page = label
+                st.rerun()
+
+        active_page = st.session_state.nav_page
+
+        sidebar_highlight_js = f"""
+        <script>
+        (function() {{
+            try {{
+                var doc = parent.document || window.top.document;
+
+                var navButtons = doc.querySelectorAll('section[data-testid="stSidebar"] [data-testid="stButton"] button');
+                navButtons.forEach(function(btn) {{
+                    btn.style.color = '';
+                    btn.style.background = '';
+                    btn.style.borderLeft = '';
+                    if (btn.textContent.trim() === '{active_page}') {{
+                        btn.style.color = '#00FF7F';
+                        btn.style.background = 'rgba(0,255,127,0.06)';
+                        btn.style.borderLeft = '3px solid #00FF7F';
+                    }}
+                }});
+
+                var quickBtns = doc.querySelectorAll('[data-testid="stHorizontalBlock"] [data-testid="stButton"] button p');
+                quickBtns.forEach(function(p) {{
+                    var text = p.textContent || '';
+                    if (text.indexOf('\\n') > -1) {{
+                        var parts = text.split('\\n');
+                        p.innerHTML = '<span style="color:#00FF7F;font-weight:700;font-size:0.78rem;letter-spacing:0.5px;opacity:0.9;">' + parts[0].trim() + '</span><br><span style="color:#A1A1AA;font-weight:400;font-size:0.82rem;line-height:1.5;">' + parts.slice(1).join('\\n').trim() + '</span>';
+                    }}
+                }});
+            }} catch(e) {{}}
+        }})();
+        </script>
+        """
+        st.iframe(sidebar_highlight_js, height=1)
+
+        return st.session_state.nav_page
 
 
 def render_hero():
@@ -651,10 +604,10 @@ def render_status_bar(vectorstore):
         doc_count = 0
 
     badges = [
-        ("file-text", "文件", f"{len(kb_files)}"),
+        ("file-text-2", "文件", f"{len(kb_files)}"),
         ("layers", "块", f"{doc_count}"),
         ("brain", "模型", "bge-zh"),
-        ("database", "库", "Chroma"),
+        ("database-2", "库", "Chroma"),
     ]
     badges_html = "".join(
         f'<span class="status-badge">'
@@ -670,124 +623,18 @@ def render_status_bar(vectorstore):
 
 
 def render_quick_questions():
-    cards_html = ""
-    arrow_svg = LUCIDE_ICONS["arrow-up-right"]
-    for i, (label, question) in enumerate(QUICK_QUESTIONS):
-        cards_html += (
-            f'<div class="quick-card" data-idx="{i}">'
-            f'<div style="flex:1;min-width:0;">'
-            f'<div class="q-label">{label}</div>'
-            f'<div class="q-text">{question}</div>'
-            f'</div>'
-            f'<span class="q-arrow">{arrow_svg}</span>'
-            f'</div>'
-        )
+    cols = st.columns(2)
 
-    st.markdown(f'<div class="quick-grid">{cards_html}</div>', unsafe_allow_html=True)
-
-
-def render_sidebar():
-    with st.sidebar:
-        st.markdown(
-            """
-            <div class="sidebar-brand">
-                <div class="sidebar-brand-name">RUNWISE</div>
-                <div class="sidebar-brand-sub">Knowledge Runner</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-
-        st.markdown(
-            '<div class="kb-title">Knowledge Base</div>',
-            unsafe_allow_html=True,
-        )
-        kb_files = get_knowledge_files()
-        if "selected_kb_file" not in st.session_state:
-            st.session_state.selected_kb_file = None
-
-        if kb_files:
-            for f in kb_files:
-                base_name = f.replace(".md", "").replace(".txt", "")
-                is_active = st.session_state.selected_kb_file == f
-
-                if st.button(
-                    base_name,
-                    key=f"kb_btn_{base_name}",
-                    use_container_width=True,
-                ):
-                    st.session_state.selected_kb_file = f
-                    st.rerun()
-
-                if is_active:
-                    st.markdown(
-                        f"""<style>
-                        section[data-testid="stSidebar"] .stButton > button[data-testid="baseButton-secondary-kb_btn_{base_name}"] {{
-                            color: var(--accent) !important;
-                            background: rgba(0,255,127,0.06) !important;
-                            border-left: 2px solid var(--accent) !important;
-                        }}
-                        </style>""",
-                        unsafe_allow_html=True,
-                    )
-
-            if st.session_state.selected_kb_file:
-                file_path = DATA_DIR.resolve() / st.session_state.selected_kb_file
-                if file_path.exists():
-                    preview_name = st.session_state.selected_kb_file.replace('.md', '').replace('.txt', '')
-                    with st.expander(f"Preview: {preview_name}", expanded=True):
-                        try:
-                            content = file_path.read_text(encoding="utf-8")
-                            st.markdown(
-                                f"""
-                                <div style="
-                                    background: rgba(255,255,255,0.02);
-                                    border:1px solid rgba(255,255,255,0.05);
-                                    border-radius:8px;
-                                    padding:14px;
-                                    max-height:350px;
-                                    overflow-y:auto;
-                                    font-size:0.82rem;
-                                    line-height:1.8;
-                                    color:#999;
-                                    white-space:pre-wrap;
-                                ">{content}</div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                        except Exception as e:
-                            st.error(f"读取失败: {e}")
-                    if st.button("Close", key="close_kb_preview"):
-                        st.session_state.selected_kb_file = None
-                        st.rerun()
-        else:
-            st.warning("未找到知识库文件")
-
-        st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-
-        with st.expander("Developer Settings"):
-            top_k = st.slider("Top K", 1, 10, 3, key="top_k")
-
-            api_key = os.getenv("OPENAI_API_KEY", "")
-            llm_model = os.getenv("LLM_MODEL", "")
-
-            dot_class = "api-dot-on" if api_key else "api-dot-off"
-            key_text = "Connected" if api_key else "Not Set"
-            model_text = llm_model if llm_model else "Not Set"
-
-            st.markdown(
-                f"""
-                <div style="font-size:0.72rem; line-height:2; color:#888;">
-                <span class="api-dot {dot_class}"></span>API: {key_text}<br/>
-                Model: <span style="color:var(--accent);">{model_text}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        return top_k
+    for i, (icon_key, label, question) in enumerate(QUICK_QUESTIONS):
+        with cols[i % 2]:
+            btn_label = f"{label}\n{question}"
+            if st.button(
+                btn_label,
+                key=f"quick_btn_{i}",
+                use_container_width=True,
+            ):
+                st.session_state.quick_question = question
+                st.rerun()
 
 
 def render_source_badges(sources):
@@ -804,26 +651,8 @@ def render_input_disclaimer():
     )
 
 
-def main():
-    st.set_page_config(
-        page_title="RunWise RAG",
-        page_icon="🏃",
-        layout="wide",
-        initial_sidebar_state="collapsed",
-    )
-    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
-    top_k = render_sidebar()
-
+def render_page_chat(vectorstore, top_k):
     render_hero()
-
-    embeddings = init_embeddings()
-    vectorstore = init_vectorstore(embeddings)
-
-    if vectorstore is None:
-        st.error("向量库未找到！请先运行 `python build_index.py` 构建索引。")
-        st.stop()
-
     render_status_bar(vectorstore)
 
     if "messages" not in st.session_state:
@@ -842,6 +671,13 @@ def main():
                     render_source_badges(msg["sources"])
 
     prompt = st.chat_input("输入你的跑步问题...")
+
+    if "quick_question" not in st.session_state:
+        st.session_state.quick_question = None
+
+    if st.session_state.quick_question:
+        prompt = st.session_state.quick_question
+        st.session_state.quick_question = None
 
     if prompt:
         st.chat_message("user").markdown(prompt)
@@ -894,5 +730,333 @@ def main():
     )
 
 
+def render_page_knowledge_base():
+    st.markdown('<div class="page-title">现有知识库</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">查看向量数据库中的知识块统计</div>', unsafe_allow_html=True)
+
+    embeddings = init_embeddings()
+    vectorstore = init_vectorstore(embeddings)
+
+    if vectorstore is None:
+        st.error("向量库未找到！请先运行 `python build_index.py` 构建索引。")
+        return
+
+    try:
+        doc_count = vectorstore._collection.count()
+    except Exception:
+        doc_count = 0
+
+    kb_files = get_knowledge_files()
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(
+            f"""
+            <div class="config-card">
+                <div class="config-label">知识库文件</div>
+                <div class="config-value">{len(kb_files)} 个</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col2:
+        st.markdown(
+            f"""
+            <div class="config-card">
+                <div class="config-label">向量块数</div>
+                <div class="config-value">{doc_count} 块</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div class="page-title" style="margin-top:24px;">文件列表</div>', unsafe_allow_html=True)
+
+    for f in kb_files:
+        st.markdown(
+            f"""
+            <div class="file-list-item">
+                <span>{f}</span>
+                <span style="color:var(--accent);font-size:0.7rem;">.md</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_page_kb_files():
+    st.markdown('<div class="page-title">知识库文件</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">浏览和预览知识库中的 Markdown 文件</div>', unsafe_allow_html=True)
+
+    kb_files = get_knowledge_files()
+
+    if not kb_files:
+        st.warning("未找到知识库文件")
+        return
+
+    file_names = [str(f) for f in kb_files]
+    selected = st.selectbox("选择文件", file_names, index=0, key="kb_file_select")
+
+    if selected:
+        file_path = DATA_DIR.resolve() / selected
+        if file_path.exists():
+            try:
+                content = file_path.read_text(encoding="utf-8")
+                lines = content.split("\n")
+                st.markdown(
+                    f"""
+                    <div class="config-card" style="margin-bottom:12px;">
+                        <div class="config-label">文件信息</div>
+                        <div class="config-value" style="font-size:0.75rem;">
+                            路径: {selected}<br>
+                            行数: {len(lines)} 行<br>
+                            字符: {len(content)} 字符
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"""
+                    <div style="
+                        background: rgba(30,30,30,0.5);
+                        border: 1px solid var(--border);
+                        border-radius: 8px;
+                        padding: 16px;
+                        max-height: 500px;
+                        overflow-y: auto;
+                        font-size: 0.82rem;
+                        line-height: 1.8;
+                        color: #999;
+                        white-space: pre-wrap;
+                    ">{content}</div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            except Exception as e:
+                st.error(f"读取失败: {e}")
+
+
+def render_page_model_config():
+    st.markdown('<div class="page-title">模型配置</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">查看和修改 LLM 与 Embedding 模型配置</div>', unsafe_allow_html=True)
+
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    base_url = os.getenv("OPENAI_BASE_URL", "")
+    llm_model = os.getenv("LLM_MODEL", "")
+
+    dot_class = "api-dot-on" if api_key else "api-dot-off"
+    key_status = "已配置" if api_key else "未配置"
+    key_preview = api_key[:8] + "..." + api_key[-4:] if len(api_key) > 12 else api_key
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">API Key</div>
+            <div class="config-value">
+                <span class="api-dot {dot_class}"></span>
+                {key_status}
+                <span style="color:var(--text-muted);font-size:0.7rem;margin-left:8px;">{key_preview}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">Base URL</div>
+            <div class="config-value" style="font-size:0.75rem;">{base_url or "未配置"}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">LLM Model</div>
+            <div class="config-value">{llm_model or "未配置"}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">Embedding Model</div>
+            <div class="config-value">{EMBEDDING_MODEL}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">向量数据库路径</div>
+            <div class="config-value" style="font-size:0.75rem;">{CHROMA_DIR.resolve()}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_page_prompt_template():
+    st.markdown('<div class="page-title">提示词模板</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">查看和编辑 System Prompt</div>', unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <div style="
+            background: rgba(30,30,30,0.5);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 0.82rem;
+            line-height: 1.8;
+            color: #999;
+            white-space: pre-wrap;
+        ">{SYSTEM_PROMPT}</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_page_chat_history():
+    st.markdown('<div class="page-title">对话历史</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">查看和管理当前会话的对话记录</div>', unsafe_allow_html=True)
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    messages = st.session_state.messages
+
+    if not messages:
+        st.info("暂无对话记录")
+        return
+
+    st.markdown(
+        f"""
+        <div class="config-card" style="margin-bottom:16px;">
+            <div class="config-label">对话统计</div>
+            <div class="config-value">共 {len(messages)} 条消息</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    for i, msg in enumerate(messages):
+        role_label = "用户" if msg["role"] == "user" else "助手"
+        role_color = "var(--accent)" if msg["role"] == "user" else "var(--accent2)"
+        st.markdown(
+            f"""
+            <div style="
+                background: rgba(30,30,30,0.4);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 12px 16px;
+                margin-bottom: 8px;
+            ">
+                <div style="font-size:0.7rem;color:{role_color};margin-bottom:6px;">{role_label} #{i+1}</div>
+                <div style="font-size:0.82rem;color:var(--text);">{msg['content'][:200]}{'...' if len(msg['content']) > 200 else ''}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    if st.button("清空对话历史", key="clear_history_btn"):
+        st.session_state.messages = []
+        st.success("对话历史已清空")
+        st.rerun()
+
+
+def render_page_dev_tools():
+    st.markdown('<div class="page-title">开发者工具</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">调试参数和系统信息</div>', unsafe_allow_html=True)
+
+    top_k = st.slider("检索 Top K", 1, 10, 3, key="dev_top_k")
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">当前 Top K</div>
+            <div class="config-value">{top_k}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">数据目录</div>
+            <div class="config-value" style="font-size:0.75rem;">{DATA_DIR.resolve()}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">Chroma 目录</div>
+            <div class="config-value" style="font-size:0.75rem;">{CHROMA_DIR.resolve()}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="config-card">
+            <div class="config-label">本地模型目录</div>
+            <div class="config-value" style="font-size:0.75rem;">{LOCAL_MODEL_DIR}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    return top_k
+
+
+def main():
+    st.set_page_config(
+        page_title="RunWise RAG",
+        page_icon="🏃",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+    current_page = render_sidebar_nav()
+
+    top_k = st.session_state.get("dev_top_k", 3)
+
+    if current_page == "对话":
+        with st.spinner("正在加载 Embedding 模型，首次加载约需 1-2 分钟..."):
+            embeddings = init_embeddings()
+            vectorstore = init_vectorstore(embeddings)
+        if vectorstore is None:
+            st.error("向量库未找到！请先运行 `python build_index.py` 构建索引。")
+            st.stop()
+        render_page_chat(vectorstore, top_k)
+    elif current_page == "现有知识库":
+        render_page_knowledge_base()
+    elif current_page == "知识库文件":
+        render_page_kb_files()
+    elif current_page == "模型配置":
+        render_page_model_config()
+    elif current_page == "提示词模板":
+        render_page_prompt_template()
+    elif current_page == "对话历史":
+        render_page_chat_history()
+    elif current_page == "开发者工具":
+        render_page_dev_tools()
+
+
 if __name__ == "__main__":
     main()
+
