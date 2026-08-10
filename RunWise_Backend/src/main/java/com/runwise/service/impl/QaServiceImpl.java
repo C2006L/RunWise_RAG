@@ -21,46 +21,107 @@ import java.util.*;
 
 /**
  * 问答服务实现
- * 调用 Python RAG 微服务获取答案
+ * 调用 Ollama 本地大模型 API 获取答案（调试模式）
  */
 @Slf4j
 @Service
 public class QaServiceImpl extends ServiceImpl<QaRecordMapper, QaRecord> implements QaService {
 
-    @Value("${runwise.rag.base-url}")
-    private String ragBaseUrl;
+    @Value("${runwise.ollama.base-url}")
+    private String ollamaBaseUrl;
+
+    @Value("${runwise.ollama.model}")
+    private String ollamaModel;
 
     @Override
     public Map<String, Object> ask(Long userId, AskDTO dto) {
-        // 1. 调用 Python RAG 微服务
         Map<String, Object> result;
         try {
-            Map<String, Object> params = new HashMap<>();
-            params.put("question", dto.getQuestion());
-            params.put("user_id", userId);
+            // 构建系统提示词（让AI扮演跑步教练）
+            String systemPrompt = "你是一位专业的跑步教练，名字叫'RunWise助手'。" +
+                "请用中文回答用户的跑步相关问题，回答要专业、实用、简洁，" +
+                "字数控制在200-400字之间。如果涉及伤痛问题，请给出安全提示。";
 
-            String response = HttpUtil.post(ragBaseUrl + "/api/qa/ask",
-                    JSONUtil.toJsonStr(params), 30000);
+            // 构建 Ollama API 请求体
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", ollamaModel);
+            requestBody.put("prompt", systemPrompt + "\n\n用户问题：" + dto.getQuestion());
+            requestBody.put("stream", false);  // 非流式输出
+
+            // 添加模型参数（可调优）
+            Map<String, Object> options = new HashMap<>();
+            options.put("temperature", 0.7);      // 创造性：0-1
+            options.put("num_predict", 500);       // 最大生成长度
+            options.put("top_p", 0.9);             // 核采样
+            options.put("repeat_penalty", 1.1);    // 防止重复
+            requestBody.put("options", options);
+
+            log.info("调用Ollama API，问题：{}", dto.getQuestion());
+
+            // 调用 Ollama /api/generate 接口
+            String response = HttpUtil.post(
+                ollamaBaseUrl + "/api/generate",
+                JSONUtil.toJsonStr(requestBody),
+                60000  // 超时60秒
+            );
+
             JSONObject json = JSONUtil.parseObj(response);
+            String answer = json.getStr("response");
 
+            if (answer == null || answer.isEmpty()) {
+                throw new BusinessException(ResultCode.RAG_SERVICE_ERROR, "模型返回空答案");
+            }
+
+            log.info("Ollama 返回答案长度：{}", answer.length());
+
+            // 构建返回结果
             result = new HashMap<>();
-            result.put("answer", json.getStr("answer"));
-            result.put("sources", json.getJSONArray("sources"));
+            result.put("answer", answer.trim());
+
+            // Ollama 不提供来源信息，使用默认值
+            List<String> defaultSources = Arrays.asList("Qwen2.5大模型生成");
+            result.put("sources", defaultSources);
+
+            // 安全提示检测
+            boolean hasInjuryKeyword = dto.getQuestion().matches(".*[疼痛伤膝盖小腿脚踝拉伤].*");
+            if (hasInjuryKeyword) {
+                result.put("safetyTip", "以上建议仅供参考，若疼痛持续或加重请及时就医。");
+            }
+
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("调用RAG服务失败", e);
-            throw new BusinessException(ResultCode.RAG_SERVICE_ERROR);
+            log.error("调用Ollama服务失败", e);
+            throw new BusinessException(ResultCode.RAG_SERVICE_ERROR,
+                "调用AI服务失败：" + e.getMessage() + "，请检查Ollama是否启动");
         }
 
-        // 2. 保存问答记录
-        QaRecord record = new QaRecord();
-        record.setUserId(userId);
-        record.setQuestion(dto.getQuestion());
-        record.setAnswer((String) result.get("answer"));
-        record.setSources(result.get("sources") != null ? result.get("sources").toString() : null);
-        record.setFeedback(0);
-        save(record);
+        // 保存问答记录到数据库（调试阶段暂时跳过，避免数据库错误影响测试）
+        // TODO: 配置正确数据库密码后恢复此功能
 
-        result.put("recordId", record.getId());
+        // 调试日志：打印即将返回的数据
+        String answer = (String) result.get("answer");
+        log.info("准备返回给前端 - answer长度: {}, sources: {}, safetyTip: {}",
+                answer.length(),
+                result.get("sources"),
+                result.get("safetyTip"));
+
+        /*
+        try {
+            QaRecord record = new QaRecord();
+            record.setUserId(userId);
+            record.setQuestion(dto.getQuestion());
+            record.setAnswer((String) result.get("answer"));
+            record.setSources(result.get("sources") != null ? result.get("sources").toString() : null);
+            record.setFeedback(0);
+            save(record);
+
+            result.put("recordId", record.getId());
+        } catch (Exception e) {
+            log.warn("保存问答记录失败，但不影响返回结果", e);
+        }
+        */
+
         return result;
     }
 

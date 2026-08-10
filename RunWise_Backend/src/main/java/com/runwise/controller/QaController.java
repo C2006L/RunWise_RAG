@@ -32,6 +32,10 @@ public class QaController {
     @Operation(summary = "提问")
     public Result<Map<String, Object>> ask(HttpServletRequest request, @Valid @RequestBody AskDTO dto) {
         Long userId = (Long) request.getAttribute("userId");
+        // 如果未登录，使用默认用户ID（方便调试）
+        if (userId == null) {
+            userId = 1L;
+        }
         return Result.success(qaService.ask(userId, dto));
     }
 

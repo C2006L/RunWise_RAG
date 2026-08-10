@@ -3,7 +3,9 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "RunWise"
+        "navigationBarTitleText": "RunWise",
+        "enablePullDownRefresh": true,
+        "backgroundTextStyle": "dark"
       }
     },
     {
@@ -26,16 +28,16 @@
     }
   ],
   "globalStyle": {
-    "navigationBarTextStyle": "white",
+    "navigationBarTextStyle": "black",
     "navigationBarTitleText": "RunWise",
-    "navigationBarBackgroundColor": "#18181B",
-    "backgroundColor": "#18181B"
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F8FAFC"
   },
   "tabBar": {
-    "color": "#52525B",
-    "selectedColor": "#00FF7F",
-    "backgroundColor": "#18181B",
-    "borderStyle": "black",
+    "color": "#9CA3AF",
+    "selectedColor": "#FF6B35",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",

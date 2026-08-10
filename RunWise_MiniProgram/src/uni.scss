@@ -1,76 +1,96 @@
 /**
- * 这里是uni-app内置的常用样式变量
- *
- * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
- * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
- *
+ * RunWise 小程序主题变量（白蓝橙方案 v3.0）
+ * 基于 PRD v3.0 色彩系统
  */
 
-/**
- * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
- *
- * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
- */
+/* ========== 品牌色 ========== */
+$rw-primary: #FF6B35 !default;          // 活力橙 - 主强调色
+$rw-secondary: #1890FF !default;        // 科技蓝 - 次强调色
+$rw-success: #00C853 !default;          // 成功绿 - 打卡完成
+$rw-warning: #F59E0B !default;          // 警告橙
+$rw-error: #EF4444 !default;            // 错误红
 
-/* 颜色变量 */
+/* ========== 背景色 ========== */
+$rw-bg-page: #F8FAFC !default;          // 页面背景
+$rw-bg-card: #FFFFFF !default;          // 卡片背景
+$rw-bg-hover: #F1F5F9 !default;         // 悬浮/按压态
+$rw-bg-mask: rgba(0, 0, 0, 0.4) !default; // 遮罩
 
-/* 行为相关颜色 */
-$uni-color-primary: #007aff;
-$uni-color-success: #4cd964;
-$uni-color-warning: #f0ad4e;
-$uni-color-error: #dd524d;
+/* ========== 文字色 ========== */
+$rw-text-primary: #1F2937 !default;     // 主文字
+$rw-text-secondary: #6B7280 !default;   // 次级文字
+$rw-text-placeholder: #9CA3AF !default; // 弱文字/占位符
 
-/* 文字基本颜色 */
-$uni-text-color: #333; // 基本色
-$uni-text-color-inverse: #fff; // 反色
-$uni-text-color-grey: #999; // 辅助灰色，如加载更多的提示信息
-$uni-text-color-placeholder: #808080;
-$uni-text-color-disable: #c0c0c0;
+/* ========== 边框/分割线 ========== */
+$rw-border-color: rgba(0, 0, 0, 0.06) !default;
+$rw-divider: rgba(0, 0, 0, 0.06) !default;
 
-/* 背景颜色 */
-$uni-bg-color: #fff;
-$uni-bg-color-grey: #f8f8f8;
-$uni-bg-color-hover: #f1f1f1; // 点击状态颜色
-$uni-bg-color-mask: rgba(0, 0, 0, 0.4); // 遮罩颜色
+/* ========== 强调色透明度变体 ========== */
+$rw-primary-light: rgba(255, 107, 53, 0.08) !default;    // 按钮默认背景
+$rw-primary-border: rgba(255, 107, 53, 0.3) !default;     // 按钮默认边框
+$rw-primary-bg: rgba(255, 107, 53, 0.06) !default;        // 背景点缀
+$rw-primary-selected: rgba(255, 107, 53, 0.12) !default;  // 选中态背景
+$rw-primary-shadow: rgba(255, 107, 53, 0.3) !default;     // 阴影
 
-/* 边框颜色 */
-$uni-border-color: #c8c7cc;
+$rw-secondary-light: rgba(24, 144, 255, 0.06) !default;   // 蓝色背景
+$rw-secondary-border: rgba(24, 144, 255, 0.2) !default;   // 蓝色边框
 
-/* 尺寸变量 */
+/* ========== 语义色（心情标签） ========== */
+$rw-mood-easy: #00C853 !default;                // 轻松
+$rw-mood-easy-border: rgba(0, 200, 83, 0.3) !default;
+$rw-mood-moderate: #1890FF !default;            // 适中
+$rw-mood-moderate-border: rgba(24, 144, 255, 0.3) !default;
+$rw-mood-hard: #F59E0B !default;               // 吃力
+$rw-mood-hard-border: rgba(245, 158, 11, 0.3) !default;
 
-/* 文字尺寸 */
-$uni-font-size-sm: 12px;
-$uni-font-size-base: 14px;
-$uni-font-size-lg: 16;
+/* ========== 图表色 ========== */
+$rw-chart-current: #FF6B35 !default;                    // 当月柱状图
+$rw-chart-history: rgba(255, 107, 53, 0.2) !default;    // 历史月份
+$rw-chart-line: #1890FF !default;                        // 趋势线
 
-/* 图片尺寸 */
-$uni-img-size-sm: 20px;
-$uni-img-size-base: 26px;
-$uni-img-size-lg: 40px;
+/* ========== 阴影 ========== */
+$rw-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06) !default;
+$rw-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1) !default;
+$rw-shadow-fab: 0 4px 12px rgba(255, 107, 53, 0.3) !default;
 
-/* Border Radius */
-$uni-border-radius-sm: 2px;
-$uni-border-radius-base: 3px;
-$uni-border-radius-lg: 6px;
-$uni-border-radius-circle: 50%;
+/* ========== uni-app 内置变量覆盖 ========== */
+$uni-color-primary: $rw-primary !default;
+$uni-color-success: $rw-success !default;
+$uni-color-warning: $rw-warning !default;
+$uni-color-error: $rw-error !default;
 
-/* 水平间距 */
-$uni-spacing-row-sm: 5px;
-$uni-spacing-row-base: 10px;
-$uni-spacing-row-lg: 15px;
+$uni-text-color: $rw-text-primary !default;
+$uni-text-color-inverse: #fff !default;
+$uni-text-color-grey: $rw-text-secondary !default;
+$uni-text-color-placeholder: $rw-text-placeholder !default;
+$uni-text-color-disable: #c0c0c0 !default;
 
-/* 垂直间距 */
-$uni-spacing-col-sm: 4px;
-$uni-spacing-col-base: 8px;
-$uni-spacing-col-lg: 12px;
+$uni-bg-color: $rw-bg-card !default;
+$uni-bg-color-grey: $rw-bg-page !default;
+$uni-bg-color-hover: $rw-bg-hover !default;
+$uni-bg-color-mask: $rw-bg-mask !default;
 
-/* 透明度 */
-$uni-opacity-disabled: 0.3; // 组件禁用态的透明度
+$uni-border-color: $rw-border-color !default;
 
-/* 文章场景相关 */
-$uni-color-title: #2c405a; // 文章标题颜色
-$uni-font-size-title: 20px;
-$uni-color-subtitle: #555; // 二级标题颜色
-$uni-font-size-subtitle: 18px;
-$uni-color-paragraph: #3f536e; // 文章段落颜色
-$uni-font-size-paragraph: 15px;
+$uni-font-size-sm: 12px !default;
+$uni-font-size-base: 14px !default;
+$uni-font-size-lg: 16px !default;
+
+$uni-img-size-sm: 20px !default;
+$uni-img-size-base: 26px !default;
+$uni-img-size-lg: 40px !default;
+
+$uni-border-radius-sm: 8px !default;
+$uni-border-radius-base: 12px !default;
+$uni-border-radius-lg: 16px !default;
+$uni-border-radius-circle: 50% !default;
+
+$uni-spacing-row-sm: 5px !default;
+$uni-spacing-row-base: 10px !default;
+$uni-spacing-row-lg: 15px !default;
+
+$uni-spacing-col-sm: 4px !default;
+$uni-spacing-col-base: 8px !default;
+$uni-spacing-col-lg: 12px !default;
+
+$uni-opacity-disabled: 0.3 !default;

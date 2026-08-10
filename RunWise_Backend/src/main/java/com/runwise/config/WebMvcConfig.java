@@ -26,6 +26,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/auth/login",     // 登录接口不拦截
                         "/api/auth/refresh",   // 刷新token不拦截
+                        "/api/qa/**",          // 问答模块全部不拦截（调试模式）
                         "/doc.html",           // Knife4j 文档
                         "/swagger-resources/**",
                         "/webjars/**",
