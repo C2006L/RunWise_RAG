@@ -3,7 +3,13 @@
  * 统一处理 token、错误提示、刷新 token
  */
 
-const BASE_URL = 'http://localhost:8080'
+/**
+ * 后端 API 基础地址
+ * 注意：微信开发者工具中小程序沙箱的 localhost 不等于主机 localhost，
+ *       必须使用实际的局域网 IP 地址，否则会请求超时。
+ * 生产环境需替换为正式域名（必须 HTTPS）。
+ */
+const BASE_URL = 'http://192.168.0.103:8080'
 
 /** 获取本地存储的 access_token */
 function getToken(): string {
@@ -80,7 +86,7 @@ export async function request<T = any>(
       method,
       data,
       header,
-      timeout: 180000  // 超时180秒=3分钟（Ollama CPU推理慢，复杂问题需要更长时间）
+      timeout: 60000
     })
 
     const body = res.data as ApiResponse<T>

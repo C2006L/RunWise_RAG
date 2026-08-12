@@ -1,6 +1,8 @@
 package com.runwise.service.impl;
 
+import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpUtil;
+import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -19,70 +21,60 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
-/**
- * 问答服务实现
- * 调用 Ollama 本地大模型 API 获取答案（调试模式）
- */
 @Slf4j
 @Service
 public class QaServiceImpl extends ServiceImpl<QaRecordMapper, QaRecord> implements QaService {
 
-    @Value("${runwise.ollama.base-url}")
+    @Value("${runwise.llm.provider:dashscope}")
+    private String provider;
+
+    @Value("${runwise.llm.dashscope.base-url:}")
+    private String dashscopeBaseUrl;
+
+    @Value("${runwise.llm.dashscope.api-key:}")
+    private String dashscopeApiKey;
+
+    @Value("${runwise.llm.dashscope.model:}")
+    private String dashscopeModel;
+
+    @Value("${runwise.llm.dashscope.max-tokens:500}")
+    private int dashscopeMaxTokens;
+
+    @Value("${runwise.llm.dashscope.temperature:0.7}")
+    private double dashscopeTemperature;
+
+    @Value("${runwise.llm.ollama.base-url:}")
     private String ollamaBaseUrl;
 
-    @Value("${runwise.ollama.model}")
+    @Value("${runwise.llm.ollama.model:}")
     private String ollamaModel;
 
     @Override
     public Map<String, Object> ask(Long userId, AskDTO dto) {
         Map<String, Object> result;
         try {
-            // 构建系统提示词（让AI扮演跑步教练）
             String systemPrompt = "你是一位专业的跑步教练，名字叫'RunWise助手'。" +
                 "请用中文回答用户的跑步相关问题，回答要专业、实用、简洁，" +
                 "字数控制在200-400字之间。如果涉及伤痛问题，请给出安全提示。";
 
-            // 构建 Ollama API 请求体
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", ollamaModel);
-            requestBody.put("prompt", systemPrompt + "\n\n用户问题：" + dto.getQuestion());
-            requestBody.put("stream", false);  // 非流式输出
+            String answer;
 
-            // 添加模型参数（可调优）
-            Map<String, Object> options = new HashMap<>();
-            options.put("temperature", 0.7);      // 创造性：0-1
-            options.put("num_predict", 500);       // 最大生成长度
-            options.put("top_p", 0.9);             // 核采样
-            options.put("repeat_penalty", 1.1);    // 防止重复
-            requestBody.put("options", options);
-
-            log.info("调用Ollama API，问题：{}", dto.getQuestion());
-
-            // 调用 Ollama /api/generate 接口
-            String response = HttpUtil.post(
-                ollamaBaseUrl + "/api/generate",
-                JSONUtil.toJsonStr(requestBody),
-                60000  // 超时60秒
-            );
-
-            JSONObject json = JSONUtil.parseObj(response);
-            String answer = json.getStr("response");
+            if ("ollama".equalsIgnoreCase(provider)) {
+                answer = callOllama(systemPrompt, dto.getQuestion());
+            } else {
+                answer = callDashScope(systemPrompt, dto.getQuestion());
+            }
 
             if (answer == null || answer.isEmpty()) {
                 throw new BusinessException(ResultCode.RAG_SERVICE_ERROR, "模型返回空答案");
             }
 
-            log.info("Ollama 返回答案长度：{}", answer.length());
-
-            // 构建返回结果
             result = new HashMap<>();
             result.put("answer", answer.trim());
 
-            // Ollama 不提供来源信息，使用默认值
-            List<String> defaultSources = Arrays.asList("Qwen2.5大模型生成");
+            List<String> defaultSources = Arrays.asList("Qwen3.5-Flash大模型生成");
             result.put("sources", defaultSources);
 
-            // 安全提示检测
             boolean hasInjuryKeyword = dto.getQuestion().matches(".*[疼痛伤膝盖小腿脚踝拉伤].*");
             if (hasInjuryKeyword) {
                 result.put("safetyTip", "以上建议仅供参考，若疼痛持续或加重请及时就医。");
@@ -91,43 +83,125 @@ public class QaServiceImpl extends ServiceImpl<QaRecordMapper, QaRecord> impleme
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("调用Ollama服务失败", e);
+            log.error("调用LLM服务失败", e);
             throw new BusinessException(ResultCode.RAG_SERVICE_ERROR,
-                "调用AI服务失败：" + e.getMessage() + "，请检查Ollama是否启动");
+                "调用AI服务失败：" + e.getMessage());
         }
 
-        // 保存问答记录到数据库（调试阶段暂时跳过，避免数据库错误影响测试）
-        // TODO: 配置正确数据库密码后恢复此功能
-
-        // 调试日志：打印即将返回的数据
         String answer = (String) result.get("answer");
         log.info("准备返回给前端 - answer长度: {}, sources: {}, safetyTip: {}",
                 answer.length(),
                 result.get("sources"),
                 result.get("safetyTip"));
 
-        /*
-        try {
-            QaRecord record = new QaRecord();
-            record.setUserId(userId);
-            record.setQuestion(dto.getQuestion());
-            record.setAnswer((String) result.get("answer"));
-            record.setSources(result.get("sources") != null ? result.get("sources").toString() : null);
-            record.setFeedback(0);
-            save(record);
-
-            result.put("recordId", record.getId());
-        } catch (Exception e) {
-            log.warn("保存问答记录失败，但不影响返回结果", e);
-        }
-        */
-
         return result;
+    }
+
+    private String callDashScope(String systemPrompt, String question) {
+        log.info("调用DashScope API，问题：{}", question);
+
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("model", dashscopeModel);
+        requestBody.put("max_tokens", dashscopeMaxTokens);
+        requestBody.put("temperature", dashscopeTemperature);
+
+        JSONArray messages = new JSONArray();
+        JSONObject systemMsg = new JSONObject();
+        systemMsg.put("role", "system");
+        systemMsg.put("content", systemPrompt);
+        messages.add(systemMsg);
+
+        JSONObject userMsg = new JSONObject();
+        userMsg.put("role", "user");
+        userMsg.put("content", question);
+        messages.add(userMsg);
+
+        requestBody.put("messages", messages);
+
+        String url = dashscopeBaseUrl + "/v1/chat/completions";
+
+        long startTime = System.currentTimeMillis();
+
+        String response = HttpRequest.post(url)
+                .header("Authorization", "Bearer " + dashscopeApiKey)
+                .header("Content-Type", "application/json")
+                .body(requestBody.toString())
+                .timeout(30000)
+                .execute()
+                .body();
+
+        long elapsed = System.currentTimeMillis() - startTime;
+        log.info("DashScope API响应耗时: {}ms", elapsed);
+
+        JSONObject json = JSONUtil.parseObj(response);
+
+        if (json.containsKey("error")) {
+            String errorMsg = json.getByPath("error.message", String.class);
+            log.error("DashScope API返回错误: {}", errorMsg);
+            throw new BusinessException(ResultCode.RAG_SERVICE_ERROR,
+                "AI服务返回错误：" + errorMsg);
+        }
+
+        JSONArray choices = json.getJSONArray("choices");
+        if (choices == null || choices.isEmpty()) {
+            throw new BusinessException(ResultCode.RAG_SERVICE_ERROR, "AI服务返回空结果");
+        }
+
+        String answer = choices.getJSONObject(0)
+                .getByPath("message.content", String.class);
+
+        log.info("DashScope 返回答案长度：{}", answer != null ? answer.length() : 0);
+
+        return answer;
+    }
+
+    private String callOllama(String systemPrompt, String question) {
+        log.info("调用Ollama API，问题：{}", question);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", ollamaModel);
+        requestBody.put("prompt", systemPrompt + "\n\n用户问题：" + question);
+        requestBody.put("stream", false);
+
+        Map<String, Object> options = new HashMap<>();
+        options.put("temperature", 0.7);
+        options.put("num_predict", 500);
+        requestBody.put("options", options);
+
+        String response = HttpUtil.post(
+            ollamaBaseUrl + "/api/generate",
+            JSONUtil.toJsonStr(requestBody),
+            60000
+        );
+
+        JSONObject json = JSONUtil.parseObj(response);
+        String answer = json.getStr("response");
+
+        log.info("Ollama 返回答案长度：{}", answer != null ? answer.length() : 0);
+
+        return answer;
+    }
+
+    @Override
+    public List<Map<String, Object>> getCategories() {
+        List<Map<String, Object>> categories = new ArrayList<>();
+        String[][] categoryData = {
+                {"训练计划", "📋"},
+                {"装备选择", "👟"},
+                {"伤痛预防", "🩹"},
+                {"跑步技术", "🏃"}
+        };
+        for (String[] cat : categoryData) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", cat[0]);
+            item.put("icon", cat[1]);
+            categories.add(item);
+        }
+        return categories;
     }
 
     @Override
     public List<Map<String, Object>> hotQuestions() {
-        // 预设热门问题列表
         List<Map<String, Object>> list = new ArrayList<>();
         String[][] questions = {
                 {"初学者应该怎么开始跑步？", "beginner"},

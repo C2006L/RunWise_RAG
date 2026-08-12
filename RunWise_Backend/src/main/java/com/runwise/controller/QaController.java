@@ -39,6 +39,12 @@ public class QaController {
         return Result.success(qaService.ask(userId, dto));
     }
 
+    @GetMapping("/categories")
+    @Operation(summary = "问题分类")
+    public Result<List<Map<String, Object>>> categories() {
+        return Result.success(qaService.getCategories());
+    }
+
     @GetMapping("/hot")
     @Operation(summary = "热门问题")
     public Result<List<Map<String, Object>>> hot() {

@@ -26,6 +26,11 @@ public interface QaService extends IService<QaRecord> {
     PageResult<QaRecord> getHistory(Long userId, Integer pageNum, Integer pageSize);
 
     /**
+     * 获取问题分类
+     */
+    List<Map<String, Object>> getCategories();
+
+    /**
      * 回答反馈
      */
     void feedback(Long userId, Long id, Integer feedback);

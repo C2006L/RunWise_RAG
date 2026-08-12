@@ -211,8 +211,8 @@ const currentTab = ref(0);
 const inputText = ref("");
 const searchText = ref("");
 const intoView = ref("");
-const loading = ref(false);  // 加载状态
-const apiError = ref<string | null>(null);  // 错误信息
+const loading = ref(false); // 加载状态
+const apiError = ref<string | null>(null); // 错误信息
 
 // 数据列表（初始为空，从后端加载）
 const categories = ref<any[]>([]);
@@ -220,23 +220,23 @@ const hotQuestions = ref<string[]>([]);
 const messages = ref<ChatMessage[]>([]);
 const history = ref<HistoryItem[]>([]);
 
-// API 基础地址配置
-const API_BASE_URL = 'http://localhost:8080/api';
+// API 基础地址配置（注意：微信开发者工具中 localhost 不可用，必须使用局域网 IP）
+const API_BASE_URL = "http://192.168.0.103:8080/api";
 
 // 获取 Token（暂时为空，后续实现登录后填充）
-const getToken = () => uni.getStorageSync('token') || '';
+const getToken = () => uni.getStorageSync("token") || "";
 
 // 统一请求封装
 const request = async (options: {
   url: string;
-  method?: 'GET' | 'POST';
+  method?: "GET" | "POST";
   data?: any;
   showLoading?: boolean;
 }) => {
-  const { url, method = 'GET', data, showLoading = false } = options;
+  const { url, method = "GET", data, showLoading = false } = options;
 
   if (showLoading) {
-    uni.showLoading({ title: '加载中...', mask: true });
+    uni.showLoading({ title: "加载中...", mask: true });
   }
 
   try {
@@ -246,12 +246,12 @@ const request = async (options: {
         method,
         data,
         header: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
         },
-        timeout: 15000,
+        timeout: 30000,
         success: (res) => resolve(res.data),
-        fail: (err) => reject(err)
+        fail: (err) => reject(err),
       });
     });
 
@@ -259,11 +259,11 @@ const request = async (options: {
     if (res.code === 0 || res.code === 200) {
       return res.data;
     } else {
-      throw new Error(res.message || '请求失败');
+      throw new Error(res.message || "请求失败");
     }
   } catch (error: any) {
-    console.error('API请求失败:', error);
-    apiError.value = error.message || '网络连接失败';
+    console.error("API请求失败:", error);
+    apiError.value = error.message || "网络连接失败";
     throw error;
   } finally {
     if (showLoading) {
@@ -277,28 +277,32 @@ onMounted(async () => {
   try {
     // 并行加载分类和热门问题
     const [categoriesData, hotQuestionsData] = await Promise.all([
-      request('/qa/categories').catch(() => null),
-      request('/qa/hot').catch(() => null),
+      request({ url: "/qa/categories" }).catch(() => null),
+      request({ url: "/qa/hot" }).catch(() => null),
     ]);
 
     // 使用后端数据，如果失败则使用默认值
-    categories.value = categoriesData?.length > 0 ? categoriesData : [
-      { name: "训练计划", icon: "📋" },
-      { name: "装备选择", icon: "👟" },
-      { name: "伤痛预防", icon: "🩹" },
-      { name: "跑步技术", icon: "🏃" },
-    ];
+    categories.value =
+      categoriesData?.length > 0
+        ? categoriesData
+        : [
+            { name: "训练计划", icon: "📋" },
+            { name: "装备选择", icon: "👟" },
+            { name: "伤痛预防", icon: "🩹" },
+            { name: "跑步技术", icon: "🏃" },
+          ];
 
-    hotQuestions.value = hotQuestionsData?.length > 0
-      ? hotQuestionsData.map((item: any) => item.question || item)
-      : [
-        "第一次跑步该跑多远？",
-        "跑完膝盖疼怎么办？",
-        "新手怎么选跑鞋？",
-        "跑步时心率多少合适？",
-      ];
+    hotQuestions.value =
+      hotQuestionsData?.length > 0
+        ? hotQuestionsData.map((item: any) => item.question || item)
+        : [
+            "第一次跑步该跑多远？",
+            "跑完膝盖疼怎么办？",
+            "新手怎么选跑鞋？",
+            "跑步时心率多少合适？",
+          ];
   } catch (error) {
-    console.error('初始化数据加载失败');
+    console.error("初始化数据加载失败");
   }
 });
 
@@ -308,18 +312,23 @@ const loadHistory = async () => {
 
   try {
     loading.value = true;
-    const historyData = await request('/qa/history', 'POST', { page: 1, size: 20 });
+    const historyData = await request({
+      url: "/qa/history",
+      method: "POST",
+      data: { page: 1, size: 20 },
+    });
 
     history.value = (historyData?.records || []).map((item: any) => ({
       id: item.id,
-      date: item.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+      date:
+        item.createdAt?.split("T")[0] || new Date().toISOString().split("T")[0],
       question: item.question,
-      summary: item.answer?.substring(0, 50) + '...' || '',
+      summary: item.answer?.substring(0, 50) + "..." || "",
       feedback: item.feedback || 0,
     }));
   } catch (error) {
-    console.error('加载历史记录失败');
-    uni.showToast({ title: '加载历史失败', icon: 'none' });
+    console.error("加载历史记录失败");
+    uni.showToast({ title: "加载历史失败", icon: "none" });
   } finally {
     loading.value = false;
   }
@@ -376,12 +385,16 @@ const sendMessage = async (text: string) => {
     apiError.value = null;
 
     // 调用 Spring Boot 后端 → 后端调用 Ollama 大模型
-    const response = await request('/qa/ask', 'POST', { question: content });
+    const response = await request({
+      url: "/qa/ask",
+      method: "POST",
+      data: { question: content },
+    });
 
     // 将AI回答添加到对话
     messages.value.push({
       role: "assistant",
-      content: response.answer || '抱歉，未能获取有效回答。',
+      content: response.answer || "抱歉，未能获取有效回答。",
       sources: response.sources || [],
       safetyTip: response.safetyTip,
       feedback: 0,
@@ -389,12 +402,12 @@ const sendMessage = async (text: string) => {
 
     scrollToBottom();
   } catch (error: any) {
-    console.error('提问失败 - 完整错误:', error);
-    console.error('错误信息:', error.message);
-    console.error('错误详情:', JSON.stringify(error));
+    console.error("提问失败 - 完整错误:", error);
+    console.error("错误信息:", error.message);
+    console.error("错误详情:", JSON.stringify(error));
 
     // 显示详细错误提示（方便调试）
-    const errorMsg = error.errMsg || error.message || '未知错误';
+    const errorMsg = error.errMsg || error.message || "未知错误";
     messages.value.push({
       role: "assistant",
       content: `⚠️ 请求失败：${errorMsg}\n\n请查看控制台获取详细信息`,
@@ -404,8 +417,8 @@ const sendMessage = async (text: string) => {
     // 同时弹出Toast提示
     uni.showToast({
       title: `请求失败: ${errorMsg}`,
-      icon: 'none',
-      duration: 3000
+      icon: "none",
+      duration: 3000,
     });
 
     scrollToBottom();
@@ -416,7 +429,7 @@ const sendMessage = async (text: string) => {
 
 // 发送按钮点击
 const onSend = () => {
-  if (loading.value) return;  // 防止重复发送
+  if (loading.value) return; // 防止重复发送
   sendMessage(inputText.value);
 };
 
@@ -437,9 +450,13 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   // 如果有recordId，提交到后端
   if (msg.id && msg.feedback !== 0) {
     try {
-      await request('/qa/feedback', 'POST', { messageId: msg.id, feedback: msg.feedback });
+      await request({
+        url: "/qa/feedback",
+        method: "POST",
+        data: { messageId: msg.id, feedback: msg.feedback },
+      });
     } catch (error) {
-      console.error('提交反馈失败');
+      console.error("提交反馈失败");
     }
   }
 };
