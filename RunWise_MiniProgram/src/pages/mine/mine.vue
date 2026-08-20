@@ -145,7 +145,7 @@ function onLogout() {
   align-items: center;
   @include rw-glass-card;
   padding: 32rpx;
-  transition: $rw-transition-bounce;
+  @include rw-tappable;
 }
 
 .avatar {
@@ -190,7 +190,7 @@ function onLogout() {
   color: $rw-text-secondary;
 }
 
-/* ========== 数据成就（3列并排） ========== */
+/* ========== 数据成就（3列并排 v8.0） ========== */
 .achievements-card {
   display: flex;
   align-items: center;
@@ -204,20 +204,16 @@ function onLogout() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: $rw-transition-smooth;
-
-  &:active {
-    transform: scale(0.96);
-    opacity: 0.8;
-  }
+  @include rw-tappable;
 }
 
 .achievement-number {
-  font-size: 40rpx;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 36rpx;
   font-weight: 700;
   color: $rw-secondary;
   line-height: 1.2;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.5px;
 }
 
 .achievement-unit {
@@ -255,15 +251,10 @@ function onLogout() {
   height: 96rpx;
   padding: 0 32rpx;
   border-bottom: 1rpx solid $rw-divider;
-  transition: $rw-transition-smooth;
+  @include rw-tappable;
 
   &:last-child {
     border-bottom: none;
-  }
-
-  &:active {
-    transform: scale(0.98);
-    background-color: $rw-bg-hover;
   }
 }
 
@@ -299,27 +290,21 @@ function onLogout() {
   transform: rotate(-45deg);
 }
 
-/* ========== 退出登录（橙色渐变胶囊） ========== */
+/* ========== 退出登录（iOS 毛玻璃胶囊 v8.0） ========== */
 .logout-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 88rpx;
+  height: 96rpx;
   margin-top: 48rpx;
+  @include rw-glossy-pill(0, 0);
   border-radius: 48rpx;
-  background: $rw-gradient-primary;
-  box-shadow: $rw-shadow-btn;
-  transition: $rw-transition-smooth;
-
-  &:active {
-    transform: scale(0.95);
-    box-shadow: $rw-shadow-btn-pressed;
-  }
+  @include rw-tappable;
 }
 
 .logout-text {
   font-size: 28rpx;
   font-weight: 500;
-  color: #ffffff;
+  color: #FF3B30;
 }
 </style>

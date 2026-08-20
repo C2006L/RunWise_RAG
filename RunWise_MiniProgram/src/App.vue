@@ -219,7 +219,12 @@ onLaunch(() => {
 }
 
 page {
-  background: linear-gradient(135deg, #FFF3E0, #E3F2FD);
+  background:
+    radial-gradient(circle at 0% 10%, rgba(255, 107, 53, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 100% 80%, rgba(24, 144, 255, 0.15) 0%, transparent 40%),
+    #F8FAFC;
+  background-attachment: fixed;
   min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 </style>

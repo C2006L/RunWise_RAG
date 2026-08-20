@@ -302,9 +302,11 @@ function onSubmit() {
 }
 
 .submit-btn--pressed {
-  transform: scale(0.95);
-  background: $rw-gradient-primary-pressed;
-  box-shadow: $rw-shadow-btn-pressed;
+  transform: scale(0.96);
+  background: linear-gradient(135deg, #F4F8FC 0%, #EDF2F7 100%);
+  box-shadow:
+    inset 0 1rpx 1rpx rgba(255, 255, 255, 0.7),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.03);
 }
 
 .submit-text {

@@ -67,23 +67,23 @@
       </view>
     </view>
 
-    <!-- 快捷入口（气泡卡片） -->
+    <!-- 快捷入口（毛玻璃底座 + 玻璃按钮） -->
     <view class="quick-actions">
-      <view class="action-bubble" hover-class="bubble-hover" @click="goCreate">
+      <view class="action-bubble" @click="goCreate">
         <view class="action-icon icon-record">
-          <uni-icons type="compose" size="24" color="#ffffff"></uni-icons>
+          <uni-icons type="compose" size="22" color="#FF6B35"></uni-icons>
         </view>
         <text class="action-label">记一笔</text>
       </view>
-      <view class="action-bubble" hover-class="bubble-hover" @click="goQa">
+      <view class="action-bubble" @click="goQa">
         <view class="action-icon icon-ask">
-          <uni-icons type="help" size="24" color="#ffffff"></uni-icons>
+          <uni-icons type="help" size="22" color="#1890FF"></uni-icons>
         </view>
         <text class="action-label">问问题</text>
       </view>
-      <view class="action-bubble" hover-class="bubble-hover" @click="goCalendar">
+      <view class="action-bubble" @click="goCalendar">
         <view class="action-icon icon-calendar">
-          <uni-icons type="calendar" size="24" color="#ffffff"></uni-icons>
+          <uni-icons type="calendar" size="22" color="#00C853"></uni-icons>
         </view>
         <text class="action-label">看日历</text>
       </view>
@@ -280,19 +280,23 @@ onPullDownRefresh(() => {
   font-weight: 500;
   border-radius: 24rpx;
   line-height: 1;
-  transition: $rw-transition-smooth;
+  @include rw-tappable;
 
   &.primary {
-    @include rw-primary-btn;
-    padding: 14rpx 28rpx;
+    @include rw-glossy-pill(14rpx, 28rpx);
     font-size: 28rpx;
     font-weight: 500;
     border-radius: 24rpx;
     line-height: 1;
+    color: #FF6B35;
   }
 
   &.secondary {
-    background-color: $rw-secondary-light;
+    @include rw-glossy-pill(14rpx, 28rpx);
+    font-size: 28rpx;
+    font-weight: 500;
+    border-radius: 24rpx;
+    line-height: 1;
     color: $rw-secondary;
   }
 }
@@ -312,35 +316,52 @@ onPullDownRefresh(() => {
   font-weight: 600;
 }
 
-/* ========== 快捷入口（毛玻璃卡片 v5.4） ========== */
+/* ========== 快捷入口（v8.4 三层清晰分离） ========== */
 .quick-actions {
   display: flex;
   justify-content: space-around;
+  align-items: center;
   padding: 32rpx 16rpx;
-  @include rw-glass-card;
   margin-top: 24rpx;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 8rpx 24rpx rgba(24, 144, 255, 0.08),
+    0 4rpx 8rpx rgba(0, 0, 0, 0.03);
 }
 
+/* 第二层：玻璃质感按钮 */
 .action-bubble {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   width: 180rpx;
-  padding: 28rpx 0 24rpx;
-  background: #ffffff;
-  border-radius: $rw-radius-lg;
-  box-shadow: $rw-shadow-md;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 28rpx 0 22rpx;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FAFBFD 100%);
+  border-radius: 24rpx;
+  border: 1rpx solid rgba(220, 225, 230, 0.5);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.95),
+    0 3px 10px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:active {
+    transform: scale(0.96);
+    background: linear-gradient(180deg, #F5F7FA 0%, #EEF1F5 100%);
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.6),
+      0 1px 4px rgba(0, 0, 0, 0.06);
+  }
 }
 
-.bubble-hover {
-  transform: scale(0.95) translateY(-2rpx);
-  box-shadow: $rw-shadow-primary;
-}
-
+/* 第三层：图标圆（实心主题色底，确保可见） */
 .action-icon {
-  width: 96rpx;
-  height: 96rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -348,22 +369,41 @@ onPullDownRefresh(() => {
 }
 
 .icon-record {
-  background: $rw-gradient-blue;
+  background: rgba(255, 107, 53, 0.18);
+  border: 1rpx solid rgba(255, 107, 53, 0.25);
 }
 
 .icon-ask {
-  background: $rw-gradient-pink;
+  background: rgba(24, 144, 255, 0.18);
+  border: 1rpx solid rgba(24, 144, 255, 0.25);
 }
 
 .icon-calendar {
-  background: $rw-gradient-cyan;
+  background: rgba(0, 200, 83, 0.18);
+  border: 1rpx solid rgba(0, 200, 83, 0.25);
 }
 
 .action-label {
-  margin-top: 16rpx;
-  font-size: 26rpx;
-  color: $rw-text-primary;
+  margin-top: 14rpx;
+  font-size: 25rpx;
+  color: #374151;
   font-weight: 500;
+}
+
+/* 强制覆盖 uni-icons 颜色（小程序兼容） */
+.icon-record /deep/ .uni-icons,
+.icon-record .uni-icons {
+  color: #FF6B35 !important;
+}
+
+.icon-ask /deep/ .uni-icons,
+.icon-ask .uni-icons {
+  color: #1890FF !important;
+}
+
+.icon-calendar /deep/ .uni-icons,
+.icon-calendar .uni-icons {
+  color: #00C853 !important;
 }
 
 /* ========== 本周概览（内嵌于状态卡片） ========== */
@@ -411,12 +451,11 @@ onPullDownRefresh(() => {
 }
 
 /* ================================================================
-   棉花糖云朵区域 v6.0
-   核心：flex 横向滑动 + 隐藏滚动条 + 负边距重叠 + 伪元素凸起 + 交错排列
+   新手常问 v8.0 — iOS 毛玻璃 + 云雾交错胶囊
    ================================================================ */
 
 .chat-faq-section {
-  padding: 0 0 24rpx;
+  padding: 0 24rpx 24rpx;
 }
 
 .section-header {
@@ -426,30 +465,30 @@ onPullDownRefresh(() => {
 }
 
 .robot-avatar-wrap {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  background: $rw-gradient-secondary;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 12rpx;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.15), rgba(24, 144, 255, 0.08));
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16rpx;
-  box-shadow: $rw-shadow-sm;
+  margin-right: 12rpx;
 }
 
 .section-title-text {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 600;
   color: $rw-text-primary;
 }
 
-/* 外层滚动容器 */
+/* 第二层：横向滚动容器（毛玻璃基底） */
 .cloud-scroll-wrap {
+  @include rw-glass-card(40rpx);
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 56rpx 32rpx 64rpx 24rpx;
+  padding: 32rpx 24rpx;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
@@ -457,94 +496,47 @@ onPullDownRefresh(() => {
   }
 }
 
-/* 单朵云 */
+/* 第三层：云雾交错胶囊 */
 .cloud-bubble {
-  position: relative;
+  @include rw-glossy-pill(22rpx, 40rpx);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 38rpx 58rpx;
-  margin-left: -36rpx;
-  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
-  border-radius: 100rpx;
+  margin-right: -12rpx;
+  white-space: nowrap;
   z-index: 1;
-  box-shadow:
-    0 12rpx 36rpx rgba(0, 0, 0, 0.07),
-    0 4rpx 14rpx rgba(0, 0, 0, 0.04),
-    inset 0 3rpx 8rpx rgba(255, 255, 255, 0.9);
-  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: visible;
 
-  /* 第一朵云不缩进 */
-  &:first-child {
-    margin-left: 0;
+  &:last-child {
+    margin-right: 0;
   }
 
-  /* ── 顶部蓬松凸起 ── */
-  &::before {
-    content: '';
-    position: absolute;
-    top: -44rpx;
-    left: 8%;
-    width: 52%;
-    height: 84rpx;
-    background: inherit;
-    border-radius: 50%;
-    z-index: -1;
-    box-shadow:
-      0 -6rpx 18rpx rgba(0, 0, 0, 0.04),
-      inset 0 2rpx 6rpx rgba(255, 255, 255, 0.8);
+  &:nth-child(odd) {
+    z-index: 2;
+    transform: translateY(-8rpx);
   }
 
-  /* ── 底部蓬松凸起 ── */
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -38rpx;
-    right: 10%;
-    width: 46%;
-    height: 72rpx;
-    background: inherit;
-    border-radius: 50%;
-    z-index: -1;
-    box-shadow:
-      0 6rpx 18rpx rgba(0, 0, 0, 0.04),
-      inset 0 -2rpx 6rpx rgba(255, 255, 255, 0.8);
+  &:nth-child(even) {
+    z-index: 1;
+    transform: translateY(8rpx);
+  }
+
+  &:active {
+    @include rw-glossy-pill-active;
+    z-index: 3;
   }
 }
 
-/* ── 交错排列：奇数云朵在上，偶数云朵下移 ── */
-.cloud-bubble:nth-child(odd) {
-  margin-top: 0;
-  z-index: 3;
-  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
-}
-
-.cloud-bubble:nth-child(even) {
-  margin-top: 44rpx;
-  z-index: 2;
-  background: linear-gradient(135deg, #E8F4FD, #FFF8E7);
-}
-
-/* ── 按压态 ── */
-.cloud-bubble-hover {
-  transform: scale(0.94) translateY(2rpx);
-  box-shadow:
-    0 6rpx 20rpx rgba(0, 0, 0, 0.05),
-    0 2rpx 8rpx rgba(0, 0, 0, 0.03),
-    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.7);
-}
-
-/* 云朵文字 */
 .cloud-bubble-text {
-  font-size: 28rpx;
-  color: #444;
+  font-size: 27rpx;
+  color: #1F2937;
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
-  position: relative;
-  z-index: 1;
+}
+
+.cloud-bubble-hover {
+  @include rw-glossy-pill-active;
 }
 
 .faq-more {

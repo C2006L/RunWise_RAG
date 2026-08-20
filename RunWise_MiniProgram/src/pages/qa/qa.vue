@@ -497,6 +497,8 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 /* ========== 二级导航 ========== */
@@ -603,29 +605,19 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 /* ================================================================
-   热门问题（棉花糖云朵 v6.0）
-   核心：flex 横向滑动 + 隐藏滚动条 + 负边距重叠 + 伪元素凸起 + 交错排列
+   热门问题 v8.0 — iOS 毛玻璃 + 云雾交错胶囊
    ================================================================ */
 
 .hot-section {
+  @include rw-glass-card(40rpx);
   margin: 0 24rpx 24rpx;
-  padding: 28rpx 0 28rpx 32rpx;
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1rpx solid rgba(255, 255, 255, 0.6);
-  border-radius: 100rpx 50rpx 120rpx 60rpx 80rpx 40rpx;
-  box-shadow:
-    0 14rpx 44rpx rgba(0, 0, 0, 0.05),
-    0 4rpx 16rpx rgba(0, 0, 0, 0.03),
-    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.8);
+  padding: 28rpx 32rpx;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  margin-bottom: 20rpx;
-  padding-right: 28rpx;
+  margin-bottom: 24rpx;
 }
 
 .section-icon-wrap {
@@ -647,13 +639,12 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   letter-spacing: 1rpx;
 }
 
-/* 外层滚动容器（云朵轨道） */
+/* 第二层：横向滚动容器 */
 .cloud-scroll-wrap {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 56rpx 28rpx 64rpx 4rpx;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
@@ -661,93 +652,47 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   }
 }
 
-/* 单朵云 */
+/* 第三层：云雾交错胶囊 */
 .cloud-bubble {
-  position: relative;
+  @include rw-glossy-pill(22rpx, 40rpx);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 38rpx 58rpx;
-  margin-left: -36rpx;
-  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
-  border-radius: 100rpx;
+  margin-right: -12rpx;
+  white-space: nowrap;
   z-index: 1;
-  box-shadow:
-    0 12rpx 36rpx rgba(0, 0, 0, 0.07),
-    0 4rpx 14rpx rgba(0, 0, 0, 0.04),
-    inset 0 3rpx 8rpx rgba(255, 255, 255, 0.9);
-  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: visible;
 
-  &:first-child {
-    margin-left: 0;
+  &:last-child {
+    margin-right: 0;
   }
 
-  /* ── 顶部蓬松凸起 ── */
-  &::before {
-    content: '';
-    position: absolute;
-    top: -44rpx;
-    left: 8%;
-    width: 52%;
-    height: 84rpx;
-    background: inherit;
-    border-radius: 50%;
-    z-index: -1;
-    box-shadow:
-      0 -6rpx 18rpx rgba(0, 0, 0, 0.04),
-      inset 0 2rpx 6rpx rgba(255, 255, 255, 0.8);
+  &:nth-child(odd) {
+    z-index: 2;
+    transform: translateY(-8rpx);
   }
 
-  /* ── 底部蓬松凸起 ── */
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -38rpx;
-    right: 10%;
-    width: 46%;
-    height: 72rpx;
-    background: inherit;
-    border-radius: 50%;
-    z-index: -1;
-    box-shadow:
-      0 6rpx 18rpx rgba(0, 0, 0, 0.04),
-      inset 0 -2rpx 6rpx rgba(255, 255, 255, 0.8);
+  &:nth-child(even) {
+    z-index: 1;
+    transform: translateY(8rpx);
+  }
+
+  &:active {
+    @include rw-glossy-pill-active;
+    z-index: 3;
   }
 }
 
-/* ── 交错排列：奇数云朵在上，偶数云朵下移 ── */
-.cloud-bubble:nth-child(odd) {
-  margin-top: 0;
-  z-index: 3;
-  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
-}
-
-.cloud-bubble:nth-child(even) {
-  margin-top: 44rpx;
-  z-index: 2;
-  background: linear-gradient(135deg, #E8F4FD, #FFF8E7);
-}
-
-/* ── 按压态 ── */
-.cloud-bubble-hover {
-  transform: scale(0.94) translateY(2rpx);
-  box-shadow:
-    0 6rpx 20rpx rgba(0, 0, 0, 0.05),
-    0 2rpx 8rpx rgba(0, 0, 0, 0.03),
-    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.7);
-}
-
-/* 云朵文字 */
 .cloud-bubble-text {
-  font-size: 28rpx;
-  color: #444;
+  font-size: 27rpx;
+  color: #1F2937;
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
-  position: relative;
-  z-index: 1;
+}
+
+.cloud-bubble-hover {
+  @include rw-glossy-pill-active;
 }
 
 /* ========== Loading 提示 ========== */
@@ -767,7 +712,10 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 
 /* ========== 对话区域 ========== */
 .chat-area {
+  flex: 1;
+  overflow-y: auto;
   margin: 24rpx;
+  padding-bottom: 32rpx;
 }
 
 .msg-wrap {
@@ -908,7 +856,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(24px) saturate(200%);
   -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border-top: 1rpx solid rgba(255, 255, 255, 0.6);
+  border-top: 1rpx solid rgba(0, 0, 0, 0.08);
   box-shadow:
     0 -8rpx 28rpx rgba(0, 0, 0, 0.06),
     0 -2rpx 8rpx rgba(0, 0, 0, 0.03),
