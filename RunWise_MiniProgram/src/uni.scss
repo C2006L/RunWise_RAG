@@ -1,57 +1,226 @@
 /**
- * RunWise 小程序主题变量（白蓝橙方案 v3.0）
- * 基于 PRD v3.0 色彩系统
+ * RunWise 小程序主题变量（白蓝橙方案 v4.0）
+ * 基于 PRD v4.0 色彩系统 — 新增立体阴影、渐变、毛玻璃材质
  */
 
 /* ========== 品牌色 ========== */
-$rw-primary: #FF6B35 !default;          // 活力橙 - 主强调色
-$rw-secondary: #1890FF !default;        // 科技蓝 - 次强调色
-$rw-success: #00C853 !default;          // 成功绿 - 打卡完成
-$rw-warning: #F59E0B !default;          // 警告橙
-$rw-error: #EF4444 !default;            // 错误红
+$rw-primary: #ff6b35 !default; // 活力橙 - 主强调色
+$rw-primary-light-end: #ff8a65 !default; // 渐变浅端
+$rw-secondary: #1890ff !default; // 科技蓝 - 次强调色
+$rw-secondary-light-end: #40a9ff !default; // 蓝色渐变浅端
+$rw-success: #00c853 !default; // 成功绿 - 打卡完成
+$rw-warning: #f59e0b !default; // 警告橙
+$rw-error: #ef4444 !default; // 错误红
 
 /* ========== 背景色 ========== */
-$rw-bg-page: #F8FAFC !default;          // 页面背景
-$rw-bg-card: #FFFFFF !default;          // 卡片背景
-$rw-bg-hover: #F1F5F9 !default;         // 悬浮/按压态
+$rw-bg-page: #f8fafc !default; // 页面背景
+$rw-bg-card: #ffffff !default; // 卡片背景
+$rw-bg-hover: #f1f5f9 !default; // 悬浮/按压态
 $rw-bg-mask: rgba(0, 0, 0, 0.4) !default; // 遮罩
 
 /* ========== 文字色 ========== */
-$rw-text-primary: #1F2937 !default;     // 主文字
-$rw-text-secondary: #6B7280 !default;   // 次级文字
-$rw-text-placeholder: #9CA3AF !default; // 弱文字/占位符
+$rw-text-primary: #1f2937 !default; // 主文字
+$rw-text-secondary: #6b7280 !default; // 次级文字
+$rw-text-placeholder: #9ca3af !default; // 弱文字/占位符
 
 /* ========== 边框/分割线 ========== */
 $rw-border-color: rgba(0, 0, 0, 0.06) !default;
 $rw-divider: rgba(0, 0, 0, 0.06) !default;
 
 /* ========== 强调色透明度变体 ========== */
-$rw-primary-light: rgba(255, 107, 53, 0.08) !default;    // 按钮默认背景
-$rw-primary-border: rgba(255, 107, 53, 0.3) !default;     // 按钮默认边框
-$rw-primary-bg: rgba(255, 107, 53, 0.06) !default;        // 背景点缀
-$rw-primary-selected: rgba(255, 107, 53, 0.12) !default;  // 选中态背景
-$rw-primary-shadow: rgba(255, 107, 53, 0.3) !default;     // 阴影
+$rw-primary-light: rgba(255, 107, 53, 0.08) !default; // 按钮默认背景
+$rw-primary-border: rgba(255, 107, 53, 0.3) !default; // 按钮默认边框
+$rw-primary-bg: rgba(255, 107, 53, 0.06) !default; // 背景点缀
+$rw-primary-selected: rgba(255, 107, 53, 0.12) !default; // 选中态背景
 
-$rw-secondary-light: rgba(24, 144, 255, 0.06) !default;   // 蓝色背景
-$rw-secondary-border: rgba(24, 144, 255, 0.2) !default;   // 蓝色边框
+$rw-secondary-light: rgba(24, 144, 255, 0.06) !default; // 蓝色背景
+$rw-secondary-border: rgba(24, 144, 255, 0.2) !default; // 蓝色边框
 
 /* ========== 语义色（心情标签） ========== */
-$rw-mood-easy: #00C853 !default;                // 轻松
+$rw-mood-easy: #00c853 !default; // 轻松
 $rw-mood-easy-border: rgba(0, 200, 83, 0.3) !default;
-$rw-mood-moderate: #1890FF !default;            // 适中
+$rw-mood-moderate: #1890ff !default; // 适中
 $rw-mood-moderate-border: rgba(24, 144, 255, 0.3) !default;
-$rw-mood-hard: #F59E0B !default;               // 吃力
+$rw-mood-hard: #f59e0b !default; // 吃力
 $rw-mood-hard-border: rgba(245, 158, 11, 0.3) !default;
 
 /* ========== 图表色 ========== */
-$rw-chart-current: #FF6B35 !default;                    // 当月柱状图
-$rw-chart-history: rgba(255, 107, 53, 0.2) !default;    // 历史月份
-$rw-chart-line: #1890FF !default;                        // 趋势线
+$rw-chart-current: #ff6b35 !default; // 当月柱状图
+$rw-chart-history: rgba(255, 107, 53, 0.2) !default; // 历史月份
+$rw-chart-line: #1890ff !default; // 趋势线
 
-/* ========== 阴影 ========== */
-$rw-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06) !default;
-$rw-shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1) !default;
-$rw-shadow-fab: 0 4px 12px rgba(255, 107, 53, 0.3) !default;
+/* ========== 阴影（v5.0 毛玻璃柔和阴影） ========== */
+$rw-shadow-card: 0 4rpx 16rpx rgba(0, 0, 0, 0.05) !default;
+$rw-shadow-card-orange: 0 4rpx 16rpx rgba(255, 107, 53, 0.06) !default;
+$rw-shadow-card-hover: 0 2rpx 8rpx rgba(0, 0, 0, 0.04) !default;
+$rw-shadow-fab: 0 6rpx 20rpx rgba(255, 107, 53, 0.25) !default;
+$rw-shadow-btn: 0 6rpx 20rpx rgba(255, 107, 53, 0.25) !default;
+$rw-shadow-btn-pressed: 0 3rpx 10rpx rgba(255, 107, 53, 0.18) !default;
+$rw-shadow-glass: 0 8rpx 32rpx rgba(0, 0, 0, 0.06) !default;
+$rw-shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.03) !default;
+$rw-shadow-md: 0 4rpx 12rpx rgba(0, 0, 0, 0.05) !default;
+$rw-shadow-lg: 0 6rpx 20rpx rgba(0, 0, 0, 0.08) !default;
+$rw-shadow-primary: 0 4rpx 16rpx rgba(255, 107, 53, 0.1) !default;
+$rw-shadow-bubble: 0 2rpx 8rpx rgba(0, 0, 0, 0.04) !default;
+
+/* ========== 圆角系统（v4.2 新增） ========== */
+$rw-radius-sm: 12rpx !default;
+$rw-radius-md: 20rpx !default;
+$rw-radius-lg: 28rpx !default;
+$rw-radius-xl: 32rpx !default;
+$rw-radius-full: 9999rpx !default;
+
+/* ========== 卡片材质（v4.1 → v5.0 毛玻璃升级） ========== */
+$rw-card-border: 1rpx solid rgba(255, 255, 255, 0.6) !default;
+$rw-card-bg: rgba(255, 255, 255, 0.8) !default;
+$rw-card-radius: 32rpx !default;
+
+/* ========== 渐变（v4.0 新增，v4.2 扩展） ========== */
+$rw-gradient-primary: linear-gradient(
+  135deg,
+  #ff6b35,
+  #ff8a65
+) !default; // 主按钮渐变
+$rw-gradient-primary-pressed: linear-gradient(
+  135deg,
+  #f55a2b,
+  #ff7a55
+) !default; // 按压态渐变
+$rw-gradient-secondary: linear-gradient(
+  135deg,
+  #1890ff,
+  #40a9ff
+) !default; // 蓝色渐变（分类图标）
+$rw-gradient-blue: linear-gradient(
+  135deg,
+  #ff9a76,
+  #ff6b35
+) !default; // 暖橙渐变（记一笔）
+$rw-gradient-pink: linear-gradient(
+  135deg,
+  #ffb347,
+  #ff6b35
+) !default; // 金橙渐变（问问题）
+$rw-gradient-cyan: linear-gradient(
+  135deg,
+  #1890ff,
+  #69c0ff
+) !default; // 天蓝渐变（看日历）
+$rw-gradient-purple: linear-gradient(
+  135deg,
+  #a18cd1,
+  #fbc2eb
+) !default; // 淡紫渐变
+$rw-gradient-warm: linear-gradient(
+  135deg,
+  #fa709a,
+  #fee140
+) !default; // 暖色渐变
+
+/* ========== 毛玻璃材质（v4.0 → v5.0 升级） ========== */
+$rw-glass-bg: rgba(255, 255, 255, 0.8) !default;
+$rw-glass-border: rgba(255, 255, 255, 0.5) !default;
+$rw-glass-blur: blur(10px) !default;
+
+/* ========== Mixin: 毛玻璃卡片（v5.6 适度通透） ========== */
+@mixin rw-glass-card($radius: 32rpx) {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(22px) saturate(190%);
+  -webkit-backdrop-filter: blur(22px) saturate(190%);
+  border-radius: $radius;
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 10rpx 36rpx rgba(0, 0, 0, 0.06),
+    0 3rpx 10rpx rgba(0, 0, 0, 0.03),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1rpx 0 rgba(0, 0, 0, 0.02);
+}
+
+/* ========== Mixin: 毛玻璃列表项（v5.6 适度通透） ========== */
+@mixin rw-glass-item($radius: 24rpx) {
+  background: rgba(255, 255, 255, 0.60);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  border-radius: $radius;
+  border: 1rpx solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 6rpx 20rpx rgba(0, 0, 0, 0.05),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.03),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1rpx 0 rgba(0, 0, 0, 0.015);
+}
+
+/* ========== 过渡曲线（v4.0 新增） ========== */
+$rw-transition-bounce: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !default;
+$rw-transition-smooth: all 0.3s ease !default;
+
+/* ========== 按钮阴影（v5.0 柔和版） ========== */
+$rw-shadow-btn: 0 6rpx 20rpx rgba(255, 107, 53, 0.25) !default;
+$rw-shadow-btn-pressed: 0 3rpx 10rpx rgba(255, 107, 53, 0.18) !default;
+$rw-shadow-btn-hover: 0 8rpx 24rpx rgba(255, 107, 53, 0.3) !default;
+
+/* ========== Mixin: 主按钮（v4.2 新增） ========== */
+@mixin rw-primary-btn {
+  background: $rw-gradient-primary;
+  box-shadow: $rw-shadow-btn;
+  border: none;
+  color: #ffffff;
+  border-radius: 48rpx;
+  transition: $rw-transition-smooth;
+
+  &:active {
+    transform: scale(0.95);
+    box-shadow: $rw-shadow-btn-pressed;
+  }
+}
+
+/* ========== Mixin: 悬浮按钮 FAB（v4.2 新增） ========== */
+@mixin rw-fab {
+  position: fixed;
+  border-radius: 50%;
+  background: $rw-gradient-primary;
+  box-shadow: $rw-shadow-btn;
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: $rw-transition-smooth;
+  z-index: 999;
+
+  &:active {
+    transform: scale(0.92);
+    box-shadow: $rw-shadow-btn-pressed;
+  }
+}
+
+/* ========== CSS Chevron 箭头（v4.3 新增 — 统一替代 › 和 > 字符） ========== */
+@mixin rw-chevron-right($size: 16rpx, $color: #c0c4cc, $thickness: 2rpx) {
+  content: "";
+  display: inline-block;
+  width: $size;
+  height: $size;
+  border-right: $thickness solid $color;
+  border-bottom: $thickness solid $color;
+  transform: rotate(-45deg);
+  flex-shrink: 0;
+}
+
+/* ========== CSS 图标容器（v4.3 新增 — 统一替代 Emoji） ========== */
+@mixin rw-icon-circle($bg, $color: #ffffff, $size: 64rpx) {
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  background: $bg;
+  color: $color;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $size * 0.5;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
 
 /* ========== uni-app 内置变量覆盖 ========== */
 $uni-color-primary: $rw-primary !default;

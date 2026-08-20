@@ -26,51 +26,48 @@
       :scroll-with-animation="true"
     >
       <!-- 问答视图 -->
-      <view v-if="currentTab === 0" class="qa-view">
-        <!-- 顶部搜索条 -->
-        <view class="search-bar">
-          <text class="search-icon">🔍</text>
-          <input
-            class="search-input"
-            v-model="searchText"
-            placeholder="搜索跑步问题..."
-            placeholder-class="search-placeholder"
-            confirm-type="search"
-          />
-        </view>
-
-        <!-- 分类入口 -->
-        <view class="card category-card">
+      <view v-show="currentTab === 0" class="qa-view">
+        <!-- 分类入口（毛玻璃网格卡片 v5.0） -->
+        <view class="category-grid">
           <view
-            class="category-item"
-            v-for="item in categories"
+            class="category-card"
+            :class="{ 'category-card--active': activeCategory === item.name }"
+            v-for="(item, index) in categories"
             :key="item.name"
             @tap="onCategoryTap(item)"
           >
-            <view class="category-icon">
-              <text class="category-emoji">{{ item.icon }}</text>
+            <view class="category-icon-wrap" :style="{ background: catIconBgs[index] }">
+              <uni-icons :type="item.icon" size="22" color="#ffffff"></uni-icons>
             </view>
             <text class="category-name">{{ item.name }}</text>
           </view>
         </view>
 
-        <!-- 热门问题 -->
-        <view class="card hot-card">
-          <text class="section-title">热门问题</text>
-          <view
-            class="hot-item"
-            v-for="(q, idx) in hotQuestions"
-            :key="idx"
-            @tap="onHotQuestionTap(q)"
-          >
-            <text class="hot-text">{{ q }}</text>
-            <text class="hot-arrow">›</text>
+        <!-- 热门问题（棉花糖云朵 v6.0：横向滑动 + 交错重叠） -->
+        <view class="hot-section">
+          <view class="section-header">
+            <view class="section-icon-wrap">
+              <uni-icons type="fire" size="16" color="#ffffff"></uni-icons>
+            </view>
+            <text class="section-title">热门问题</text>
+          </view>
+
+          <view class="cloud-scroll-wrap">
+            <view
+              class="cloud-bubble"
+              v-for="(q, idx) in hotQuestions"
+              :key="idx"
+              hover-class="cloud-bubble-hover"
+              @tap="onHotQuestionTap(q)"
+            >
+              <text class="cloud-bubble-text">{{ q }}</text>
+            </view>
           </view>
         </view>
 
         <!-- Loading 提示 -->
         <view class="loading-tip" v-if="loading">
-          <text class="loading-text">🤔 AI 正在思考中，请稍候...</text>
+          <text class="loading-text">AI 正在思考中，请稍候...</text>
         </view>
 
         <!-- 对话区域 -->
@@ -85,14 +82,8 @@
 
             <!-- AI 气泡 -->
             <view v-else class="msg msg--assistant">
-              <view class="ai-header">
-                <view class="ai-avatar">
-                  <text class="ai-avatar-text">AI</text>
-                </view>
-                <text class="ai-name">RunWise 助手</text>
-              </view>
-              <view class="bubble bubble--assistant">
-                <text class="bubble-text">{{ msg.content }}</text>
+              <view class="ai-cloud-bubble">
+                <text class="ai-cloud-text">{{ msg.content }}</text>
               </view>
               <!-- 参考来源 -->
               <view class="sources" v-if="msg.sources && msg.sources.length">
@@ -106,7 +97,7 @@
               </view>
               <!-- 安全提示 -->
               <view class="safety-tip" v-if="msg.safetyTip">
-                <text class="safety-text">⚠️ {{ msg.safetyTip }}</text>
+                <text class="safety-text">{{ msg.safetyTip }}</text>
               </view>
               <!-- 反馈按钮 -->
               <view class="feedback">
@@ -115,14 +106,14 @@
                   :class="{ 'feedback-btn--useful': msg.feedback === 1 }"
                   @tap="onFeedback(msg, 1)"
                 >
-                  <text class="feedback-text">👍 有用</text>
+                  <text class="feedback-text">有用</text>
                 </view>
                 <view
                   class="feedback-btn"
                   :class="{ 'feedback-btn--useless': msg.feedback === -1 }"
                   @tap="onFeedback(msg, -1)"
                 >
-                  <text class="feedback-text">👎 无用</text>
+                  <text class="feedback-text">无用</text>
                 </view>
               </view>
             </view>
@@ -137,7 +128,7 @@
       </view>
 
       <!-- 历史视图 -->
-      <view v-else class="history-view">
+      <view v-show="currentTab === 1" class="history-view">
         <view
           class="history-group"
           v-for="group in historyGroups"
@@ -169,17 +160,19 @@
       <input
         class="input-field"
         v-model="inputText"
+        :focus="shouldFocusInput"
         placeholder="输入你的跑步问题..."
         placeholder-class="input-placeholder"
         confirm-type="send"
         @confirm="onSend"
+        @blur="shouldFocusInput = false"
       />
       <view
         class="send-btn"
         :class="{ 'send-btn--active': inputText.trim().length > 0 }"
         @tap="onSend"
       >
-        <text class="send-text">发送</text>
+        <uni-icons type="paperplane" size="20" color="#ffffff"></uni-icons>
       </view>
     </view>
   </view>
@@ -187,6 +180,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 
 // 接口定义
 interface ChatMessage {
@@ -209,10 +203,19 @@ interface HistoryItem {
 // 状态管理
 const currentTab = ref(0);
 const inputText = ref("");
-const searchText = ref("");
 const intoView = ref("");
-const loading = ref(false); // 加载状态
-const apiError = ref<string | null>(null); // 错误信息
+const loading = ref(false);
+const apiError = ref<string | null>(null);
+const shouldFocusInput = ref(false);
+
+// 分类图标背景色（低饱和度柔和色）
+const catIconBgs = [
+  "linear-gradient(135deg, #93c5fd, #60a5fa)",
+  "linear-gradient(135deg, #fdba74, #fb923c)",
+  "linear-gradient(135deg, #86efac, #4ade80)",
+  "linear-gradient(135deg, #c4b5fd, #a78bfa)",
+];
+const activeCategory = ref("");
 
 // 数据列表（初始为空，从后端加载）
 const categories = ref<any[]>([]);
@@ -286,10 +289,10 @@ onMounted(async () => {
       categoriesData?.length > 0
         ? categoriesData
         : [
-            { name: "训练计划", icon: "📋" },
-            { name: "装备选择", icon: "👟" },
-            { name: "伤痛预防", icon: "🩹" },
-            { name: "跑步技术", icon: "🏃" },
+            { name: "训练计划", icon: "compose" },
+            { name: "装备选择", icon: "cart" },
+            { name: "伤痛预防", icon: "heart" },
+            { name: "跑步技术", icon: "gear" },
           ];
 
     hotQuestions.value =
@@ -303,6 +306,32 @@ onMounted(async () => {
           ];
   } catch (error) {
     console.error("初始化数据加载失败");
+  }
+});
+
+// 页面显示时检查是否需要自动聚焦输入框（来自首页"问问题"按钮）
+onShow(() => {
+  const app = getApp();
+  if (app.globalData?.qaAutoFocus) {
+    currentTab.value = 0;
+    shouldFocusInput.value = true;
+    app.globalData.qaAutoFocus = false;
+
+    setTimeout(() => {
+      if (!inputText.value.trim()) {
+        shouldFocusInput.value = false;
+      }
+    }, 3000);
+  }
+  // 首页云朵点击 → 自动填入问题并发送
+  if (app.globalData?.qaAutoSend) {
+    currentTab.value = 0;
+    const question = app.globalData.qaAutoSend;
+    app.globalData.qaAutoSend = undefined;
+    // 延迟发送，确保页面完全渲染
+    setTimeout(() => {
+      sendMessage(question);
+    }, 300);
   }
 });
 
@@ -410,7 +439,7 @@ const sendMessage = async (text: string) => {
     const errorMsg = error.errMsg || error.message || "未知错误";
     messages.value.push({
       role: "assistant",
-      content: `⚠️ 请求失败：${errorMsg}\n\n请查看控制台获取详细信息`,
+      content: `请求失败：${errorMsg}\n\n请查看控制台获取详细信息`,
       feedback: 0,
     });
 
@@ -440,6 +469,7 @@ const onHotQuestionTap = (q: string) => {
 
 // 点击分类
 const onCategoryTap = (item: any) => {
+  activeCategory.value = item.name;
   sendMessage(`请介绍一下${item.name}方面的建议`);
 };
 
@@ -467,7 +497,6 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: $rw-bg-page;
 }
 
 /* ========== 二级导航 ========== */
@@ -475,8 +504,10 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   flex-shrink: 0;
   display: flex;
   height: 80rpx;
-  background-color: $rw-bg-card;
-  border-bottom: 1rpx solid $rw-border-color;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
 .nav-item {
@@ -518,11 +549,9 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 
 /* ========== 通用卡片 ========== */
 .card {
+  @include rw-glass-card;
   margin: 24rpx;
   padding: 24rpx;
-  background-color: $rw-bg-card;
-  border-radius: 32rpx;
-  box-shadow: $rw-shadow-card;
 }
 
 /* ========== 问答视图 ========== */
@@ -530,110 +559,205 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   padding-bottom: 24rpx;
 }
 
-/* 搜索条 */
-.search-bar {
-  display: flex;
-  align-items: center;
-  margin: 24rpx;
-  padding: 0 24rpx;
-  height: 72rpx;
-  background-color: $rw-bg-hover;
-  border-radius: 24rpx;
+/* ========== 分类入口（毛玻璃网格卡片 v5.0） ========== */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
+  padding: 24rpx;
 }
 
-.search-icon {
-  font-size: 28rpx;
-  margin-right: 16rpx;
-  color: $rw-text-placeholder;
-}
-
-.search-input {
-  flex: 1;
-  font-size: 28rpx;
-  color: $rw-text-primary;
-}
-
-.search-placeholder {
-  color: $rw-text-placeholder;
-  font-size: 28rpx;
-}
-
-/* 分类入口 */
 .category-card {
-  display: flex;
-  justify-content: space-around;
-  padding: 32rpx 16rpx;
-}
-
-.category-item {
+  @include rw-glass-item(24rpx);
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 24rpx 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
-.category-icon {
-  width: 88rpx;
-  height: 88rpx;
+.category-card--active {
+  box-shadow: $rw-shadow-primary;
+  transform: scale(1.03);
+}
+
+.category-icon-wrap {
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 50%;
-  background-color: rgba(24, 144, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 12rpx;
-}
-
-.category-emoji {
-  font-size: 40rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
 }
 
 .category-name {
   font-size: 24rpx;
-  color: $rw-text-secondary;
-}
-
-/* 热门问题 */
-.section-title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 500;
   color: $rw-text-primary;
-  margin-bottom: 16rpx;
+  font-weight: 500;
 }
 
-.hot-item {
+/* ================================================================
+   热门问题（棉花糖云朵 v6.0）
+   核心：flex 横向滑动 + 隐藏滚动条 + 负边距重叠 + 伪元素凸起 + 交错排列
+   ================================================================ */
+
+.hot-section {
+  margin: 0 24rpx 24rpx;
+  padding: 28rpx 0 28rpx 32rpx;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1rpx solid rgba(255, 255, 255, 0.6);
+  border-radius: 100rpx 50rpx 120rpx 60rpx 80rpx 40rpx;
+  box-shadow:
+    0 14rpx 44rpx rgba(0, 0, 0, 0.05),
+    0 4rpx 16rpx rgba(0, 0, 0, 0.03),
+    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.8);
+}
+
+.section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 24rpx 0;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+  margin-bottom: 20rpx;
+  padding-right: 28rpx;
 }
 
-.hot-item:last-child {
-  border-bottom: none;
+.section-icon-wrap {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 14rpx;
+  background: linear-gradient(135deg, #FF9A56, #FF6B35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  box-shadow: 0 3rpx 10rpx rgba(255, 107, 53, 0.25);
 }
 
-.hot-text {
-  flex: 1;
-  font-size: 28rpx;
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
   color: $rw-text-primary;
+  letter-spacing: 1rpx;
 }
 
-.hot-arrow {
-  font-size: 32rpx;
-  color: $rw-text-placeholder;
-  margin-left: 16rpx;
+/* 外层滚动容器（云朵轨道） */
+.cloud-scroll-wrap {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 56rpx 28rpx 64rpx 4rpx;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 单朵云 */
+.cloud-bubble {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 38rpx 58rpx;
+  margin-left: -36rpx;
+  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
+  border-radius: 100rpx;
+  z-index: 1;
+  box-shadow:
+    0 12rpx 36rpx rgba(0, 0, 0, 0.07),
+    0 4rpx 14rpx rgba(0, 0, 0, 0.04),
+    inset 0 3rpx 8rpx rgba(255, 255, 255, 0.9);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: visible;
+
+  &:first-child {
+    margin-left: 0;
+  }
+
+  /* ── 顶部蓬松凸起 ── */
+  &::before {
+    content: '';
+    position: absolute;
+    top: -44rpx;
+    left: 8%;
+    width: 52%;
+    height: 84rpx;
+    background: inherit;
+    border-radius: 50%;
+    z-index: -1;
+    box-shadow:
+      0 -6rpx 18rpx rgba(0, 0, 0, 0.04),
+      inset 0 2rpx 6rpx rgba(255, 255, 255, 0.8);
+  }
+
+  /* ── 底部蓬松凸起 ── */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -38rpx;
+    right: 10%;
+    width: 46%;
+    height: 72rpx;
+    background: inherit;
+    border-radius: 50%;
+    z-index: -1;
+    box-shadow:
+      0 6rpx 18rpx rgba(0, 0, 0, 0.04),
+      inset 0 -2rpx 6rpx rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* ── 交错排列：奇数云朵在上，偶数云朵下移 ── */
+.cloud-bubble:nth-child(odd) {
+  margin-top: 0;
+  z-index: 3;
+  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
+}
+
+.cloud-bubble:nth-child(even) {
+  margin-top: 44rpx;
+  z-index: 2;
+  background: linear-gradient(135deg, #E8F4FD, #FFF8E7);
+}
+
+/* ── 按压态 ── */
+.cloud-bubble-hover {
+  transform: scale(0.94) translateY(2rpx);
+  box-shadow:
+    0 6rpx 20rpx rgba(0, 0, 0, 0.05),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.03),
+    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.7);
+}
+
+/* 云朵文字 */
+.cloud-bubble-text {
+  font-size: 28rpx;
+  color: #444;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
 }
 
 /* ========== Loading 提示 ========== */
 .loading-tip {
+  @include rw-glass-item(16rpx);
   margin: 24rpx;
   padding: 20rpx;
-  background-color: $rw-bg-card;
-  border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: $rw-shadow-card;
 }
 
 .loading-text {
@@ -668,50 +792,50 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 .bubble--user {
-  background-color: $rw-secondary-light;
-  border-left: 4rpx solid $rw-secondary-border;
-  border-top-left-radius: 4rpx;
-}
-
-.bubble--assistant {
-  background-color: $rw-bg-card;
-  box-shadow: $rw-shadow-card;
+  background: rgba(240, 242, 245, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-top-left-radius: 4rpx;
 }
 
 .bubble-text {
   font-size: 28rpx;
-  color: $rw-text-primary;
+  color: #ffffff;
   line-height: 1.6;
 }
 
-/* AI 头部 */
-.ai-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12rpx;
+.bubble--user .bubble-text {
+  color: $rw-text-primary;
 }
 
-.ai-avatar {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  background-color: $rw-secondary;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 12rpx;
+/* AI 云朵气泡 - 三层立体朦胧感 v5.2 */
+.ai-cloud-bubble {
+  max-width: 82%;
+  padding: 26rpx 36rpx;
+  background: linear-gradient(
+    145deg,
+    rgba(59, 130, 246, 0.92) 0%,
+    rgba(37, 99, 235, 0.88) 100%
+  );
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-radius: 40rpx;
+  border-top-left-radius: 12rpx;
+  border: 1rpx solid rgba(147, 197, 253, 0.4);
+  /* 三层阴影：底层深蓝扩散 + 中层蓝色光晕 + 顶层高光 */
+  box-shadow:
+    0 12rpx 40rpx rgba(37, 99, 235, 0.25),
+    0 4rpx 16rpx rgba(59, 130, 246, 0.18),
+    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.25),
+    inset 0 -1rpx 3rpx rgba(30, 64, 175, 0.15);
+  position: relative;
 }
 
-.ai-avatar-text {
-  font-size: 22rpx;
-  font-weight: 600;
+.ai-cloud-text {
+  font-size: 28rpx;
   color: #ffffff;
-}
-
-.ai-name {
-  font-size: 24rpx;
-  color: $rw-text-secondary;
+  line-height: 1.65;
+  text-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.08);
 }
 
 /* 参考来源 */
@@ -733,7 +857,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 .safety-tip {
   margin-top: 16rpx;
   padding: 20rpx 24rpx;
-  background-color: rgba(245, 158, 11, 0.06);
+  background: rgba(245, 158, 11, 0.06);
   border-left: 6rpx solid $rw-warning;
   border-radius: 12rpx;
 }
@@ -751,13 +875,16 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 .feedback-btn {
-  padding: 8rpx 20rpx;
+  padding: 10rpx 24rpx;
   margin-right: 16rpx;
+  border-radius: 24rpx;
+  background: rgba(0, 0, 0, 0.04);
+  transition: $rw-transition-smooth;
 }
 
 .feedback-text {
   font-size: 24rpx;
-  color: $rw-text-placeholder;
+  color: $rw-text-secondary;
 }
 
 .feedback-btn--useful .feedback-text {
@@ -768,7 +895,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   color: $rw-error;
 }
 
-/* ========== 底部输入区 ========== */
+/* ========== 底部输入区（毛玻璃 v5.6 加高+分隔） ========== */
 .input-bar {
   position: fixed;
   bottom: 0;
@@ -776,22 +903,31 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   right: 0;
   display: flex;
   align-items: center;
-  padding: 16rpx 24rpx;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-  background-color: $rw-bg-card;
-  border-top: 1rpx solid $rw-border-color;
+  padding: 24rpx 28rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border-top: 1rpx solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 -8rpx 28rpx rgba(0, 0, 0, 0.06),
+    0 -2rpx 8rpx rgba(0, 0, 0, 0.03),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
   z-index: 10;
 }
 
 .input-field {
   flex: 1;
-  height: 72rpx;
-  padding: 0 24rpx;
-  background-color: $rw-bg-card;
-  border: 1rpx solid rgba(0, 0, 0, 0.1);
-  border-radius: 24rpx;
+  height: 80rpx;
+  padding: 0 36rpx;
+  background: rgba(245, 247, 250, 0.9);
+  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  border-radius: 56rpx;
   font-size: 28rpx;
   color: $rw-text-primary;
+  box-shadow:
+    inset 0 2rpx 4rpx rgba(0, 0, 0, 0.04),
+    inset 0 -1rpx 2rpx rgba(255, 255, 255, 0.8);
 }
 
 .input-placeholder {
@@ -800,23 +936,33 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 .send-btn {
-  margin-left: 16rpx;
-  padding: 0 32rpx;
-  height: 72rpx;
-  border-radius: 24rpx;
-  background-color: $rw-text-placeholder;
+  margin-left: 20rpx;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 56rpx;
+  background: $rw-text-placeholder;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: none;
+  box-shadow:
+    0 6rpx 20rpx rgba(0, 0, 0, 0.06),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.04),
+    inset 0 1rpx 3rpx rgba(255, 255, 255, 0.7);
 }
 
 .send-btn--active {
-  background-color: $rw-primary;
-}
+  background: linear-gradient(135deg, #FF6B35, #FF8F5E);
+  box-shadow:
+    0 10rpx 28rpx rgba(255, 107, 53, 0.3),
+    0 4rpx 12rpx rgba(255, 107, 53, 0.18),
+    inset 0 1rpx 3rpx rgba(255, 255, 255, 0.5);
 
-.send-text {
-  font-size: 28rpx;
-  color: #ffffff;
+  &:active {
+    transform: scale(0.92) translateY(2rpx);
+    background: linear-gradient(135deg, #FF8A65, #FFAB91);
+  }
 }
 
 /* ========== 历史视图 ========== */

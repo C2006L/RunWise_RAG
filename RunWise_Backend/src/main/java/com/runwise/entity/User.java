@@ -3,6 +3,8 @@ package com.runwise.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -22,6 +24,20 @@ public class User {
     private String avatarUrl;
 
     private Integer gender;
+
+    private LocalDate birthday;
+
+    private BigDecimal height;
+
+    private BigDecimal weight;
+
+    private Integer runningGoal;
+
+    private String runningLevel;
+
+    private String agreementVersion;
+
+    private LocalDateTime agreementTime;
 
     private Integer status;
 

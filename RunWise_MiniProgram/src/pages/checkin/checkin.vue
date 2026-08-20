@@ -18,16 +18,18 @@
       <view class="card calendar-card">
         <view class="month-switcher">
           <view class="arrow" @click="prevMonth">
-            <text class="arrow-icon">◀</text>
+            <uni-icons type="arrow-left" size="18" color="#6b7280"></uni-icons>
           </view>
           <text class="month-title">{{ year }}年{{ month }}月</text>
           <view class="arrow" @click="nextMonth">
-            <text class="arrow-icon">▶</text>
+            <uni-icons type="arrow-right" size="18" color="#6b7280"></uni-icons>
           </view>
         </view>
 
         <view class="weekdays">
-          <text v-for="(w, i) in weekdays" :key="i" class="weekday">{{ w }}</text>
+          <text v-for="(w, i) in weekdays" :key="i" class="weekday">{{
+            w
+          }}</text>
         </view>
 
         <view class="calendar-grid">
@@ -35,11 +37,15 @@
             v-for="(cell, i) in calendarDays"
             :key="i"
             class="day-cell"
-            :class="cell ? {
-              'is-today': isToday(cell.dateStr),
-              'is-selected': isSelected(cell.dateStr),
-              'is-disabled': isDisabled(cell.dateStr)
-            } : 'is-empty'"
+            :class="
+              cell
+                ? {
+                    'is-today': isToday(cell.dateStr),
+                    'is-selected': isSelected(cell.dateStr),
+                    'is-disabled': isDisabled(cell.dateStr),
+                  }
+                : 'is-empty'
+            "
             @click="cell && selectDay(cell)"
           >
             <template v-if="cell">
@@ -77,7 +83,11 @@
           </view>
           <view class="d-stat">
             <view class="d-value-row">
-              <text class="d-value">{{ selectedDayCheckin.pace ? formatPace(selectedDayCheckin.pace) : '—' }}</text>
+              <text class="d-value">{{
+                selectedDayCheckin.pace
+                  ? formatPace(selectedDayCheckin.pace)
+                  : "—"
+              }}</text>
             </view>
             <text class="d-label">配速</text>
           </view>
@@ -86,7 +96,8 @@
           <text class="remark-text">{{ selectedDayCheckin.remark }}</text>
         </view>
       </view>
-      <view v-else class="card day-detail-card empty-detail">
+      <view v-else class="empty-state">
+        <view class="empty-icon"></view>
         <text class="empty-text">{{ selectedDateLabel }} 暂无打卡记录</text>
       </view>
     </view>
@@ -94,7 +105,9 @@
     <!-- 列表视图 -->
     <view v-else-if="currentTab === 1" class="view-pad">
       <view class="list-header">
-        <text class="list-summary">本月{{ stats.monthCount }}次 · 累计{{ stats.totalDistance }}km</text>
+        <text class="list-summary"
+          >本月{{ stats.monthCount }}次 · 累计{{ stats.totalDistance }}km</text
+        >
       </view>
       <view class="checkin-list">
         <view
@@ -104,8 +117,16 @@
           @click="onItemClick(item)"
         >
           <view class="thumb">
-            <image v-if="item.imageUrl" class="thumb-img" :src="item.imageUrl" mode="aspectFill" />
-            <text v-else class="thumb-emoji">🏃</text>
+            <image
+              v-if="item.imageUrl"
+              class="thumb-img"
+              :src="item.imageUrl"
+              mode="aspectFill"
+              lazy-load
+            />
+            <view v-else class="thumb-placeholder">
+              <uni-icons type="person-filled" size="24" color="#FF6B35"></uni-icons>
+            </view>
           </view>
           <view class="item-body">
             <text class="item-date">{{ item.checkinDate }}</text>
@@ -114,10 +135,12 @@
               <view class="mood-tag" :class="moodClass(item.mood)">
                 <text class="mood-tag-text">{{ item.mood }}</text>
               </view>
-              <text v-if="item.remark" class="item-remark">{{ item.remark }}</text>
+              <text v-if="item.remark" class="item-remark">{{
+                item.remark
+              }}</text>
             </view>
           </view>
-          <text class="item-arrow">›</text>
+          <text class="item-arrow"></text>
         </view>
       </view>
     </view>
@@ -177,66 +200,94 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 
 interface CalendarItem {
-  date: string
-  distance: number
-  duration: number
-  mood: string
+  date: string;
+  distance: number;
+  duration: number;
+  mood: string;
 }
 
 interface CheckinItem {
-  id: number
-  checkinDate: string
-  distance: number
-  duration: number
-  pace: number
-  mood: string
-  remark: string
-  imageUrl: string
+  id: number;
+  checkinDate: string;
+  distance: number;
+  duration: number;
+  pace: number;
+  mood: string;
+  remark: string;
+  imageUrl: string;
 }
 
 interface Stats {
-  totalDistance: number
-  streak: number
-  monthCount: number
-  avgPace: string
-  totalCount: number
-  monthData: number[]
+  totalDistance: number;
+  streak: number;
+  monthCount: number;
+  avgPace: string;
+  totalCount: number;
+  monthData: number[];
 }
 
 interface DayCell {
-  date: number
-  dateStr: string
+  date: number;
+  dateStr: string;
 }
 
 interface DayDetail {
-  date: string
-  distance: number
-  duration: number
-  mood: string
-  pace?: number
-  remark?: string
-  imageUrl?: string
+  date: string;
+  distance: number;
+  duration: number;
+  mood: string;
+  pace?: number;
+  remark?: string;
+  imageUrl?: string;
 }
 
-const tabs = ['日历', '列表', '统计']
-const weekdays = ['一', '二', '三', '四', '五', '六', '日']
+const tabs = ["日历", "列表", "统计"];
+const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
 
-const currentTab = ref(0)
+const currentTab = ref(0);
 
 const calendarData = ref<CalendarItem[]>([
-  { date: '2026-08-01', distance: 3.5, duration: 25, mood: '轻松' },
-  { date: '2026-08-03', distance: 5.2, duration: 32, mood: '适中' },
-  { date: '2026-08-05', distance: 4.0, duration: 28, mood: '轻松' }
-])
+  { date: "2026-08-01", distance: 3.5, duration: 25, mood: "轻松" },
+  { date: "2026-08-03", distance: 5.2, duration: 32, mood: "适中" },
+  { date: "2026-08-05", distance: 4.0, duration: 28, mood: "轻松" },
+]);
 
 const checkinList = ref<CheckinItem[]>([
-  { id: 1, checkinDate: '2026-08-05', distance: 4.0, duration: 28, pace: 7.0, mood: '轻松', remark: '晨跑恢复', imageUrl: '' },
-  { id: 2, checkinDate: '2026-08-03', distance: 5.2, duration: 32, pace: 6.15, mood: '适中', remark: '操场5K', imageUrl: '' },
-  { id: 3, checkinDate: '2026-08-01', distance: 3.5, duration: 25, pace: 7.14, mood: '轻松', remark: '', imageUrl: '' }
-])
+  {
+    id: 1,
+    checkinDate: "2026-08-05",
+    distance: 4.0,
+    duration: 28,
+    pace: 7.0,
+    mood: "轻松",
+    remark: "晨跑恢复",
+    imageUrl: "",
+  },
+  {
+    id: 2,
+    checkinDate: "2026-08-03",
+    distance: 5.2,
+    duration: 32,
+    pace: 6.15,
+    mood: "适中",
+    remark: "操场5K",
+    imageUrl: "",
+  },
+  {
+    id: 3,
+    checkinDate: "2026-08-01",
+    distance: 3.5,
+    duration: 25,
+    pace: 7.14,
+    mood: "轻松",
+    remark: "",
+    imageUrl: "",
+  },
+]);
 
 const stats = ref<Stats>({
   totalDistance: 125.75,
@@ -244,162 +295,180 @@ const stats = ref<Stats>({
   monthCount: 8,
   avgPace: "6'30\"",
   totalCount: 42,
-  monthData: [5.2, 3.8, 4.0, 6.1, 3.5, 2.8, 4.2, 5.0]
-})
+  monthData: [5.2, 3.8, 4.0, 6.1, 3.5, 2.8, 4.2, 5.0],
+});
 
 /* ========== 日历逻辑 ========== */
-const today = new Date()
-const year = ref(today.getFullYear())
-const month = ref(today.getMonth() + 1)
+const today = new Date();
+const year = ref(today.getFullYear());
+const month = ref(today.getMonth() + 1);
 
 function pad(n: number): string {
-  return String(n).padStart(2, '0')
+  return String(n).padStart(2, "0");
 }
 
 function formatDate(y: number, m: number, d: number): string {
-  return `${y}-${pad(m)}-${pad(d)}`
+  return `${y}-${pad(m)}-${pad(d)}`;
 }
 
-const todayStr = formatDate(today.getFullYear(), today.getMonth() + 1, today.getDate())
-const selectedDate = ref(todayStr)
+const todayStr = formatDate(
+  today.getFullYear(),
+  today.getMonth() + 1,
+  today.getDate(),
+);
+const selectedDate = ref(todayStr);
 
 // 计算当前月日期数组（周一起始）
 const calendarDays = computed<(DayCell | null)[]>(() => {
-  const firstDay = new Date(year.value, month.value - 1, 1)
-  const daysInMonth = new Date(year.value, month.value, 0).getDate()
+  const firstDay = new Date(year.value, month.value - 1, 1);
+  const daysInMonth = new Date(year.value, month.value, 0).getDate();
   // 转换为周一起始：0=周一 ... 6=周日
-  let firstWeekday = firstDay.getDay() - 1
-  if (firstWeekday < 0) firstWeekday = 6
+  let firstWeekday = firstDay.getDay() - 1;
+  if (firstWeekday < 0) firstWeekday = 6;
 
-  const cells: (DayCell | null)[] = []
-  for (let i = 0; i < firstWeekday; i++) cells.push(null)
+  const cells: (DayCell | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ date: d, dateStr: formatDate(year.value, month.value, d) })
+    cells.push({ date: d, dateStr: formatDate(year.value, month.value, d) });
   }
-  return cells
-})
+  return cells;
+});
 
 const checkedDateSet = computed(() => {
-  const s = new Set<string>()
-  calendarData.value.forEach(c => s.add(c.date))
-  checkinList.value.forEach(c => s.add(c.checkinDate))
-  return s
-})
+  const s = new Set<string>();
+  calendarData.value.forEach((c) => s.add(c.date));
+  checkinList.value.forEach((c) => s.add(c.checkinDate));
+  return s;
+});
 
 // 合并日历数据与列表数据，列表数据字段更全（含 pace/remark）
 const checkinByDate = computed(() => {
-  const map = new Map<string, DayDetail>()
-  checkinList.value.forEach(c => map.set(c.checkinDate, {
-    date: c.checkinDate,
-    distance: c.distance,
-    duration: c.duration,
-    mood: c.mood,
-    pace: c.pace,
-    remark: c.remark,
-    imageUrl: c.imageUrl
-  }))
-  calendarData.value.forEach(c => {
-    if (!map.has(c.date)) map.set(c.date, { ...c })
-  })
-  return map
-})
+  const map = new Map<string, DayDetail>();
+  checkinList.value.forEach((c) =>
+    map.set(c.checkinDate, {
+      date: c.checkinDate,
+      distance: c.distance,
+      duration: c.duration,
+      mood: c.mood,
+      pace: c.pace,
+      remark: c.remark,
+      imageUrl: c.imageUrl,
+    }),
+  );
+  calendarData.value.forEach((c) => {
+    if (!map.has(c.date)) map.set(c.date, { ...c });
+  });
+  return map;
+});
 
-const selectedDayCheckin = computed<DayDetail | null>(() => checkinByDate.value.get(selectedDate.value) ?? null)
+const selectedDayCheckin = computed<DayDetail | null>(
+  () => checkinByDate.value.get(selectedDate.value) ?? null,
+);
 
 const selectedDateLabel = computed(() => {
-  const parts = selectedDate.value.split('-')
-  return `${Number(parts[1])}月${Number(parts[2])}日`
-})
+  const parts = selectedDate.value.split("-");
+  return `${Number(parts[1])}月${Number(parts[2])}日`;
+});
 
 function isToday(dateStr: string): boolean {
-  return dateStr === todayStr
+  return dateStr === todayStr;
 }
 
 function isSelected(dateStr: string): boolean {
-  return dateStr === selectedDate.value
+  return dateStr === selectedDate.value;
 }
 
 function isChecked(dateStr: string): boolean {
-  return checkedDateSet.value.has(dateStr)
+  return checkedDateSet.value.has(dateStr);
 }
 
 function isDisabled(dateStr: string): boolean {
-  return dateStr > todayStr
+  return dateStr > todayStr;
 }
 
 function switchTab(idx: number) {
-  currentTab.value = idx
+  currentTab.value = idx;
 }
 
+// 页面显示时读取首页传递的 Tab 参数，自动切换到日历视图
+onShow(() => {
+  const app = getApp();
+  if (app.globalData?.checkinTab !== undefined) {
+    currentTab.value = app.globalData.checkinTab;
+    app.globalData.checkinTab = undefined;
+  }
+});
+
 function selectDay(cell: DayCell) {
-  if (isDisabled(cell.dateStr)) return
-  selectedDate.value = cell.dateStr
+  if (isDisabled(cell.dateStr)) return;
+  selectedDate.value = cell.dateStr;
 }
 
 function prevMonth() {
   if (month.value === 1) {
-    year.value--
-    month.value = 12
+    year.value--;
+    month.value = 12;
   } else {
-    month.value--
+    month.value--;
   }
 }
 
 function nextMonth() {
   if (month.value === 12) {
-    year.value++
-    month.value = 1
+    year.value++;
+    month.value = 1;
   } else {
-    month.value++
+    month.value++;
   }
 }
 
 /* ========== 格式化 ========== */
 function moodClass(mood: string): string {
-  if (mood === '轻松') return 'mood-easy'
-  if (mood === '适中') return 'mood-moderate'
-  if (mood === '吃力') return 'mood-hard'
-  return 'mood-moderate'
+  if (mood === "轻松") return "mood-easy";
+  if (mood === "适中") return "mood-moderate";
+  if (mood === "吃力") return "mood-hard";
+  return "mood-moderate";
 }
 
 function formatPace(pace: number): string {
-  const m = Math.floor(pace)
-  const s = Math.round((pace - m) * 60)
-  return `${m}'${pad(s)}"`
+  const m = Math.floor(pace);
+  const s = Math.round((pace - m) * 60);
+  return `${m}'${pad(s)}"`;
 }
 
 function formatItemData(item: CheckinItem): string {
-  return `${item.distance}km · ${item.duration}min · ${formatPace(item.pace)}/km`
+  return `${item.distance}km · ${item.duration}min · ${formatPace(item.pace)}/km`;
 }
 
 /* ========== 统计柱状图 ========== */
-const maxMonthData = computed(() => Math.max(...stats.value.monthData))
+const maxMonthData = computed(() => Math.max(...stats.value.monthData));
 
 function barHeight(val: number): number {
-  const maxH = 220
-  return Math.max(16, (val / maxMonthData.value) * maxH)
+  const maxH = 220;
+  return Math.max(16, (val / maxMonthData.value) * maxH);
 }
 
 function isCurrentMonthBar(i: number): boolean {
-  return i === stats.value.monthData.length - 1
+  return i === stats.value.monthData.length - 1;
 }
 
-const currentMonthValue = computed(() => stats.value.monthData[stats.value.monthData.length - 1] ?? 0)
+const currentMonthValue = computed(
+  () => stats.value.monthData[stats.value.monthData.length - 1] ?? 0,
+);
 
 /* ========== 交互 ========== */
 function onFabClick() {
-  uni.showToast({ title: '新建打卡', icon: 'none' })
+  uni.navigateTo({ url: "/pages/checkin/create" });
 }
 
 function onItemClick(item: CheckinItem) {
-  uni.showToast({ title: `查看 ${item.checkinDate}`, icon: 'none' })
+  uni.navigateTo({ url: `/pages/checkin/create` });
 }
 </script>
 
 <style lang="scss">
 .page {
   min-height: 100vh;
-  background-color: $rw-bg-page;
   padding-bottom: 240rpx;
 }
 
@@ -435,7 +504,7 @@ function onItemClick(item: CheckinItem) {
 }
 
 .nav-item.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -453,10 +522,14 @@ function onItemClick(item: CheckinItem) {
 }
 
 .card {
-  background-color: $rw-bg-card;
-  border-radius: 32rpx;
-  box-shadow: $rw-shadow-card;
+  @include rw-glass-card;
   padding: 32rpx;
+  transition: $rw-transition-bounce;
+
+  &:active {
+    transform: scale(0.98);
+    box-shadow: $rw-shadow-card-hover;
+  }
 }
 
 /* ========== 日历视图 ========== */
@@ -477,11 +550,6 @@ function onItemClick(item: CheckinItem) {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.arrow-icon {
-  font-size: 24rpx;
-  color: $rw-text-secondary;
 }
 
 .month-title {
@@ -522,12 +590,13 @@ function onItemClick(item: CheckinItem) {
 }
 
 .day-inner {
-  width: 64rpx;
+  width: 72rpx;
   height: 64rpx;
-  border-radius: 50%;
+  border-radius: 32rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: $rw-transition-bounce;
 }
 
 .day-text {
@@ -545,6 +614,7 @@ function onItemClick(item: CheckinItem) {
 
 .day-cell.is-selected .day-inner {
   background-color: $rw-primary-selected;
+  border-radius: 32rpx;
 }
 
 .day-cell.is-selected .day-text {
@@ -634,16 +704,41 @@ function onItemClick(item: CheckinItem) {
   color: $rw-text-secondary;
 }
 
-.empty-detail {
+/* ========== 空状态（轻盈浮动式） ========== */
+.empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48rpx 32rpx;
+  padding: 64rpx 0;
+}
+
+/* CSS 跑步图标 — 圆形轮廓 + 内部线条 */
+.empty-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 4rpx solid rgba(24, 144, 255, 0.15);
+  background: rgba(24, 144, 255, 0.04);
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24rpx;
+    height: 24rpx;
+    border-radius: 50%;
+    border: 3rpx solid rgba(24, 144, 255, 0.25);
+  }
 }
 
 .empty-text {
   font-size: 26rpx;
   color: $rw-text-placeholder;
+  margin-top: 16rpx;
 }
 
 /* ========== 心情标签 ========== */
@@ -726,8 +821,14 @@ function onItemClick(item: CheckinItem) {
   height: 100%;
 }
 
-.thumb-emoji {
-  font-size: 56rpx;
+.thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .item-body {
@@ -766,9 +867,12 @@ function onItemClick(item: CheckinItem) {
 
 .item-arrow {
   margin-left: 12rpx;
-  font-size: 36rpx;
-  color: $rw-text-placeholder;
   flex-shrink: 0;
+  width: 16rpx;
+  height: 16rpx;
+  border-right: 2rpx solid #c0c4cc;
+  border-bottom: 2rpx solid #c0c4cc;
+  transform: rotate(-45deg);
 }
 
 /* ========== 统计视图 ========== */
@@ -893,24 +997,17 @@ function onItemClick(item: CheckinItem) {
 
 /* ========== FAB ========== */
 .fab {
-  position: fixed;
+  @include rw-fab;
   right: 32rpx;
   bottom: 144rpx;
   width: 112rpx;
   height: 112rpx;
-  border-radius: 50%;
-  background-color: $rw-primary;
-  box-shadow: $rw-shadow-fab;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 99;
 }
 
 .fab-icon {
   font-size: 56rpx;
   font-weight: 300;
-  color: #FFFFFF;
+  color: #ffffff;
   line-height: 1;
 }
 </style>

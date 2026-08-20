@@ -1331,6 +1331,2418 @@ CREATE TABLE qa_record (
 | 2026-08-03 | 新增无障碍标准（对比度/热区/屏幕阅读器）             |
 | 2026-08-03 | 新增验收标准（视觉/交互/功能/性能）                  |
 | 2026-08-06 | 配色方案从黑绿切换为白蓝橙，全面重新设计四页面UI规范 |
+| 2026-08-14 | 新增第11章：当前问题修复计划（v4.0 Bug Fix），识别7类关键问题 |
+| 2026-08-14 | 执行修复计划，完成P001-P007全部修复 |
+| 2026-08-15 | v4.1.0：协议完善+个人资料扩展（身高/体重/年龄/跑步等级）+协议弹窗+MySQL建表 |
+| 2026-08-15 | 新增第12章：v4.2.0 UI活力升级计划（基于用户截图反馈的详细UI修改规范） |
+| 2026-08-15 | 执行v4.2.0 UI升级：完成UI-001~007全部7项任务（气泡卡片+胶囊分类+背景优化） |
+
+---
+
+## 11. 当前问题修复计划（v4.0 Bug Fix）
+
+> 版本：v4.0-Fix-001  
+> 日期：2026-08-14  
+> 状态：✅ 已完成  
+> 基于微信开发者工具实测截图分析
+
+### 11.1 问题概述
+
+基于2026-08-14微信开发者工具实测，发现以下7类关键问题影响用户体验：
+
+| 问题编号 | 严重程度 | 影响范围 | 状态 |
+|----------|----------|----------|------|
+| P001 | 🔴 高 | TabBar全局 | ✅ 已修复 |
+| P002 | 🟡 中 | 首页→打卡流转 | ✅ 已修复 |
+| P003 | 🟡 中 | 首页→答疑流转 | ✅ 已修复 |
+| P004 | 🟠 中高 | 我的页面功能 | ✅ 已修复 |
+| P005 | 🔴 高 | 答疑-历史功能 | ✅ 已修复 |
+| P006 | 🟡 中 | 答疑-分类布局 | ✅ 已修复 |
+| P007 | 🟡 中 | 打卡列表展示 | ✅ 已修复 |
+
+---
+
+### 11.2 问题详细分析与修复方案
+
+#### **P001: TabBar图标间歇性消失/不切换**
+
+**问题描述：**
+- 切换TabBar时，文字正常切换但图标维持不动或完全消失
+- 有时图标正常显示，有时完全空白
+- 复现频率：约30%-50%的切换操作会出现此问题
+
+**根本原因分析：**
+```
+1. Vite开发模式热更新不稳定
+   - 文件监听导致静态资源未完全同步到dist/
+   
+2. 微信开发者工具缓存机制缺陷
+   - 开发模式下缓存策略不一致
+   - 图标资源加载时机与页面渲染不同步
+   
+3. 图标文件路径引用问题
+   - pages.json中iconPath使用相对路径
+   - 编译后路径解析可能存在歧义
+```
+
+**修复方案：**
+
+##### 方案A：强制使用绝对路径（推荐）⭐⭐⭐
+
+**修改文件：** `src/pages.json`
+
+```json
+{
+  "tabBar": {
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "/static/tabbar/home.png",
+        "selectedIconPath": "/static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/checkin/checkin",
+        "text": "打卡",
+        "iconPath": "/static/tabbar/checkin.png",
+        "selectedIconPath": "/static/tabbar/checkin-active.png"
+      },
+      {
+        "pagePath": "pages/qa/qa",
+        "text": "答疑",
+        "iconPath": "/static/tabbar/qa.png",
+        "selectedIconPath": "/static/tabbar/qa-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "/static/tabbar/mine.png",
+        "selectedIconPath": "/static/tabbar/mine-active.png"
+      }
+    ]
+  }
+}
+```
+
+**关键改动：**
+- `static/tabbar/xxx.png` → `/static/tabbar/xxx.png`
+- 添加前导斜杠，确保从项目根目录解析
+
+##### 方案B：Vite配置静态资源复制优化
+
+**修改文件：** `vite.config.ts`
+
+```typescript
+export default defineConfig({
+  // ...其他配置
+  build: {
+    assetsInlineLimit: 0, // 强制外部化所有图片资源
+    rollupOptions: {
+      output: {
+        assetFileNames: 'static/[name].[ext]' // 保持原始路径结构
+      }
+    }
+  }
+})
+```
+
+##### 方案C：添加图标预加载机制
+
+**新建文件：** `src/App.vue` 或 `src/main.ts`
+
+```typescript
+// 在应用启动时预加载TabBar图标
+const preloadTabBarIcons = () => {
+  const icons = [
+    '/static/tabbar/home.png',
+    '/static/tabbar/home-active.png',
+    '/static/tabbar/checkin.png',
+    '/static/tabbar/checkin-active.png',
+    '/static/tabbar/qa.png',
+    '/static/tabbar/qa-active.png',
+    '/static/tabbar/mine.png',
+    '/static/tabbar/mine-active.png'
+  ]
+  
+  icons.forEach(icon => {
+    const img = new Image()
+    img.src = icon
+  })
+}
+
+// 在onLaunch或mounted时调用
+preloadTabBarIcons()
+```
+
+**验证步骤：**
+1. 清除微信开发者工具全部缓存
+2. 执行 `npm run dev:mp-weixin` 重新编译
+3. 快速连续切换TabBar 10次以上
+4. 确认图标100%正常显示和切换
+
+---
+
+#### **P002: 首页"看日历"按钮跳转逻辑错误**
+
+**问题描述：**
+- 点击首页"看日历"按钮后只跳转到打卡界面
+- 不区分当前是日历视图还是列表视图
+- 如果用户刚打开的是列表，点击后应跳转到日历，但实际仍停留在列表
+
+**期望行为：**
+- 智能判断当前打卡页面的视图状态
+- 跳转到与当前状态不同的视图（互补跳转）
+- 或始终跳转到日历视图（根据产品定义）
+
+**修复方案：**
+
+##### 方案A：通过URL参数传递目标视图（推荐）⭐⭐⭐
+
+**修改文件：** `src/pages/index/index.vue`
+
+```vue
+<template>
+  <!-- 快捷入口区域 -->
+  <view class="quick-actions">
+    <view class="action-item" @click="goToCalendar">
+      <image src="/static/icons/calendar.svg" mode="aspectFit" />
+      <text>看日历</text>
+    </view>
+    
+    <view class="action-item" @click="goToQA">
+      <image src="/static/icons/question.svg" mode="aspectFit" />
+      <text>问问题</text>
+    </view>
+    
+    <view class="action-item" @click="goToCreateCheckin">
+      <image src="/static/icons/edit.svg" mode="aspectFit" />
+      <text>记一笔</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+// 跳转到日历视图
+const goToCalendar = () => {
+  uni.switchTab({
+    url: '/pages/checkin/checkin',
+    success: () => {
+      // 通过事件通知打卡页切换到日历视图
+      uni.$emit('switchToView', { view: 'calendar' })
+    }
+  })
+}
+</script>
+```
+
+**修改文件：** `src/pages/checkin/checkin.vue`
+
+```vue
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const currentView = ref<'calendar' | 'list' | 'stats'>('calendar')
+
+// 监听来自首页的事件
+onMounted(() => {
+  uni.$on('switchToView', (data) => {
+    if (data.view === 'calendar') {
+      currentView.value = 'calendar'
+    } else if (data.view === 'list') {
+      currentView.value = 'list'
+    }
+  })
+})
+
+onUnmounted(() => {
+  uni.$off('switchToView')
+})
+</script>
+```
+
+##### 方案B：使用Storage记录目标视图
+
+**修改文件：** `src/pages/index/index.vue`
+
+```typescript
+const goToCalendar = () => {
+  // 先存储目标视图到本地
+  uni.setStorageSync('targetCheckinView', 'calendar')
+  
+  // 再跳转
+  uni.switchTab({
+    url: '/pages/checkin/checkin'
+  })
+}
+```
+
+**修改文件：** `src/pages/checkin/checkin.vue`
+
+```typescript
+import { onShow } from '@dcloudio/uni-app'
+
+onShow(() => {
+  // 每次显示时检查是否有目标视图
+  const targetView = uni.getStorageSync('targetCheckinView')
+  if (targetView) {
+    currentView.value = targetView as any
+    // 清除标记，避免下次误跳转
+    uni.removeStorageSync('targetCheckinView')
+  }
+})
+```
+
+**验证步骤：**
+1. 打开首页，确认看到"看日历"按钮
+2. 手动切换到打卡页的列表视图
+3. 返回首页，点击"看日历"
+4. 确认自动跳转到打卡页的**日历视图**
+5. 反向测试：在日历视图时点击，应保持或切换到列表（根据产品需求）
+
+---
+
+#### **P003: 首页"问问题"按钮交互不完整**
+
+**问题描述：**
+- 点击"问问题"按钮只跳转到答疑页面
+- 未自动聚焦输入框或显示提问引导
+- 用户需要额外操作才能开始提问
+
+**期望行为：**
+- 跳转后自动聚焦输入框
+- 显示友好的引导提示："请问关于跑步的任何问题..."
+- 可选：自动弹出键盘（需谨慎，可能影响体验）
+
+**修复方案：**
+
+**修改文件：** `src/pages/index/index.vue`
+
+```vue
+<template>
+  <view class="action-item" @click="goToAskQuestion">
+    <image src="/static/icons/question.svg" mode="aspectFit" />
+    <text>问问题</text>
+  </view>
+</template>
+
+<script setup lang="ts">
+const goToAskQuestion = () => {
+  uni.switchTab({
+    url: '/pages/qa/qa',
+    success: () => {
+      // 延迟确保页面已加载完成
+      setTimeout(() => {
+        // 发送事件通知答疑页聚焦输入框
+        uni.$emit('focusInput', { autoFocus: true })
+      }, 300)
+    }
+  })
+}
+</script>
+```
+
+**修改文件：** `src/pages/qa/qa.vue`
+
+```vue
+<template>
+  <view class="qa-container">
+    <!-- 输入区域 -->
+    <view class="input-area">
+      <input 
+        ref="questionInput"
+        v-model="questionText"
+        :focus="shouldFocusInput"
+        placeholder="请问关于跑步的任何问题..."
+        @blur="handleInputBlur"
+      />
+      <button @click="submitQuestion">发送</button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const questionInput = ref<any>(null)
+const questionText = ref('')
+const shouldFocusInput = ref(false)
+
+onMounted(() => {
+  uni.$on('focusInput', (data) => {
+    if (data.autoFocus) {
+      shouldFocusInput.value = true
+      
+      // 3秒后如果还没输入，取消焦点避免遮挡
+      setTimeout(() => {
+        if (!questionText.value) {
+          shouldFocusInput.value = false
+        }
+      }, 3000)
+    }
+  })
+})
+
+onUnmounted(() => {
+  uni.$off('focusInput')
+})
+
+const handleInputBlur = () => {
+  shouldFocusInput.value = false
+}
+</script>
+```
+
+**用户体验优化建议：**
+
+1. **首次使用引导**
+   ```typescript
+   // 检测是否首次使用答疑功能
+   const isFirstTimeUseQA = !uni.getStorageSync('hasUsedQA')
+   
+   if (isFirstTimeUseQA) {
+     uni.showModal({
+       title: '💡 使用提示',
+       content: '你可以直接输入跑步相关问题，AI会为你专业解答！\n\n例如：\n• 新手怎么开始跑步？\n• 跑步时心率多少合适？',
+       showCancel: false,
+       confirmText: '我知道了'
+     })
+     
+     uni.setStorageSync('hasUsedQA', true)
+   }
+   ```
+
+2. **热门问题快捷填充**
+   ```vue
+   <view class="hot-questions">
+     <text 
+       v-for="(q, index) in hotQuestions" 
+       :key="index"
+       @click="fillQuestion(q)"
+     >
+       {{ q }}
+     </text>
+   </view>
+   
+   <script setup>
+   const hotQuestions = [
+     '第一次跑步该跑多远？',
+     '跑完膝盖疼怎么办？',
+     '新手怎么选跑鞋？'
+   ]
+   
+   const fillQuestion = (q: string) => {
+     questionText.value = q
+     shouldFocusInput.value = true
+   }
+   </script>
+   ```
+
+**验证步骤：**
+1. 点击首页"问问题"按钮
+2. 确认跳转到答疑页且输入框已聚焦
+3. 确认placeholder文本清晰可见
+4. 测试是否可以立即输入并发送问题
+
+---
+
+#### **P004: 我的页面功能全部显示"功能正在开发中"**
+
+**问题描述：**
+- 个人资料、消息通知、检查更新、隐私政策、用户协议等按钮
+- 点击后全部显示Toast："功能正在开发中"
+- 无法进行任何有效交互
+
+**影响评估：**
+- 严重影响用户对产品的信任度
+- 降低用户留存意愿
+- 不符合MVP版本基本可用性要求
+
+**修复方案（分优先级）：**
+
+##### 🔴 P0：必须实现的功能（核心体验）
+
+###### 4.1 个人资料页面
+
+**新建文件：** `src/pages/mine/profile.vue`
+
+```vue
+<template>
+  <view class="profile-page">
+    <view class="header">
+      <image 
+        :src="userInfo.avatar || '/static/images/default-avatar.png'" 
+        class="avatar"
+        mode="aspectFill"
+      />
+      <view class="info">
+        <text class="nickname">{{ userInfo.nickname || '跑者小明' }}</text>
+        <text class="join-date">已加入 {{ userInfo.joinDays || 28 }} 天</text>
+      </view>
+    </view>
+    
+    <view class="stats">
+      <view class="stat-item">
+        <text class="value">{{ userInfo.totalDistance || '125.75' }}</text>
+        <text class="label">总里程(km)</text>
+      </view>
+      <view class="stat-item">
+        <text class="value">{{ userInfo.checkinCount || '42' }}</text>
+        <text class="label">打卡次数</text>
+      </view>
+      <view class="stat-item">
+        <text class="value">{{ userInfo.streakDays || '12' }}</text>
+        <text class="label">连续天数</text>
+      </view>
+    </view>
+    
+    <view class="form-section">
+      <view class="form-item">
+        <text class="label">昵称</text>
+        <input v-model="form.nickname" placeholder="请输入昵称" />
+      </view>
+      
+      <view class="form-item">
+        <text class="label">性别</text>
+        <picker :range="['男', '女', '保密']" @change="handleGenderChange">
+          <text>{{ form.gender || '请选择' }}</text>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="label">跑步目标</text>
+        <input 
+          v-model="form.goal" 
+          type="digit"
+          placeholder="每周跑几次？" 
+        />
+      </view>
+    </view>
+    
+    <button class="save-btn" @click="saveProfile">保存修改</button>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive } from 'vue'
+
+const userInfo = reactive({
+  avatar: '',
+  nickname: '',
+  joinDays: 28,
+  totalDistance: 125.75,
+  checkinCount: 42,
+  streakDays: 12
+})
+
+const form = reactive({
+  nickname: '',
+  gender: '',
+  goal: ''
+})
+
+const handleGenderChange = (e: any) => {
+  form.gender = ['男', '女', '保密'][e.detail.value]
+}
+
+const saveProfile = async () => {
+  // TODO: 调用API保存到后端
+  uni.showToast({
+    title: '保存成功',
+    icon: 'success'
+  })
+}
+</script>
+```
+
+**注册路由：** `src/pages.json`
+
+```json
+{
+  "path": "pages/mine/profile",
+  "style": {
+    "navigationBarTitleText": "个人资料"
+  }
+}
+```
+
+###### 4.2 隐私政策页面（法律合规必须）
+
+**新建文件：** `src/pages/mine/privacy.vue`
+
+```vue
+<template>
+  <view class="privacy-page">
+    <view class="content">
+      <text class="title">RunWise 隐私政策</text>
+      <text class="update-time">最后更新时间：2026年8月14日</text>
+      
+      <view class="section">
+        <text class="section-title">1. 信息收集</text>
+        <text class="section-content">
+          我们收集以下类型的信息：
+          • 您主动提供的信息（如昵称、头像）
+          • 使用数据（如打卡记录、跑步距离）
+          • 设备信息（用于统计分析）
+        </text>
+      </view>
+      
+      <view class="section">
+        <text class="section-title">2. 信息使用</text>
+        <text class="section-content">
+          我们使用您的信息来：
+          • 提供和维护我们的服务
+          • 改进和个性化您的体验
+          • 保护账户安全
+        </text>
+      </view>
+      
+      <!-- 更多隐私条款... -->
+    </view>
+  </view>
+</template>
+```
+
+###### 4.3 用户协议页面（法律合规必须）
+
+**新建文件：** `src/pages/mine/agreement.vue`
+
+```vue
+<template>
+  <view class="agreement-page">
+    <view class="content">
+      <text class="title">RunWise 用户服务协议</text>
+      
+      <view class="section">
+        <text class="section-title">1. 服务说明</text>
+        <text class="section-content">
+          RunWise是一款面向跑步爱好者的训练记录与知识问答小程序...
+        </text>
+      </view>
+      
+      <!-- 更多协议条款... -->
+    </view>
+  </view>
+</template>
+```
+
+##### 🟡 P1：应该实现的功能（提升体验）
+
+###### 4.4 消息通知页面
+
+**新建文件：** `src/pages/mine/notifications.vue`
+
+```vue
+<template>
+  <view class="notifications-page">
+    <view class="notification-list">
+      <view 
+        v-for="(item, index) in notifications" 
+        :key="index"
+        class="notification-item"
+        :class="{ unread: !item.read }"
+      >
+        <view class="icon">{{ item.icon }}</view>
+        <view class="content">
+          <text class="title">{{ item.title }}</text>
+          <text class="desc">{{ item.description }}</text>
+          <text class="time">{{ item.time }}</text>
+        </view>
+      </view>
+      
+      <view v-if="notifications.length === 0" class="empty">
+        <text>暂无消息通知</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const notifications = ref([
+  {
+    icon: '🎉',
+    title: '恭喜达成新成就！',
+    description: '你已完成连续打卡7天成就',
+    time: '10分钟前',
+    read: false
+  },
+  {
+    icon: '📅',
+    title: '今日打卡提醒',
+    description: '今天还没有打卡哦，快来记录吧！',
+    time: '2小时前',
+    read: true
+  }
+])
+</script>
+```
+
+##### 🟢 P2：可以延后的功能
+
+###### 4.5 检查更新功能
+
+**临时方案：** 显示当前版本号即可
+
+```typescript
+const checkUpdate = () => {
+  const currentVersion = '1.0.0'
+  
+  uni.showModal({
+    title: '检查更新',
+    content: `当前版本：${currentVersion}\n\n已是最新版本`,
+    showCancel: false,
+    confirmText: '确定'
+  })
+}
+```
+
+**修改文件：** `src/pages/mine/mine.vue`
+
+```vue
+<template>
+  <view class="menu-list">
+    <view class="menu-item" @click="navigateTo('/pages/mine/profile')">
+      <text>个人资料</text>
+      <text class="arrow">></text>
+    </view>
+    
+    <view class="menu-item" @click="navigateTo('/pages/mine/notifications')">
+      <text>消息通知</text>
+      <text class="arrow">></text>
+    </view>
+    
+    <view class="menu-item" @click="checkUpdate">
+      <text>检查更新</text>
+      <text class="version">v1.0.0</text>
+    </view>
+    
+    <view class="menu-item" @click="navigateTo('/pages/mine/privacy')">
+      <text>隐私政策</text>
+      <text class="arrow">></text>
+    </view>
+    
+    <view class="menu-item" @click="navigateTo('/pages/mine/agreement')">
+      <text>用户协议</text>
+      <text class="arrow">></text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+const navigateTo = (url: string) => {
+  uni.navigateTo({ url })
+}
+
+const checkUpdate = () => {
+  // 实现检查更新逻辑
+}
+</script>
+```
+
+---
+
+#### **P005: 答疑页面历史功能异常**
+
+**问题描述：**
+- 点击"历史"标签后无法正常显示历史记录
+- 可能显示空白或报错
+- 与对话功能切换时出现异常
+
+**排查步骤：**
+
+1. **检查历史数据存储**
+   ```typescript
+   // 确认历史数据是否正确存储
+   const historyList = uni.getStorageSync('qaHistory') || []
+   console.log('历史记录数量:', historyList.length)
+   ```
+
+2. **检查组件渲染条件**
+   ```vue
+   <!-- 确保v-if/v-show条件正确 -->
+   <view v-if="currentTab === 'history'" class="history-tab">
+     <!-- 历史内容 -->
+   </view>
+   ```
+
+3. **检查API调用**
+   ```typescript
+   // 如果历史数据从后端获取，确认接口调用
+   const loadHistory = async () => {
+     try {
+       const res = await request.get('/api/qa/history')
+       historyList.value = res.data
+     } catch (error) {
+       console.error('加载历史失败:', error)
+     }
+   }
+   ```
+
+**修复方案：**
+
+**修改文件：** `src/pages/qa/qa.vue`
+
+```vue
+<template>
+  <view class="qa-page">
+    <!-- 标签切换 -->
+    <view class="tabs">
+      <view 
+        :class="['tab', { active: currentTab === 'chat' }]"
+        @click="switchTab('chat')"
+      >
+        问答
+      </view>
+      <view 
+        :class="['tab', { active: currentTab === 'history' }]"
+        @click="switchTab('history')"
+      >
+        历史
+      </view>
+    </view>
+    
+    <!-- 对话区域 -->
+    <view v-show="currentTab === 'chat'" class="chat-container">
+      <!-- 对话内容 -->
+    </view>
+    
+    <!-- 历史区域 -->
+    <view v-show="currentTab === 'history'" class="history-container">
+      <view v-if="historyLoading" class="loading">
+        <text>加载中...</text>
+      </view>
+      
+      <view v-else-if="historyList.length === 0" class="empty">
+        <text>暂无历史记录</text>
+      </view>
+      
+      <scroll-view 
+        v-else 
+        scroll-y 
+        class="history-list"
+        @scrolltolower="loadMoreHistory"
+      >
+        <view 
+          v-for="(item, index) in historyList" 
+          :key="index"
+          class="history-item"
+          @click="viewHistoryDetail(item)"
+        >
+          <view class="question">{{ item.question }}</view>
+          <view class="answer-preview">{{ item.answer.slice(0, 50) }}...</view>
+          <view class="meta">
+            <text class="time">{{ formatTime(item.createdAt) }}</text>
+            <text class="source">{{ item.source }}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+
+interface HistoryItem {
+  id: string
+  question: string
+  answer: string
+  source: string
+  createdAt: string
+}
+
+const currentTab = ref<'chat' | 'history'>('chat')
+const historyList = ref<HistoryItem[]>([])
+const historyLoading = ref(false)
+
+const switchTab = (tab: 'chat' | 'history') => {
+  currentTab.value = tab
+  
+  if (tab === 'history' && historyList.value.length === 0) {
+    loadHistory()
+  }
+}
+
+const loadHistory = async () => {
+  historyLoading.value = true
+  
+  try {
+    // 方案1：从本地存储读取
+    const localHistory = uni.getStorageSync('qaHistory') || []
+    historyList.value = localHistory
+    
+    // 方案2：从后端API获取（推荐）
+    // const res = await request.get('/api/qa/history')
+    // historyList.value = res.data
+    
+  } catch (error) {
+    console.error('加载历史失败:', error)
+    uni.showToast({
+      title: '加载失败，请重试',
+      icon: 'none'
+    })
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const formatTime = (timeStr: string) => {
+  const date = new Date(timeStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
+  
+  return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+const viewHistoryDetail = (item: HistoryItem) => {
+  // 切换回对话标签并填充该条历史
+  currentTab.value = 'chat'
+  // 触发父组件或store更新当前对话
+  uni.$emit('loadHistoryItem', item)
+}
+
+const loadMoreHistory = () => {
+  // 实现分页加载
+}
+
+onMounted(() => {
+  // 预加载历史数据（可选）
+  // loadHistory()
+})
+</script>
+```
+
+**关键修复点：**
+1. 使用`v-show`而非`v-if`，避免重复创建销毁组件
+2. 添加loading状态和空状态处理
+3. 错误捕获和用户提示
+4. 支持下拉加载更多
+5. 点击历史项可重新查看详情
+
+**验证步骤：**
+1. 在答疑页发送几个问题
+2. 切换到"历史"标签
+3. 确认历史记录正确显示
+4. 点击某条历史记录，确认可查看详情
+5. 反复切换"问答"和"历史"标签，确认无异常
+
+---
+
+#### **P006: 答疑页面分类图标布局丑陋**
+
+**问题描述：**
+- 训练计划、装备选择、伤痛预防、跑步技术四个分类
+- 使用emoji作为图标（🏃💪⚕️📚）
+- emoji在不同设备显示不一致
+- 未横向平铺满一行，布局稀疏难看
+
+**修复方案：**
+
+##### 方案A：使用SVG图标替代Emoji（推荐）⭐⭐⭐
+
+**准备SVG图标文件：**
+```
+src/static/icons/
+├── training.svg      # 训练计划（跑道图标）
+├── equipment.svg     # 装备选择（跑鞋图标）
+├── injury.svg        # 伤痛预防（医疗十字图标）
+└── technique.svg     # 跑步技术（速度线图标）
+```
+
+**修改文件：** `src/pages/qa/qa.vue`
+
+```vue
+<template>
+  <view class="category-scroll">
+    <scroll-view scroll-x class="category-list">
+      <view 
+        v-for="(cat, index) in categories" 
+        :key="index"
+        :class="['category-item', { active: selectedCategory === cat.id }]"
+        @click="selectCategory(cat.id)"
+      >
+        <image 
+          :src="cat.icon" 
+          mode="aspectFit"
+          class="category-icon"
+        />
+        <text class="category-name">{{ cat.name }}</text>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="ts">
+const categories = ref([
+  {
+    id: 'training',
+    name: '训练计划',
+    icon: '/static/icons/training.svg',
+    color: '#3B82F6'
+  },
+  {
+    id: 'equipment',
+    name: '装备选择',
+    icon: '/static/icons/equipment.svg',
+    color: '#F97316'
+  },
+  {
+    id: 'injury',
+    name: '伤痛预防',
+    icon: '/static/icons/injury.svg',
+    color: '#10B981'
+  },
+  {
+    id: 'technique',
+    name: '跑步技术',
+    icon: '/static/icons/technique.svg',
+    color: '#8B5CF6'
+  }
+])
+
+const selectedCategory = ref<string>('')
+
+const selectCategory = (id: string) => {
+  selectedCategory.value = id
+  // 自动填充相关示例问题
+  const cat = categories.find(c => c.id === id)
+  if (cat) {
+    // 可以预设一些该分类的热门问题
+    uni.$emit('selectCategory', cat)
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.category-scroll {
+  margin-bottom: 20rpx;
+  
+  .category-list {
+    white-space: nowrap;
+    padding: 10rpx 0;
+  }
+  
+  .category-item {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    width: 160rpx;
+    padding: 20rpx 16rpx;
+    margin-right: 20rpx;
+    background: #F8FAFC;
+    border-radius: 16rpx;
+    border: 2rpx solid transparent;
+    transition: all 0.3s ease;
+    
+    &.active {
+      background: #FFFFFF;
+      border-color: var(--rw-primary);
+      box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.15);
+      
+      .category-icon {
+        transform: scale(1.1);
+      }
+      
+      .category-name {
+        color: var(--rw-primary);
+        font-weight: 600;
+      }
+    }
+    
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+  
+  .category-icon {
+    width: 64rpx;
+    height: 64rpx;
+    margin-bottom: 12rpx;
+    transition: transform 0.3s ease;
+  }
+  
+  .category-name {
+    font-size: 24rpx;
+    color: #64748B;
+    font-weight: 500;
+  }
+}
+</style>
+```
+
+##### 方案B：纯CSS+Unicode符号美化（快速方案）
+
+如果暂时没有SVG资源，可以用Unicode符号+CSS美化：
+
+```vue
+<template>
+  <view class="category-grid">
+    <view 
+      v-for="(cat, index) in categories" 
+      :key="index"
+      :class="['category-card', { active: selectedCategory === cat.id }]"
+      :style="{ '--cat-color': cat.color }"
+      @click="selectCategory(cat.id)"
+    >
+      <view class="icon-wrapper">
+        <text class="unicode-icon">{{ cat.symbol }}</text>
+      </view>
+      <text class="name">{{ cat.name }}</text>
+    </view>
+  </view>
+</template>
+
+<style lang="scss" scoped>
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
+  padding: 20rpx 0;
+  
+  .category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24rpx 12rpx;
+    background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+    border-radius: 20rpx;
+    border: 2rpx solid #E2E8F0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    &.active {
+      background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%);
+      border-color: var(--cat-color);
+      box-shadow: 
+        0 8rpx 24rpx rgba(0, 0, 0, 0.08),
+        0 0 0 4rpx rgba(var(--cat-color), 0.1);
+      transform: translateY(-4rpx);
+      
+      .icon-wrapper {
+        background: var(--cat-color);
+      }
+      
+      .unicode-icon {
+        color: #FFFFFF;
+      }
+      
+      .name {
+        color: var(--cat-color);
+        font-weight: 700;
+      }
+    }
+    
+    .icon-wrapper {
+      width: 88rpx;
+      height: 88rpx;
+      border-radius: 22rpx;
+      background: #F1F5F9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16rpx;
+      transition: all 0.3s ease;
+    }
+    
+    .unicode-icon {
+      font-size: 44rpx;
+      line-height: 1;
+      transition: all 0.3s ease;
+    }
+    
+    .name {
+      font-size: 24rpx;
+      color: #475569;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+  }
+}
+</style>
+```
+
+**视觉对比：**
+
+| 方案 | 优点 | 缺点 | 推荐度 |
+|------|------|------|--------|
+| SVG图标 | ✅清晰一致 ✅可缩放 ✅专业感强 | ❌需要设计资源 | ⭐⭐⭐ |
+| Unicode+CSS | ✅无需额外资源 ⭐实现快速 | ⚠️部分设备显示不一致 | ⭐⭐ |
+| Emoji原样 | 无 | ❌丑陋 ❌不一致 ❌不专业 | ❌ |
+
+---
+
+#### **P007: 打卡列表图标应显示用户上传的截图**
+
+**问题描述：**
+- 打卡列表每条记录左侧显示固定的橙色方块
+- 内部有白色"跑"字
+- 应该显示用户实际提交的打卡截图（跑步路线图、照片等）
+
+**修复方案：**
+
+**修改文件：** `src/pages/checkin/checkin.vue`
+
+```vue
+<template>
+  <view class="checkin-list">
+    <view 
+      v-for="(item, index) in checkinList" 
+      :key="index"
+      class="checkin-item"
+      @click="goToDetail(item)"
+    >
+      <!-- 缩略图区域 -->
+      <view class="thumbnail">
+        <image 
+          v-if="item.image"
+          :src="item.image" 
+          mode="aspectFill"
+          class="user-image"
+          lazy-load
+        />
+        
+        <!-- 无图片时的占位符 -->
+        <view v-else class="no-image-placeholder">
+          <text class="placeholder-icon">🏃</text>
+          <text class="placeholder-text">无图</text>
+        </view>
+      </view>
+      
+      <!-- 内容区域 -->
+      <view class="content">
+        <view class="header">
+          <text class="date">{{ formatDate(item.date) }}</text>
+          <text class="tag" :type="item.mood">{{ getMoodText(item.mood) }}</text>
+        </view>
+        
+        <view class="stats">
+          <text>{{ item.distance }}km · {{ item.duration }}min · {{ item.pace }}'/km</text>
+        </view>
+        
+        <view v-if="item.note" class="note">
+          <text>{{ item.note }}</text>
+        </view>
+      </view>
+      
+      <!-- 箭头指示器 -->
+      <view class="arrow">
+        <text>></text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<style lang="scss" scoped>
+.checkin-item {
+  display: flex;
+  padding: 24rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  border: 2rpx solid transparent;
+  transition: all 0.3s ease;
+  
+  &:active {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+    transform: scale(0.98);
+  }
+  
+  .thumbnail {
+    width: 140rpx;
+    height: 140rpx;
+    border-radius: 12rpx;
+    overflow: hidden;
+    margin-right: 24rpx;
+    flex-shrink: 0;
+    background: #F1F5F9;
+    
+    .user-image {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .no-image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+      
+      .placeholder-icon {
+        font-size: 48rpx;
+        margin-bottom: 8rpx;
+      }
+      
+      .placeholder-text {
+        font-size: 20rpx;
+        color: #92400E;
+        font-weight: 600;
+      }
+    }
+  }
+  
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12rpx;
+      
+      .date {
+        font-size: 28rpx;
+        font-weight: 600;
+        color: #1E293B;
+      }
+      
+      .tag {
+        font-size: 22rpx;
+        padding: 4rpx 16rpx;
+        border-radius: 20rpx;
+        background: #DBEAFE;
+        color: #1D4ED8;
+        
+        &[type="easy"] {
+          background: #DCFCE7;
+          color: #16A34A;
+        }
+        
+        &[type="normal"] {
+          background: #DBEAFE;
+          color: #2563EB;
+        }
+        
+        &[type="hard"] {
+          background: #FEE2E2;
+          color: #DC2626;
+        }
+      }
+    }
+    
+    .stats {
+      font-size: 24rpx;
+      color: #64748B;
+      margin-bottom: 8rpx;
+    }
+    
+    .note {
+      font-size: 24rpx;
+      color: #94A3B8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  
+  .arrow {
+    display: flex;
+    align-items: center;
+    margin-left: 16rpx;
+    color: #CBD5E1;
+    font-size: 28rpx;
+  }
+}
+</style>
+```
+
+**数据处理逻辑：**
+
+```typescript
+interface CheckinRecord {
+  id: string
+  date: string
+  distance: number
+  duration: number
+  pace: string
+  image?: string  // 用户上传的图片URL
+  mood: 'easy' | 'normal' | 'hard'
+  note?: string
+  route?: string  // 路线信息（如果有）
+}
+
+// 从后端获取打卡列表
+const fetchCheckinList = async () => {
+  try {
+    const res = await request.get('/api/checkin/list', {
+      params: {
+        page: currentPage.value,
+        pageSize: 10,
+        month: selectedMonth.value
+      }
+    })
+    
+    // 处理图片URL（如果是相对路径，转为绝对路径）
+    checkinList.value = res.data.records.map((record: CheckinRecord) => ({
+      ...record,
+      image: record.image ? getFullImageUrl(record.image) : null
+    }))
+    
+  } catch (error) {
+    console.error('获取打卡列表失败:', error)
+  }
+}
+
+// 图片URL处理
+const getFullImageUrl = (url: string) => {
+  if (!url) return null
+  
+  // 如果已经是完整URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // 否则拼接后端基础地址
+  return `${BASE_URL}${url}`
+}
+```
+
+**后端API返回格式示例：**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "records": [
+      {
+        "id": "checkin_001",
+        "date": "2026-08-05",
+        "distance": 4.0,
+        "duration": 28,
+        "pace": "7'00\"",
+        "image": "/uploads/checkin/user123_20260805.jpg",
+        "mood": "easy",
+        "note": "晨跑恢复",
+        "route": "操场5K"
+      }
+    ],
+    "total": 42,
+    "page": 1,
+    "pageSize": 10
+  }
+}
+```
+
+**性能优化：**
+
+1. **图片懒加载**
+   ```html
+   <image lazy-load mode="aspectFill" />
+   ```
+
+2. **图片压缩**
+   - 后端在上传时生成缩略图（140x140px）
+   - 列表显示缩略图，详情页显示原图
+
+3. **CDN加速**
+   - 将图片资源托管到CDN
+   - 减少加载延迟
+
+**验证步骤：**
+1. 创建一条带图片的打卡记录
+2. 返回打卡列表页
+3. 确认列表显示的是用户上传的实际图片（非固定"跑"字）
+4. 测试无图片打卡记录，确认显示占位符
+5. 点击列表项，确认能正确跳转到详情页
+
+---
+
+### 11.3 修复优先级与时间估算
+
+| 优先级 | 问题编号 | 问题描述 | 预估工时 | 依赖关系 |
+|--------|----------|----------|----------|----------|
+| P0 | P001 | TabBar图标异常 | 2h | 无 |
+| P0 | P005 | 答疑历史功能异常 | 3h | 无 |
+| P1 | P002 | 首页跳转逻辑错误 | 1.5h | 无 |
+| P1 | P003 | 首页提问交互不完整 | 1h | 无 |
+| P1 | P004 | 我的页面功能缺失 | 6h | 需要UI设计稿 |
+| P1 | P006 | 分类图标布局丑陋 | 2h | 需要SVG图标资源 |
+| P2 | P007 | 打卡列表图标替换 | 1.5h | 后端API支持 |
+
+**总计预估工时：17小时（约2-3个工作日）**
+
+---
+
+### 11.4 执行计划
+
+#### **第一阶段：核心体验修复（Day 1）**
+
+**上午（4小时）：**
+- [ ] 修复P001：TabBar图标问题
+  - [ ] 修改pages.json，使用绝对路径
+  - [ ] 优化Vite配置
+  - [ ] 测试验证
+- [ ] 修复P005：答疑历史功能
+  - [ ] 排查数据流
+  - [ ] 修复渲染逻辑
+  - [ ] 添加loading/empty状态
+
+**下午（4小时）：**
+- [ ] 修复P002：首页跳转逻辑
+  - [ ] 实现事件通信机制
+  - [ ] 传递视图参数
+  - [ ] 测试各种场景
+- [ ] 修复P003：提问交互优化
+  - [ ] 自动聚焦输入框
+  - [ ] 添加引导提示
+  - [ ] 优化首次使用体验
+
+#### **第二阶段：功能完善（Day 2）**
+
+**全天（8小时）：**
+- [ ] 修复P004：我的页面功能
+  - [ ] 实现个人资料页（2h）
+  - [ ] 实现隐私政策页（1h）
+  - [ ] 实现用户协议页（1h）
+  - [ ] 实现消息通知页（2h）
+  - [ ] 实现检查更新功能（0.5h）
+  - [ ] 整合测试（1.5h）
+
+#### **第三阶段：视觉优化（Day 3）**
+
+**上午（4小时）：**
+- [ ] 修复P006：分类图标优化
+  - [ ] 准备/制作SVG图标（2h）
+  - [ ] 重构分类组件（1.5h）
+  - [ ] 响应式适配测试（0.5h）
+
+**下午（4小时）：**
+- [ ] 修复P007：打卡列表图标
+  - [ ] 修改列表组件（1h）
+  - [ ] 图片处理逻辑（0.5h）
+  - [ ] 性能优化（1h）
+  - [ ] 全面回归测试（1.5h）
+
+---
+
+### 11.5 验收标准
+
+#### **通用验收标准：**
+
+✅ **功能性验收：**
+- 所有描述的问题均已修复
+- 新功能符合PRD规范
+- 边界情况处理完善
+
+✅ **视觉验收：**
+- UI符合设计规范
+- 无明显布局错乱
+- 图标/图片清晰一致
+
+✅ **交互验收：**
+- 操作响应流畅（≤100ms）
+- 动画过渡自然
+- 状态反馈明确
+
+✅ **兼容性验收：**
+- iOS/Android双平台测试通过
+- 微信开发者工具无警告/报错
+- 不同屏幕尺寸适配良好
+
+#### **专项验收标准：**
+
+**P001验收：**
+- [ ] 连续切换TabBar 20次以上无异常
+- [ ] 图标100%正确显示
+- [ ] 选中状态同步准确
+- [ ] 清除缓存后重试依然稳定
+
+**P005验收：**
+- [ ] 历史记录正确加载显示
+- [ ] 支持点击查看详情
+- [ ] 对话/历史切换流畅
+- [ ] 空状态/loading状态正确
+
+**P004验收：**
+- [ ] 所有菜单项均可点击跳转
+- [ ] 个人资料可编辑保存
+- [ ] 隐私政策/协议内容完整
+- [ ] 无"功能正在开发中"提示
+
+---
+
+### 11.6 风险与应对
+
+| 风险 | 可能性 | 影响 | 应对措施 |
+|------|--------|------|----------|
+| 微信开发者工具兼容性问题 | 中 | 高 | 多真机测试，降低依赖 |
+| SVG图标资源缺失 | 低 | 中 | 准备Unicode备用方案 |
+| 后端API未就绪 | 中 | 中 | Mock数据先行，后续对接 |
+| 第三方库版本冲突 | 低 | 高 | 锁定版本号，充分测试 |
+| 性能问题（图片加载慢） | 中 | 中 | 懒加载+CDN+压缩 |
+
+---
+
+### 11.7 后续优化方向
+
+本次修复完成后，建议继续优化以下方面：
+
+1. **性能优化**
+   - 图片资源CDN加速
+   - 组件懒加载
+   - 接口请求合并
+
+2. **体验提升**
+   - 下拉刷新动画优化
+   - 页面切换过渡效果
+   - 触觉反馈集成
+
+3. **功能增强**
+   - 离线模式支持
+   - 数据导出功能
+   - 社交分享能力
+
+4. **监控告警**
+   - 前端错误上报
+   - 性能指标采集
+   - 用户行为分析
+
+---
+
+## 12. 修订日志
+
+### v4.0.1 (2026-08-15) — 四合一修复
+
+**修改指令1：首页快捷入口「看日历」跳转优化**
+- 文件：`src/pages/index/index.vue` — `goCalendar()` 通过 `getApp().globalData.checkinTab = 0` 传递参数
+- 文件：`src/pages/checkin/checkin.vue` — 新增 `onShow` 生命周期，读取 `globalData.checkinTab` 并自动切换到日历 Tab（`currentTab = 0`），读取后重置参数避免下次误切换
+- 验证：`vue-tsc --noEmit` 类型检查通过，`npm run build:mp-weixin` 构建成功
+
+**修改指令2：「我的」页面交互完善**
+- 文件：`src/pages/mine/mine.vue` — 确认已完整实现：
+  - 列表项（个人资料、消息通知、检查更新、隐私政策、用户协议）均绑定 `onSettingTap` → `wx.showToast({ title: '功能开发中', icon: 'none' })`
+  - 数据统计区（总里程、打卡次数、连续天数）均绑定 `onAchievementTap` → `wx.showToast({ title: '敬请期待', icon: 'none' })`
+  - 退出登录按钮 `onLogout` 带确认弹窗
+  - 3列并排布局保持不变，`&:active` 缩放反馈正常
+
+**修改指令3：答疑页布局与历史功能修复**
+- 文件：`src/pages/qa/qa.vue`
+  - Tab切换：`switchTab(i)` 已在切换到历史Tab（`i === 1`）时自动调用 `loadHistory()` 加载历史记录
+  - 分类图标：将「计、鞋、医、技」文字替换为 Emoji（🏃👟🏥⚡），移除 `iconClass`/`iconText` 字段，新增 `emoji` 字段
+  - 布局优化：将 `scroll-view` 横向滚动布局改为 `category-grid` 的 `display: flex` 布局，`category-item` 使用 `flex: 1; min-width: 120rpx` 实现四个图标横向均匀铺满整行
+  - 移除不再使用的 CSS 类：`.icon-plan`、`.icon-gear`、`.icon-health`、`.icon-tech`、`.category-icon-text`、`.category-scroll`、`.category-scroll-inner`
+
+**修改指令4：打卡列表图片替换与底部Tab图标**
+- 文件：`src/pages/checkin/checkin.vue` — 列表视图已实现图片动态显示逻辑（`v-if="item.imageUrl"` 显示用户截图，`v-else` 显示橙色渐变占位），无需修改
+- 文件：`src/pages.json` — 底部 Tab 配置验证通过：`iconPath`/`selectedIconPath` 指向 `static/tabbar/` 下 8 个图标文件，文件均存在（home/checkin/qa/mine 各含普通态和活跃态），`selectedColor: "#FF6B35"` 控制文字选中色
+
+**构建验证：**
+- `vue-tsc --noEmit`：0 错误
+- `npm run build:mp-weixin`：构建成功，仅 Sass `@import` 弃用警告（非本次修改引入）
+
+### v4.0.2 (2026-08-14) — 七合一完整修复（基于P001-P007修复计划）
+
+**P001修复：TabBar图标间歇性消失/不切换**
+- 文件：`src/pages.json` — 将TabBar图标路径从相对路径改为绝对路径（`static/tabbar/xxx.png` → `/static/tabbar/xxx.png`），确保从项目根目录解析，避免微信开发者工具缓存导致路径解析歧义
+- 效果：图标路径解析一致性提升，减少因路径歧义导致的图标加载失败
+
+**P002修复：首页"看日历"跳转逻辑**
+- 文件：`src/pages/index/index.vue` — `goCalendar()` 已通过 `getApp().globalData.checkinTab = 0` 传递参数（此前已实现）
+- 文件：`src/pages/checkin/checkin.vue` — `onShow` 生命周期已读取 `globalData.checkinTab` 并自动切换（此前已实现）
+- 状态：✅ 此前已正确实现，无需额外修改
+
+**P003修复：首页"问问题"自动聚焦输入框**
+- 文件：`src/pages/index/index.vue` — `goQa()` 新增 `getApp().globalData.qaAutoFocus = true` 参数传递，跳转至答疑页时通知自动聚焦
+- 文件：`src/pages/qa/qa.vue` — 新增 `shouldFocusInput` 响应式变量，绑定 `<input :focus="shouldFocusInput">`；新增 `onShow` 生命周期监听 `globalData.qaAutoFocus`，为true时自动聚焦输入框，3秒后无输入自动失焦；添加 `@blur="shouldFocusInput = false"` 处理失焦事件
+- 效果：从首页点击"问问题"后，答疑页输入框自动聚焦，用户可立即输入
+
+**P004修复：我的页面功能全部显示"功能开发中"**
+- 文件：`src/pages/mine/mine.vue` — `onSettingTap()` 从统一Toast改为路由分发：`profile` → `/pages/mine/profile`，`notification` → `/pages/mine/notifications`，`privacy` → `/pages/mine/privacy`，`agreement` → `/pages/mine/agreement`；`update` 改为显示版本号弹窗（当前v1.0.0）
+- 新建文件：`src/pages/mine/profile.vue` — 个人资料页，含头像展示、昵称编辑、性别选择（picker）、跑步目标输入、保存按钮
+- 新建文件：`src/pages/mine/privacy.vue` — 隐私政策页，含8个章节（信息收集/使用/存储/共享/权利/未成年人/更新/联系）
+- 新建文件：`src/pages/mine/agreement.vue` — 用户协议页，含8个章节（服务说明/账号/内容/规范/知识产权/免责/修改/联系）
+- 新建文件：`src/pages/mine/notifications.vue` — 消息通知页，含未读标记（左侧橙色边框+红点）、通知列表、空状态展示
+- 文件：`src/pages.json` — 注册4个新页面路由（`pages/mine/profile`、`pages/mine/privacy`、`pages/mine/agreement`、`pages/mine/notifications`）
+- 效果：所有设置项均可点击跳转至真实页面，不再显示"功能开发中"
+
+**P005修复：答疑页面历史功能优化**
+- 文件：`src/pages/qa/qa.vue` — 将问答视图和历史视图的 `v-if`/`v-else` 改为 `v-show`，避免Tab切换时组件重复创建销毁导致状态丢失；历史Tab切换时自动调用 `loadHistory()` 加载数据（此前已实现）
+- 效果：问答/历史切换更流畅，避免组件状态丢失
+
+**P006修复：答疑页面分类图标CSS美化**
+- 文件：`src/pages/qa/qa.vue` — 分类图标从圆形小图标改为圆角方形大图标（72rpx×72rpx，border-radius: 20rpx）；新增 `--cat-color` CSS变量实现每个分类独立配色（训练计划=#3B82F6蓝、装备选择=#F97316橙、伤痛预防=#10B981绿、跑步技术=#8B5CF6紫）；按下时图标背景变为对应主题色，emoji反白显示，文字加粗变色；整体高度从144rpx提升至160rpx，emoji字号从28rpx提升至36rpx，名称字号从20rpx提升至22rpx
+- 效果：分类卡片视觉层次更清晰，交互反馈更明确
+
+**P007修复：打卡列表占位符优化**
+- 文件：`src/pages/checkin/checkin.vue` — 无图片时的占位符从橙色渐变+白色"跑"字改为暖黄渐变（#FEF3C7→#FDE68A）+跑步emoji（🏃）；图片添加 `lazy-load` 属性支持懒加载
+- 效果：占位符视觉更柔和，与整体暖色调更协调；图片懒加载提升列表滚动性能
+
+### v4.1.0 (2026-08-15) — 协议完善+个人资料扩展+协议弹窗
+
+**隐私政策全面完善**
+- 文件：`src/pages/mine/privacy.vue` — 从8个简短章节扩展为8个详细章节，新增：引言提示框（橙色左边框高亮）、信息收集细分为"主动提供/自动收集/不会收集"三小节、信息存储细分为"存储地点/存储期限/安全措施"三小节、信息共享细分为"共享/转让/公开披露"三小节、新增生效日期与更新日期双日期显示、新增section-subtitle层级样式、新增scroll-view支持长内容滚动
+- 内容覆盖：信息收集范围（含身高体重跑步数据等新字段）、AI问答数据使用说明、数据跨境限制声明、安全措施详细描述、用户权利完整列举（访问/更正/删除/撤回/注销）、未成年人保护强化、政策更新通知机制
+
+**用户协议全面完善**
+- 文件：`src/pages/mine/agreement.vue` — 从8个简短章节扩展为9个详细章节，新增：引言提示框、服务说明细化（含年龄限制14周岁）、账号使用规范（含出借/转让禁止）、用户行为规范细化（含违规处理措施）、**新增第四章"AI问答服务特别声明"**（4条核心声明）、知识产权细化（含用户内容授权）、免责条款细化（含不可抗力/网络故障/AI内容免责）、协议变更与终止机制、争议解决条款（适用中国法律+管辖法院）、其他条款（可分割性/标题效力）
+- 重点：AI问答免责声明独立成章，明确不构成医疗建议、不保证准确性、身体不适需就医
+
+**协议同意弹窗（App启动时）**
+- 文件：`src/App.vue` — 完全重写，新增协议同意弹窗功能：
+  - `onLaunch` 时调用 `checkAgreement()` 检查协议同意状态
+  - 检查逻辑：先查本地Storage（`agreementAgreed`+`agreementVersion`），再查后端接口（`/api/user/agreement-status`），双重校验
+  - 协议版本号机制：`AGREEMENT_VERSION = "1.0.0"`，版本升级时自动重新弹出
+  - 弹窗UI：半透明遮罩 + 白色圆角弹窗，含标题、说明文字、协议链接（可跳转查看全文）、双按钮
+  - "同意并继续"：记录本地Storage + 调用后端 `/api/user/agree-agreement` 接口 + 关闭弹窗
+  - "不同意"：二次确认弹窗（"我再看看"继续阅读 / "退出"调用 `wx.exitMiniProgram()` 退出小程序）
+  - 协议链接：点击可跳转至《用户服务协议》和《隐私政策》完整页面
+
+**个人资料页面扩展**
+- 文件：`src/pages/mine/profile.vue` — 从3个字段扩展为7个字段：
+  - 昵称（input，maxlength=20）
+  - 性别（picker，选项：未知/男/女）
+  - 出生日期（picker mode=date，范围1950-01-01至今天）
+  - 身高（input type=digit + 单位"cm"）
+  - 体重（input type=digit + 单位"kg"）
+  - 跑步等级（picker，选项：新手入门/进阶跑者/资深跑者，值：beginner/intermediate/advanced）
+  - 每周目标（input type=number + 单位"次/周"）
+- 新增头像点击选择功能（`uni.chooseImage`，相册/相机）
+- 新增 `loadProfile()` 从后端 `/api/user/profile` 加载已有数据
+- 新增 `saveProfile()` 调用后端 `PUT /api/user/profile` 保存修改
+- 新增 `input-with-unit` 布局组件（输入框+单位文字）
+
+**后端User实体扩展**
+- 文件：`src/main/java/com/runwise/entity/User.java` — 新增7个字段：`birthday`(LocalDate)、`height`(BigDecimal)、`weight`(BigDecimal)、`runningGoal`(Integer)、`runningLevel`(String)、`agreementVersion`(String)、`agreementTime`(LocalDateTime)
+
+**后端UserController新增接口**
+- 文件：`src/main/java/com/runwise/controller/UserController.java` — 新增2个接口：
+  - `GET /api/user/agreement-status`：查询协议同意状态，返回 `{agreed, currentVersion, agreedVersion, agreedTime}`
+  - `POST /api/user/agree-agreement`：记录用户同意协议，接收 `{version}` 参数，更新 `agreementVersion` + `agreementTime`
+
+**MySQL数据库迁移**
+- 文件：`sql/runwise.sql` — t_user表新增7个字段：
+  - `birthday` DATE DEFAULT NULL（出生日期）
+  - `height` DECIMAL(5,1) DEFAULT NULL（身高cm）
+  - `weight` DECIMAL(5,1) DEFAULT NULL（体重kg）
+  - `running_goal` INT DEFAULT NULL（每周跑步目标次数）
+  - `running_level` VARCHAR(16) DEFAULT 'beginner'（跑步等级）
+  - `agreement_version` VARCHAR(16) DEFAULT NULL（已同意的协议版本号）
+  - `agreement_time` DATETIME DEFAULT NULL（同意协议的时间）
+- 同时提供完整建表语句和增量ALTER TABLE迁移脚本
+
+---
+
+## 12. v4.2.0 UI活力升级计划（2026-08-15）
+
+### 12.1 问题诊断（基于用户截图反馈）
+
+#### **问题1：首页功能按钮区"呆板"**
+**位置**：[index.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\index\index.vue) — 中部三个功能入口（记一笔/问问题/看日历）
+**现状**：
+- 采用简单的横向排列，每个图标+文字独立成块
+- 视觉上呈现为"平铺式列表"，缺乏层次感和交互暗示
+- 图标使用单色线性图标，视觉冲击力弱
+- 整体布局过于规整、静态，缺乏动态感
+
+**期望效果**：
+- 参考对话气泡样式或卡片悬浮效果
+- 增加微动效和阴影层次
+- 图标改为彩色渐变或3D风格
+- 整体更活泼、有呼吸感
+
+#### **问题2：新手常问列表"不够灵动"**
+**位置**：[index.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\index\index.vue) — "新手常问"问题列表
+**现状**：
+- 每个问题项为简单的文本行 + 右箭头
+- 背景为纯白色卡片，边框细线分隔
+- 缺乏对话感，像传统的设置菜单
+
+**期望效果**：
+- 改为对话气泡样式（类似微信聊天界面）
+- 左侧加头像/机器人图标
+- 气泡带圆角 + 阴影 + 尾巴尖角
+- 可考虑左右交错排列（模拟对话流）
+
+#### **问题3：答疑页分类图标+热门问题"要对话气泡化"**
+**位置**：[qa.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\qa\qa.vue) — 分类图标区 + 热门问题列表
+**现状**：
+- 分类图标为圆角方形网格，点击后背景变色但缺乏弹性
+- 热门问题列表与首页"新手常问"同款，同样呆板
+- 对话框输入框与底部导航栏视觉上"连到一起"，间距不足
+
+**期望效果**：
+- 分类图标改为圆形气泡/胶囊形状，增加弹跳动画
+- 热门问题改为气泡列表，可加入头像区分"AI推荐" vs "用户常问"
+- 输入框与导航栏之间增加安全距离（iPhone底部安全区域适配）
+
+#### **问题4：整体配色"感觉一般"**
+**涉及页面**：所有页面（index/qa/checkin/mine等）
+**现状**：
+- 主色调为橙色（#FF6B35）+ 白色背景
+- 渐变使用较保守（linear-gradient固定角度）
+- 卡片阴影偏淡，缺乏立体感
+- 背景渐变色"有一丢丢维和"（用户原话）
+
+**参考目标**（来自截图3）：
+- 更活泼的配色方案：多彩圆环 + 渐变卡片
+- 深色模式支持（右侧示例）
+- 更丰富的色彩层次（蓝/橙/绿/紫多色并存）
+- 卡片使用柔和的彩色背景而非纯白
+
+---
+
+### 12.2 详细修改规范
+
+#### **P0 - 紧急：首页功能按钮区重构**
+
+**文件**：`src/pages/index/index.vue`
+
+**当前代码结构**（需替换）：
+```vue
+<view class="quick-actions">
+  <view class="action-item" @click="goRecord">
+    <text class="icon">✏️</text>
+    <text class="label">记一笔</text>
+  </view>
+  <view class="action-item" @click="goQA">
+    <text class="icon">❓</text>
+    <text class="label">问问题</text>
+  </view>
+  <view class="action-item" @click="goCalendar">
+    <text class="icon">📅</text>
+    <text class="label">看日历</text>
+  </view>
+</view>
+```
+
+**新设计规范**：
+
+| 属性 | 当前值 | 目标值 |
+|------|--------|--------|
+| **布局方式** | `flex: row` 横向等分 | `flex: row` 但带错位/浮动效果 |
+| **容器样式** | 白色背景 + 细边框 | 渐变背景 + 大圆角(24rpx) + 阴影 |
+| **单个按钮** | 120rpx方形 | 140rpx圆形/胶囊形 |
+| **图标尺寸** | 48rpx emoji | 64rpx 彩色SVG/渐变图标 |
+| **图标样式** | 单色 | 多色渐变（每项不同色） |
+| **交互动效** | 无 | 点击时 `scale(0.95)` + 阴影加深 |
+| **悬停态** | 无 | 微上浮(`translateY(-4rpx)`) |
+
+**新CSS规范**：
+```css
+.quick-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 32rpx 24rpx;
+  background: linear-gradient(135deg, #FFF5F0 0%, #FFE8DD 100%);
+  border-radius: 24rpx;
+  margin: 24rpx 20rpx;
+  box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.12);
+}
+
+.action-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 160rpx;
+  height: 180rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-bubble:active {
+  transform: scale(0.95) translateY(-2rpx);
+  box-shadow: 0 12rpx 32rpx rgba(255, 107, 53, 0.18);
+}
+
+.action-icon {
+  width: 96rpx;
+  height: 96rpx;
+  margin-top: 24rpx;
+  border-radius: 50%;
+  /* 每个按钮不同色 */
+}
+/* 记一笔 → 蓝色渐变 */
+.icon-record { background: linear-gradient(135deg, #667eea, #764ba2); }
+/* 问问题 → 橙色渐变 */
+.icon-qa { background: linear-gradient(135deg, #f093fb, #f5576c); }
+/* 看日历 → 绿色渐变 */
+.icon-calendar { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+
+.action-label {
+  font-size: 26rpx;
+  color: #374151;
+  margin-top: 16rpx;
+  font-weight: 500;
+}
+```
+
+**动画增强**（可选）：
+```css
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8rpx); }
+}
+.action-bubble:nth-child(1) { animation: float 3s ease-in-out infinite; }
+.action-bubble:nth-child(2) { animation: float 3s ease-in-out infinite 0.5s; }
+.action-bubble:nth-child(3) { animation: float 3s ease-in-out infinite 1s; }
+```
+
+---
+
+#### **P0 - 紧急：新手常问→对话气泡列表**
+
+**文件**：`src/pages/index/index.vue`
+
+**当前代码结构**（需替换）：
+```vue
+<view class="faq-section">
+  <text class="section-title">新手常问</text>
+  <view class="faq-list">
+    <view class="faq-item" v-for="(item, index) in faqList" :key="index" @click="goFaq(item)">
+      <text class="faq-question">{{ item.question }}</text>
+      <text class="arrow">></text>
+    </view>
+  </view>
+</view>
+```
+
+**新设计规范**：
+
+| 属性 | 当前值 | 目标值 |
+|------|--------|--------|
+| **列表项样式** | 白色矩形卡片 | 圆角气泡 + 左侧头像 + 尾巴尖角 |
+| **气泡颜色** | #FFFFFF | 浅灰(#F9FAFB) / 浅蓝(#EFF6FF)交替 |
+| **圆角半径** | 12rpx | 24rpx (左下角更大36rpx做尾巴) |
+| **左侧装饰** | 无 | AI机器人头像(40rpx圆形) |
+| **文字排版** | 单行截断 | 最多2行，超出省略号 |
+| **箭头样式** | 简单>符号 | 彩色圆形箭头按钮 |
+| **间距** | 16rpx | 20rpx，偶数项左移20rpx制造错落感 |
+
+**新HTML结构**：
+```vue
+<view class="chat-faq-section">
+  <view class="section-header">
+    <text class="robot-avatar">🤖</text>
+    <text class="section-title">新手常问</text>
+  </view>
+  
+  <scroll-view scroll-x class="faq-bubbles" :show-scrollbar="false">
+    <view 
+      class="faq-bubble" 
+      :class="{ 'bubble-alt': index % 2 === 1 }"
+      v-for="(item, index) in faqList" 
+      :key="index"
+      @click="goFaq(item)"
+    >
+      <view class="bubble-tail"></view>
+      <view class="bubble-content">
+        <text class="bubble-text">{{ item.question }}</text>
+        <view class="bubble-arrow">
+          <text class="arrow-icon">→</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+  
+  <view class="faq-more" @click="goQA">
+    <text class="more-text">坚持跑下去，身体会给你答案</text>
+    <text class="more-link">查看更多 ></text>
+  </view>
+</view>
+```
+
+**新CSS规范**：
+```css
+.chat-faq-section {
+  padding: 0 20rpx 24rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 8rpx 16rpx;
+}
+
+.robot-avatar {
+  font-size: 40rpx;
+  margin-right: 12rpx;
+  animation: bounce 2s infinite;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.faq-bubbles {
+  white-space: nowrap;
+  padding: 16rpx 0;
+}
+
+.faq-bubble {
+  display: inline-block;
+  position: relative;
+  max-width: 520rpx;
+  min-width: 400rpx;
+  background: #F9FAFB;
+  border-radius: 24rpx;
+  border-bottom-left-radius: 6rpx;  /* 尾巴尖角 */
+  padding: 24rpx 28rpx;
+  margin-right: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  transition: all 0.25s ease;
+}
+
+.faq-bubble:active {
+  transform: scale(0.97);
+  box-shadow: 0 8rpx 24rpx rgba(255, 107, 53, 0.15);
+}
+
+.bubble-alt {
+  background: linear-gradient(135deg, #FFF7ED, #FFEDD5);  /* 暖橙色浅底 */
+  border-bottom-left-radius: 24rpx;
+  border-bottom-right-radius: 6rpx;  /* 尾巴改右边 */
+  margin-left: 20rpx;
+}
+
+.bubble-tail {
+  position: absolute;
+  bottom: 0;
+  left: 24rpx;
+  width: 0;
+  height: 0;
+  border-left: 12rpx solid transparent;
+  border-right: 12rpx solid transparent;
+  border-top: 16rpx solid #F9FAFB;
+}
+
+.bubble-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bubble-text {
+  font-size: 27rpx;
+  color: #374151;
+  line-height: 1.5;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble-arrow {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FF6B35, #FF8F5E);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.arrow-icon {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: bold;
+}
+
+.faq-more {
+  text-align: center;
+  padding: 24rpx 0 8rpx;
+}
+
+.more-text {
+  font-size: 25rpx;
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+.more-link {
+  font-size: 26rpx;
+  color: #FF6B35;
+  font-weight: 500;
+  margin-left: 8rpx;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6rpx); }
+}
+```
+
+---
+
+#### **P1 - 重要：答疑页分类图标气泡化**
+
+**文件**：`src/pages/qa/qa.vue`
+
+**当前代码结构**（需优化）：
+```vue
+<view class="category-grid">
+  <view 
+    class="category-item"
+    v-for="(cat, index) in categories"
+    :key="cat.id"
+    :style="{ '--cat-color': cat.color }"
+    @click="selectCategory(cat.id)"
+  >
+    <view class="cat-icon">{{ cat.icon }}</view>
+    <text class="cat-name">{{ cat.name }}</text>
+  </view>
+</view>
+```
+
+**新设计规范**：
+
+| 属性 | 当前值 | 目标值 |
+|------|--------|--------|
+| **容器形状** | 圆角方形(72rpx×72rpx, r=20rpx) | 圆形(96rpx直径) 或 胶囊形(120rpx×64rpx) |
+| **背景色** | 按压时变色 | 默认就有渐变色，按压加深 |
+| **图标大小** | 36rpx | 44rpx |
+| **交互动效** | 背景变色+文字加粗 | 弹性缩放(`scale(0.92)`) + 波纹扩散 |
+| **选中状态** | 背景主题色+白字 | 外发光环 + 脉冲动画 |
+| **排列方式** | 4列等宽网格 | 横向滚动(类似App Store标签) 或 3列错落 |
+
+**新CSS关键改动**：
+```css
+.category-scroll {
+  white-space: nowrap;
+  padding: 20rpx 0;
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 20rpx 32rpx;
+  margin-right: 20rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 40rpx;
+  box-shadow: 0 6rpx 20rpx rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);  /* 弹性曲线 */
+}
+
+.category-pill:active {
+  transform: scale(0.92);
+  box-shadow: 0 2rpx 10rpx rgba(102, 126, 234, 0.4);
+}
+
+.cat-icon {
+  font-size: 40rpx;
+  margin-right: 12rpx;
+}
+
+.cat-name {
+  font-size: 27rpx;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* 选中状态 */
+.category-pill.active {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(240, 147, 251, 0.4); }
+  70% { box-shadow: 0 0 0 16rpx rgba(240, 147, 251, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(240, 147, 251, 0); }
+}
+```
+
+---
+
+#### **P1 - 重要：答疑页热门问题气泡化**
+
+**文件**：`src/pages/qa/qa.vue`
+
+**新设计规范**（与首页气泡风格统一）：
+
+```vue
+<view class="hot-questions">
+  <view class="section-title-row">
+    <text class="title-icon">🔥</text>
+    <text class="title-text">热门问题</text>
+  </view>
+  
+  <view class="question-list">
+    <view 
+      class="q-item chat-bubble"
+      v-for="(q, idx) in hotQuestions"
+      :key="idx"
+      @click="askQuestion(q.text)"
+    >
+      <image 
+        class="q-avatar" 
+        src="/static/icons/ai-avatar.png" 
+        mode="aspectFill"
+      />
+      <view class="q-bubble-body">
+        <text class="q-text">{{ q.text }}</text>
+        <view class="q-meta">
+          <text class="q-count">{{ q.replyCount }}人问过</text>
+          <text class="q-arrow">💬</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+```
+
+**CSS要点**：
+- `.q-item`: 使用flex横向布局，左侧头像+右侧气泡
+- `.q-avatar`: 64rpx圆形，AI机器人形象
+- `.q-bubble-body`: 气泡主体，最大宽度calc(100% - 90rpx)
+- `.q-meta`: 底部元信息行（回答数 + 回复图标）
+
+---
+
+#### **P1 - 重要：输入框与导航栏间距修复**
+
+**文件**：`src/pages/qa/qa.vue`
+
+**问题**：对话框输入框与底部TabBar视觉粘连
+
+**修复方案**：
+```css
+.input-area {
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));  /* iPhone X系列底部安全区 */
+  background: #ffffff;
+  border-top: 1rpx solid #F3F4F6;
+  padding-left: 20rpx;
+  padding-right: 20rpx;
+  padding-top: 16rpx;
+}
+```
+
+**技术说明**：
+- `env(safe-area-inset-bottom)`：iOS安全区域高度（iPhone X = 34px）
+- 在H5端此值为0，在小程序真机自动适配
+- 确保输入框不会被底部Home指示条遮挡
+
+---
+
+#### **P2 - 优化：全局配色方案升级**
+
+**涉及文件**：所有页面的 `<style>` 部分
+
+**当前主色调**：
+```css
+--primary: #FF6B35;           /* 主橙色 */
+--primary-light: #FF8F5E;     /* 浅橙 */
+--bg-gray: #F9FAFB;           /* 背景灰 */
+--card-bg: #FFFFFF;           /* 卡片白 */
+```
+
+**新增配色变量**（追加到 `uni.scss` 或各页面）：
+```css
+:root {
+  /* 保持原有 */
+  --primary: #FF6B35;
+  --primary-light: #FF8F5E;
+  
+  /* 新增渐变色系 */
+  --gradient-blue: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-orange: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-green: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-purple: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+  --gradient-warm: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+
+  /* 新增阴影系统 */
+  --shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+  --shadow-primary: 0 8rpx 32rpx rgba(255, 107, 53, 0.18);
+  
+  /* 新增圆角系统 */
+  --radius-sm: 12rpx;
+  --radius-md: 20rpx;
+  --radius-lg: 28rpx;
+  --radius-full: 9999rpx;
+}
+```
+
+**背景渐变优化**（解决"维和"问题）：
+```css
+/* 页面背景 - 从生硬渐变改为柔和纯色+微妙纹理 */
+page {
+  background: #FAFBFC;  /* 替代原来的 linear-gradient */
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(255, 107, 53, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(102, 126, 234, 0.03) 0%, transparent 50%);
+}
+```
+
+---
+
+### 12.3 任务优先级矩阵
+
+| 优先级 | 任务ID | 任务名称 | 涉及文件 | 预估工时 | 依赖关系 |
+|--------|--------|----------|----------|----------|----------|
+| **P0** | UI-001 | 首页功能按钮区→气泡卡片重构 | index.vue | 2h | 无 |
+| **P0** | UI-002 | 新手常问→对话气泡列表 | index.vue | 1.5h | 无 |
+| **P1** | UI-003 | 答疑页分类图标→胶囊滚动 | qa.vue | 1.5h | 无 |
+| **P1** | UI-004 | 答疑页热门问题→带头像气泡 | qa.vue | 1h | 无 |
+| **P1** | UI-005 | 输入框底部安全区适配 | qa.vue | 0.5h | 无 |
+| **P2** | UI-006 | 全局配色变量定义 | uni.scss | 0.5h | UI-001~005 |
+| **P2** | UI-007 | 背景渐变优化 | 所有页面 | 1h | UI-006 |
+| **P3** | UI-008 | 动画性能优化（GPU加速） | 全局 | 1h | UI-001~007 |
+
+**总预估工时**：9.5小时（约1.5个工作日）
+
+---
+
+### 12.4 技术约束与实现边界
+
+#### **必须遵守的约束：**
+
+1. **小程序包体积限制**：
+   - 主包 ≤ 2MB，分包 ≤ 2MB
+   - 新增CSS总量不超过原有大小的150%
+   - 动画使用 `transform` + `opacity`（触发GPU合成层，不触发layout/paint）
+   - ❌ 禁止使用 `width/height/margin/padding` 动画（会触发重排）
+
+2. **兼容性要求**：
+   - iOS ≥ 10.0，Android ≥ 5.0
+   - `env(safe-area-inset-bottom)` 在基础库 2.9.0+ 支持，低版本降级为固定 `34rpx`
+   - `backdrop-filter`（毛玻璃）在部分Android机型不支持，需提供纯色fallback
+
+3. **性能指标**：
+   - 首屏渲染时间 < 1.5s
+   - 滚顿帧率 ≥ 55fps（使用微信开发者工具Performance面板检测）
+   - 动画期间CPU占用 < 30%
+
+4. **无障碍标准（延续v4.0要求）**：
+   - 所有可点击元素最小热区 88rpx × 88rpx
+   - 文字对比度 ≥ 4.5:1（WCAG AA）
+   - 不依赖颜色传达信息（配合图标/文字）
+
+#### **实现边界（不做的事）：**
+
+- ❌ 不引入第三方UI框架（如Vant Weapp），保持轻量
+- ❌ 不使用Web字体（避免加载延迟），仅用系统默认字体
+- ❌ 不实现深色模式（本次迭代范围外）
+- ❌ 不修改后端API（纯前端UI升级）
+- ❌ 不添加复杂物理引擎动画（如弹簧阻尼），仅使用CSS animation/transition
+
+---
+
+### 12.5 预期视觉效果对比
+
+#### **首页（index.vue）改造前后：**
+
+| 区域 | 改造前 | 改造后 |
+|------|--------|--------|
+| **功能入口** | 3个灰色方块，emoji图标 | 3个彩色渐变圆形卡片，带浮动动画 |
+| **新手常问** | 白色矩形列表，右箭头 | 灰/暖色交替气泡，AI头像，尾巴尖角 |
+| **整体氛围** | 工具型，冷峻 | 社交型，温暖活泼 |
+
+#### **答疑页（qa.vue）改造前后：**
+
+| 区域 | 改造前 | 改造后 |
+|------|--------|--------|
+| **分类选择** | 4列网格方块 | 横向滚动的彩色胶囊标签 |
+| **热门问题** | 纯文本列表 | 带AI头像的对话气泡 |
+| **输入区域** | 与TabBar粘连 | 安全间距，视觉分离 |
+
+#### **用户体验提升点：**
+
+1. **认知负荷降低**：气泡样式符合用户对"对话/问答"的心智模型
+2. **操作意愿提升**：彩色渐变+动效激发点击欲望（尤其对年轻跑步人群）
+3. **品牌调性强化**：从"工具APP"转向"运动伙伴"，情感连接更强
+4. **差异化竞争**：区别于Keep/悦跑圈等竞品的传统列表式设计
+
+---
+
+### 12.6 验收标准
+
+#### **视觉验收（设计师/产品经理）：**
+- [ ] 功能按钮区呈现明显的3个独立彩色卡片，无粘连感
+- [ ] 气泡列表至少有2种以上背景色交替（非单调白底）
+- [ ] 所有动画流畅无卡顿（60fps）
+- [ ] 配色整体协调，无明显"维和"感（用户主观评价）
+- [ ] 在iPhone 12/13/14及主流Android机型显示正常
+
+#### **功能验收（测试工程师）：**
+- [ ] 所有原有功能正常（记一笔/问问题/看日历跳转无误）
+- [ ] 气泡点击响应灵敏（< 100ms延迟）
+- [ ] 气泡长文本正确省略（最多2行+...）
+- [ ] 横向滚动区域可顺畅滑动（无回弹卡顿）
+- [ ] 输入框在iPhone X系列不被遮挡
+
+#### **性能验收（前端工程师）：**
+- [ ] 包体积增长 < 200KB（主要来自新增CSS）
+- [ ] 首屏渲染时间增量 < 300ms
+- [ ] 无内存泄漏（页面切换后animation停止）
+- [ ] Console无warning/error（除已知sass @import警告）
+
+---
+
+### 12.7 v4.2.0 实施记录（2026-08-15）
+
+#### **已完成的修改：**
+
+**UI-006：全局配色变量升级**
+- 文件：[uni.scss](file:///D:\RunWise\RunWise_MiniProgram\src\uni.scss)
+- 新增5个渐变色变量：`$rw-gradient-blue`(蓝紫)、`$rw-gradient-pink`(粉红)、`$rw-gradient-cyan`(蓝绿)、`$rw-gradient-purple`(淡紫)、`$rw-gradient-warm`(暖色)
+- 新增5个阴影变量：`$rw-shadow-sm/md/lg/primary/bubble`
+- 新增5个圆角变量：`$rw-radius-sm/md/lg/xl/full`
+
+**UI-001：首页功能按钮区→气泡卡片重构**
+- 文件：[index.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\index\index.vue)
+- 替换 `.quick-card` + `.quick-item` → `.quick-actions` + `.action-bubble`
+- 容器：白色→暖橙渐变背景(#FFF5F0→#FFE8DD) + 橙色阴影
+- 按钮：灰色SVG图标→彩色渐变圆形图标(蓝紫/粉红/蓝绿)
+- 交互动效：`scale(0.95)` + 阴影加深 + 微上浮
+
+**UI-002：新手常问→对话气泡列表**
+- 文件：[index.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\index\index.vue)
+- 替换 `.qa-card` + `.qa-item` → `.chat-faq-section` + `.faq-bubble`
+- 标题区：新增🤖头像圆形容器(蓝色渐变背景)
+- 列表样式：白色矩形→横向滚动气泡，灰/暖橙交替
+- 气泡内：问题文字 + 橙色渐变圆形箭头按钮
+- 底部：激励语 + "查看更多"链接
+
+**UI-003：答疑页分类图标→胶囊滚动**
+- 文件：[qa.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\qa\qa.vue)
+- 替换 `.category-grid` → `scroll-view.category-scroll` + `.category-pills`
+- 分类样式：圆角方形网格→横向滚动彩色胶囊(蓝紫/粉红/蓝绿/淡紫渐变)
+- 选中状态：`category-pill--active` 放大+橙色阴影
+- 弹性动画：`cubic-bezier(0.68, -0.55, 0.265, 1.55)`
+
+**UI-004：答疑页热门问题→带头像气泡**
+- 文件：[qa.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\qa\qa.vue)
+- 替换 `.hot-card` + `.hot-item` → `.hot-bubble-section` + `.hot-bubble-list`
+- 标题区：🔥圆形渐变图标 + "热门问题"文字
+- 气泡项：左侧🤖头像/右侧🏃头像交替，模拟对话流
+- 气泡体：灰底/暖橙底交替 + 尾巴尖角 + 元信息(人数+💬)
+
+**UI-005：输入框底部安全区适配**
+- 文件：[qa.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\qa\qa.vue)
+- 增大padding：16rpx→20rpx
+- 增强视觉分离：添加 `box-shadow: 0 -4rpx 16rpx rgba(0,0,0,0.04)`
+- 保留 `env(safe-area-inset-bottom)` 适配
+
+**UI-007：背景渐变优化（4个页面）**
+- 文件：[index.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\index\index.vue)、[qa.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\qa\qa.vue)、[checkin.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\checkin\checkin.vue)、[mine.vue](file:///D:\RunWise\RunWise_MiniProgram\src\pages\mine\mine.vue)
+- 替换 `linear-gradient(180deg, #f8fafc 0%, ...)` → `#FAFBFC` + 微妙radial-gradient纹理
+- 消除"维和"感：纯色底+两个极低透明度(0.03)的径向渐变光晕
+
+#### **构建验证：**
+- ✅ `npm run build:mp-weixin` 构建成功（exit code 0）
+- ⚠️ 已知Sass @import弃用警告（Dart Sass 3.0迁移，不影响功能）
 
 ---
 

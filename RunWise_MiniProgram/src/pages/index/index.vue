@@ -5,7 +5,7 @@
       <text class="header-title">RunWise</text>
     </view>
 
-    <!-- 今日打卡状态卡片 -->
+    <!-- 今日打卡状态卡片（含本周概览） -->
     <view class="checkin-card">
       <view class="checkin-deco"></view>
       <view class="checkin-body">
@@ -13,10 +13,13 @@
 
         <view class="checkin-main">
           <view class="checkin-info">
-            <text v-if="todayCheckin.checkedIn" class="checkin-title done">今日已打卡 ✓</text>
+            <text v-if="todayCheckin.checkedIn" class="checkin-title done"
+              >今日已打卡 <uni-icons type="checkmarkempty" size="14" color="#00c853"></uni-icons></text
+            >
             <text v-else class="checkin-title">今日还未打卡</text>
             <text v-if="todayCheckin.checkedIn" class="checkin-data">
-              {{ todayCheckin.distance }}km · {{ todayCheckin.duration }}min · {{ todayCheckin.pace }}/km
+              {{ todayCheckin.distance }}km · {{ todayCheckin.duration }}min ·
+              {{ todayCheckin.pace }}/km
             </text>
           </view>
 
@@ -25,153 +28,170 @@
             class="checkin-btn secondary"
             hover-class="btn-hover"
             @click="goCheckin"
-          >查看详情 →</view>
+            >查看详情 →</view
+          >
           <view
             v-else
             class="checkin-btn primary"
             hover-class="btn-hover"
             @click="goCheckin"
-          >去打卡 →</view>
+            >去打卡 →</view
+          >
         </view>
 
         <text class="checkin-streak">
-          已连续打卡 <text class="streak-num">{{ todayCheckin.streak }}</text> 天
+          已连续打卡
+          <text class="streak-num">{{ todayCheckin.streak }}</text> 天
         </text>
-      </view>
-    </view>
 
-    <!-- 快捷入口 -->
-    <view class="quick-card">
-      <view class="quick-item" hover-class="item-hover" @click="goCreate">
-        <view class="quick-icon icon-record"></view>
-        <text class="quick-label">记一笔</text>
-      </view>
-      <view class="quick-item" hover-class="item-hover" @click="goQa">
-        <view class="quick-icon icon-ask"></view>
-        <text class="quick-label">问问题</text>
-      </view>
-      <view class="quick-item" hover-class="item-hover" @click="goCalendar">
-        <view class="quick-icon icon-calendar"></view>
-        <text class="quick-label">看日历</text>
-      </view>
-    </view>
-
-    <!-- 本周数据 -->
-    <view class="week-card">
-      <view class="week-col">
-        <view class="week-value">
-          <text class="week-num">{{ weekStats.distance }}</text>
-          <text class="week-unit">km</text>
+        <!-- 本周概览（整合进卡片底部） -->
+        <view class="week-overview">
+          <view class="week-divider-line"></view>
+          <view class="week-overview-row">
+            <view class="week-overview-col">
+              <text class="week-overview-num">{{ weekStats.distance }}</text>
+              <text class="week-overview-label">本周里程</text>
+            </view>
+            <view class="week-overview-sep"></view>
+            <view class="week-overview-col">
+              <text class="week-overview-num">{{ weekStats.count }}</text>
+              <text class="week-overview-label">本周打卡</text>
+            </view>
+            <view class="week-overview-sep"></view>
+            <view class="week-overview-col">
+              <text class="week-overview-num">{{ weekStats.duration }}</text>
+              <text class="week-overview-label">本周时长</text>
+            </view>
+          </view>
         </view>
-        <text class="week-label">本周里程</text>
-      </view>
-      <view class="week-divider"></view>
-      <view class="week-col">
-        <view class="week-value">
-          <text class="week-num">{{ weekStats.count }}</text>
-          <text class="week-unit">次</text>
-        </view>
-        <text class="week-label">本周打卡</text>
-      </view>
-      <view class="week-divider"></view>
-      <view class="week-col">
-        <view class="week-value">
-          <text class="week-num">{{ weekStats.duration }}</text>
-          <text class="week-unit">min</text>
-        </view>
-        <text class="week-label">本周时长</text>
       </view>
     </view>
 
-    <!-- 新手常问 -->
-    <view class="section-title">
-      <text>新手常问</text>
-    </view>
-    <view class="qa-card">
-      <view
-        v-for="(q, idx) in hotQuestions"
-        :key="idx"
-        class="qa-item"
-        :class="{ 'no-border': idx === hotQuestions.length - 1 }"
-        hover-class="item-hover"
-        @click="goQuestion(q)"
-      >
-        <text class="qa-text">{{ q }}</text>
-        <view class="qa-arrow"></view>
+    <!-- 快捷入口（气泡卡片） -->
+    <view class="quick-actions">
+      <view class="action-bubble" hover-class="bubble-hover" @click="goCreate">
+        <view class="action-icon icon-record">
+          <uni-icons type="compose" size="24" color="#ffffff"></uni-icons>
+        </view>
+        <text class="action-label">记一笔</text>
+      </view>
+      <view class="action-bubble" hover-class="bubble-hover" @click="goQa">
+        <view class="action-icon icon-ask">
+          <uni-icons type="help" size="24" color="#ffffff"></uni-icons>
+        </view>
+        <text class="action-label">问问题</text>
+      </view>
+      <view class="action-bubble" hover-class="bubble-hover" @click="goCalendar">
+        <view class="action-icon icon-calendar">
+          <uni-icons type="calendar" size="24" color="#ffffff"></uni-icons>
+        </view>
+        <text class="action-label">看日历</text>
       </view>
     </view>
 
-    <!-- 底部激励语 -->
-    <view class="footer">
-      <text class="footer-text">坚持跑下去，身体会给你答案</text>
+    <!-- 新手常问（棉花糖云朵 v6.0：横向滑动 + 交错重叠） -->
+    <view class="chat-faq-section">
+      <view class="section-header">
+        <view class="robot-avatar-wrap">
+          <uni-icons type="chatboxes-filled" size="22" color="#ffffff"></uni-icons>
+        </view>
+        <text class="section-title-text">新手常问</text>
+      </view>
+
+      <view class="cloud-scroll-wrap">
+        <view
+          class="cloud-bubble"
+          v-for="(q, idx) in hotQuestions"
+          :key="idx"
+          hover-class="cloud-bubble-hover"
+          @click="goQuestion(q)"
+        >
+          <text class="cloud-bubble-text">{{ q }}</text>
+        </view>
+      </view>
+
+      <view class="faq-more" @click="goQa">
+        <text class="more-text">坚持跑下去，身体会给你答案</text>
+        <text class="more-link">查看更多 ›</text>
+      </view>
     </view>
+
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { onPullDownRefresh } from '@dcloudio/uni-app'
+import { ref } from "vue";
+import { onPullDownRefresh } from "@dcloudio/uni-app";
 
-const todayDate = ref('08/06 周四')
+const todayDate = ref("08/06 周四");
 
 const todayCheckin = ref({
   checkedIn: true,
   distance: 5.2,
   duration: 32,
   pace: "6'09\"",
-  streak: 7
-})
+  streak: 7,
+});
 
 const weekStats = ref({
   distance: 12.5,
   count: 3,
-  duration: 98
-})
+  duration: 98,
+});
 
 const hotQuestions = ref([
-  '第一次跑步该跑多远？',
-  '跑完膝盖疼怎么办？',
-  '新手怎么选跑鞋？'
-])
+  "第一次跑步该跑多远？",
+  "跑完膝盖疼怎么办？",
+  "新手怎么选跑鞋？",
+]);
 
 const goCheckin = () => {
-  uni.switchTab({ url: '/pages/checkin/checkin' })
-}
+  uni.switchTab({ url: "/pages/checkin/checkin" });
+};
 
 const goCreate = () => {
   // 暂时用 switchTab（create 页尚未独立 tab）
-  uni.switchTab({ url: '/pages/checkin/checkin' })
-}
+  uni.switchTab({ url: "/pages/checkin/checkin" });
+};
 
 const goQa = () => {
-  uni.switchTab({ url: '/pages/qa/qa' })
-}
+  const app = getApp();
+  app.globalData = app.globalData || {};
+  app.globalData.qaAutoFocus = true;
+  uni.switchTab({ url: "/pages/qa/qa" });
+};
 
 const goCalendar = () => {
-  uni.switchTab({ url: '/pages/checkin/checkin' })
-}
+  // 通过 globalData 传递 tab 参数，让打卡页加载时自动切换到日历视图
+  const app = getApp();
+  app.globalData = app.globalData || {};
+  app.globalData.checkinTab = 0;
+  uni.switchTab({ url: "/pages/checkin/checkin" });
+};
 
-const goQuestion = (_question: string) => {
-  uni.switchTab({ url: '/pages/qa/qa' })
-}
+const goQuestion = (question: string) => {
+  const app = getApp();
+  app.globalData = app.globalData || {};
+  app.globalData.qaAutoSend = question;
+  uni.switchTab({ url: "/pages/qa/qa" });
+};
 
 const onRefresh = () => {
   // mock 刷新：模拟拉取最新打卡数据
   setTimeout(() => {
-    uni.stopPullDownRefresh()
-  }, 800)
-}
+    uni.stopPullDownRefresh();
+  }, 800);
+};
 
 onPullDownRefresh(() => {
-  onRefresh()
-})
+  onRefresh();
+});
 </script>
 
 <style lang="scss">
 .page {
   min-height: 100vh;
   padding: 0 32rpx 48rpx;
-  background-color: $rw-bg-page;
   box-sizing: border-box;
 }
 
@@ -188,20 +208,19 @@ onPullDownRefresh(() => {
 
 /* ========== 通用卡片 ========== */
 .card-base {
-  background-color: $rw-bg-card;
-  border-radius: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  background: $rw-card-bg;
+  border: $rw-card-border;
+  border-radius: $rw-card-radius;
+  box-shadow: $rw-shadow-card;
+  transition: $rw-transition-bounce;
 }
 
 /* ========== 今日打卡状态卡片 ========== */
 .checkin-card {
   position: relative;
   width: 100%;
-  min-height: 352rpx;
   margin-top: 16rpx;
-  background-color: $rw-bg-card;
-  border-radius: 32rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  @include rw-glass-card;
   overflow: hidden;
 }
 
@@ -218,8 +237,6 @@ onPullDownRefresh(() => {
   padding: 40rpx 32rpx 32rpx;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 352rpx;
   box-sizing: border-box;
   justify-content: space-between;
 }
@@ -263,10 +280,15 @@ onPullDownRefresh(() => {
   font-weight: 500;
   border-radius: 24rpx;
   line-height: 1;
+  transition: $rw-transition-smooth;
 
   &.primary {
-    background-color: $rw-primary;
-    color: #ffffff;
+    @include rw-primary-btn;
+    padding: 14rpx 28rpx;
+    font-size: 28rpx;
+    font-weight: 500;
+    border-radius: 24rpx;
+    line-height: 1;
   }
 
   &.secondary {
@@ -276,7 +298,8 @@ onPullDownRefresh(() => {
 }
 
 .btn-hover {
-  opacity: 0.85;
+  opacity: 0.9;
+  transform: scale(0.95);
 }
 
 .checkin-streak {
@@ -289,159 +312,258 @@ onPullDownRefresh(() => {
   font-weight: 600;
 }
 
-/* ========== 快捷入口 ========== */
-.quick-card {
-  @extend .card-base;
+/* ========== 快捷入口（毛玻璃卡片 v5.4） ========== */
+.quick-actions {
   display: flex;
-  align-items: center;
   justify-content: space-around;
-  width: 100%;
-  min-height: 176rpx;
+  padding: 32rpx 16rpx;
+  @include rw-glass-card;
   margin-top: 24rpx;
-  padding: 24rpx 0;
-  box-sizing: border-box;
 }
 
-.quick-item {
-  flex: 1;
+.action-bubble {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform 0.15s;
+  width: 180rpx;
+  padding: 28rpx 0 24rpx;
+  background: #ffffff;
+  border-radius: $rw-radius-lg;
+  box-shadow: $rw-shadow-md;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.item-hover {
-  transform: scale(0.95);
+.bubble-hover {
+  transform: scale(0.95) translateY(-2rpx);
+  box-shadow: $rw-shadow-primary;
 }
 
-.quick-icon {
+.action-icon {
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
-  background-color: #fff7f0;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 56rpx 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-record {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF6B35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z'/%3E%3C/svg%3E");
+  background: $rw-gradient-blue;
 }
 
 .icon-ask {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF6B35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+  background: $rw-gradient-pink;
 }
 
 .icon-calendar {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF6B35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background: $rw-gradient-cyan;
 }
 
-.quick-label {
-  margin-top: 12rpx;
-  font-size: 24rpx;
-  color: $rw-text-secondary;
+.action-label {
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  color: $rw-text-primary;
+  font-weight: 500;
 }
 
-/* ========== 本周数据 ========== */
-.week-card {
-  @extend .card-base;
+/* ========== 本周概览（内嵌于状态卡片） ========== */
+.week-overview {
+  margin-top: 24rpx;
+}
+
+.week-divider-line {
+  width: 100%;
+  height: 2rpx;
+  background-color: rgba(0, 0, 0, 0.04);
+  margin-bottom: 24rpx;
+}
+
+.week-overview-row {
   display: flex;
   align-items: center;
-  width: 100%;
-  min-height: 144rpx;
-  margin-top: 24rpx;
-  padding: 24rpx 0;
-  box-sizing: border-box;
 }
 
-.week-col {
+.week-overview-col {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.week-value {
-  display: flex;
-  align-items: baseline;
-}
-
-.week-num {
-  font-size: 40rpx;
+.week-overview-num {
+  font-size: 32rpx;
   font-weight: 700;
   color: $rw-primary;
-  line-height: 1.1;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
 }
 
-.week-unit {
-  margin-left: 4rpx;
-  font-size: 22rpx;
-  color: $rw-text-placeholder;
-}
-
-.week-label {
+.week-overview-label {
   margin-top: 8rpx;
-  font-size: 24rpx;
+  font-size: 20rpx;
   color: $rw-text-secondary;
 }
 
-.week-divider {
+.week-overview-sep {
   width: 2rpx;
-  height: 56rpx;
+  height: 48rpx;
   background-color: rgba(0, 0, 0, 0.04);
 }
 
-/* ========== 新手常问 ========== */
-.section-title {
-  margin: 32rpx 0 16rpx;
+/* ================================================================
+   棉花糖云朵区域 v6.0
+   核心：flex 横向滑动 + 隐藏滚动条 + 负边距重叠 + 伪元素凸起 + 交错排列
+   ================================================================ */
+
+.chat-faq-section {
+  padding: 0 0 24rpx;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 0 16rpx;
+}
+
+.robot-avatar-wrap {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: $rw-gradient-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  box-shadow: $rw-shadow-sm;
+}
+
+.section-title-text {
   font-size: 32rpx;
-  font-weight: 500;
+  font-weight: 600;
   color: $rw-text-primary;
 }
 
-.qa-card {
-  @extend .card-base;
-  width: 100%;
-  padding: 0 32rpx;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.qa-item {
+/* 外层滚动容器 */
+.cloud-scroll-wrap {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 32rpx 0;
-  border-bottom: 2rpx solid rgba(0, 0, 0, 0.04);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 56rpx 32rpx 64rpx 24rpx;
+  -webkit-overflow-scrolling: touch;
 
-  &.no-border {
-    border-bottom: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 
-.qa-text {
-  flex: 1;
+/* 单朵云 */
+.cloud-bubble {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 38rpx 58rpx;
+  margin-left: -36rpx;
+  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
+  border-radius: 100rpx;
+  z-index: 1;
+  box-shadow:
+    0 12rpx 36rpx rgba(0, 0, 0, 0.07),
+    0 4rpx 14rpx rgba(0, 0, 0, 0.04),
+    inset 0 3rpx 8rpx rgba(255, 255, 255, 0.9);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: visible;
+
+  /* 第一朵云不缩进 */
+  &:first-child {
+    margin-left: 0;
+  }
+
+  /* ── 顶部蓬松凸起 ── */
+  &::before {
+    content: '';
+    position: absolute;
+    top: -44rpx;
+    left: 8%;
+    width: 52%;
+    height: 84rpx;
+    background: inherit;
+    border-radius: 50%;
+    z-index: -1;
+    box-shadow:
+      0 -6rpx 18rpx rgba(0, 0, 0, 0.04),
+      inset 0 2rpx 6rpx rgba(255, 255, 255, 0.8);
+  }
+
+  /* ── 底部蓬松凸起 ── */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -38rpx;
+    right: 10%;
+    width: 46%;
+    height: 72rpx;
+    background: inherit;
+    border-radius: 50%;
+    z-index: -1;
+    box-shadow:
+      0 6rpx 18rpx rgba(0, 0, 0, 0.04),
+      inset 0 -2rpx 6rpx rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* ── 交错排列：奇数云朵在上，偶数云朵下移 ── */
+.cloud-bubble:nth-child(odd) {
+  margin-top: 0;
+  z-index: 3;
+  background: linear-gradient(135deg, #FFF8E7, #E8F4FD);
+}
+
+.cloud-bubble:nth-child(even) {
+  margin-top: 44rpx;
+  z-index: 2;
+  background: linear-gradient(135deg, #E8F4FD, #FFF8E7);
+}
+
+/* ── 按压态 ── */
+.cloud-bubble-hover {
+  transform: scale(0.94) translateY(2rpx);
+  box-shadow:
+    0 6rpx 20rpx rgba(0, 0, 0, 0.05),
+    0 2rpx 8rpx rgba(0, 0, 0, 0.03),
+    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.7);
+}
+
+/* 云朵文字 */
+.cloud-bubble-text {
   font-size: 28rpx;
-  color: $rw-text-primary;
+  color: #444;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
 }
 
-.qa-arrow {
-  width: 16rpx;
-  height: 16rpx;
-  border-top: 2rpx solid $rw-text-placeholder;
-  border-right: 2rpx solid $rw-text-placeholder;
-  transform: rotate(45deg);
-  margin-left: 16rpx;
-}
-
-/* ========== 底部激励语 ========== */
-.footer {
-  margin-top: 40rpx;
+.faq-more {
   text-align: center;
+  padding: 48rpx 0 32rpx;
+  margin-top: 24rpx;
 }
 
-.footer-text {
-  font-size: 28rpx;
+.more-text {
+  font-size: 25rpx;
   color: $rw-text-placeholder;
+  font-style: italic;
 }
+
+.more-link {
+  font-size: 26rpx;
+  color: $rw-primary;
+  font-weight: 500;
+  margin-left: 8rpx;
+}
+
 </style>
