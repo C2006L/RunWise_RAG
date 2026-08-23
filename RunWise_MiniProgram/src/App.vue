@@ -220,6 +220,8 @@ onLaunch(() => {
 
 page {
   background-color: #F6F7F9;
+  background-image: radial-gradient(circle at 10% 10%, rgba(255, 107, 53, 0.1) 0%, transparent 50%);
+  background-attachment: fixed;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
