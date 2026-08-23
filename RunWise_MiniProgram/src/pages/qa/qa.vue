@@ -497,7 +497,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -605,13 +605,13 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 /* ================================================================
-   热门问题 v8.0 — iOS 毛玻璃 + 云雾交错胶囊
+   热门问题 v9.0 — 极简纯白胶囊 + 毛玻璃卡片底座
    ================================================================ */
 
 .hot-section {
   @include rw-glass-card(40rpx);
-  margin: 0 24rpx 24rpx;
-  padding: 28rpx 32rpx;
+  margin: 0 16rpx 24rpx;
+  padding: 28rpx 28rpx;
 }
 
 .section-header {
@@ -639,7 +639,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   letter-spacing: 1rpx;
 }
 
-/* 第二层：横向滚动容器 */
+/* 横向滚动容器 */
 .cloud-scroll-wrap {
   display: flex;
   flex-wrap: nowrap;
@@ -652,42 +652,45 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   }
 }
 
-/* 第三层：云雾交错胶囊 */
+/* 气泡 — 纯白底，无模糊，保证清晰和性能 */
 .cloud-bubble {
-  @include rw-glossy-pill(22rpx, 40rpx);
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-right: -12rpx;
+  padding: 24rpx 52rpx;
+  margin-right: 20rpx;
   white-space: nowrap;
-  z-index: 1;
+  background: #FFFFFF;
+  border-radius: 9999rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:last-child {
     margin-right: 0;
   }
 
-  &:nth-child(odd) {
-    z-index: 2;
-    transform: translateY(-8rpx);
+  &:nth-child(2n) {
+    transform: translateY(-16rpx);
   }
 
-  &:nth-child(even) {
-    z-index: 1;
-    transform: translateY(8rpx);
+  &:nth-child(2n+1) {
+    transform: translateY(12rpx);
   }
 
   &:active {
-    @include rw-glossy-pill-active;
-    z-index: 3;
+    transform: scale(0.96);
+    background: #F5F7FA;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   }
 }
 
 .cloud-bubble-text {
-  font-size: 27rpx;
-  color: #1F2937;
+  font-size: 28rpx;
+  color: #374151;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: nowrap;
 }
 

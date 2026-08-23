@@ -13,7 +13,7 @@ $rw-warning: #f59e0b !default; // 警告橙
 $rw-error: #ef4444 !default; // 错误红
 
 /* ========== 背景色 ========== */
-$rw-bg-page: #f8fafc !default; // 页面背景
+$rw-bg-page: #F6F7F9 !default; // 页面背景 — 极简浅灰白
 $rw-bg-card: #ffffff !default; // 卡片背景
 $rw-bg-hover: #f1f5f9 !default; // 悬浮/按压态
 $rw-bg-mask: rgba(0, 0, 0, 0.4) !default; // 遮罩
@@ -117,34 +117,34 @@ $rw-gradient-warm: linear-gradient(
   #fee140
 ) !default; // 暖色渐变
 
-/* ========== 毛玻璃材质（v8.0 iOS 通透质感） ========== */
-$rw-glass-bg: rgba(255, 255, 255, 0.5) !default;
+/* ========== 毛玻璃材质（v9.0 极简轻毛玻璃） ========== */
+$rw-glass-bg: rgba(255, 255, 255, 0.55) !default;
 $rw-glass-border: rgba(255, 255, 255, 0.8) !default;
 $rw-glass-blur: blur(12px) !default;
 
-/* ========== Mixin: 毛玻璃卡片（v8.0 第二层 — 容器基底） ========== */
+/* ========== Mixin: 毛玻璃卡片（v9.0 — 核心玻璃配方） ========== */
 @mixin rw-glass-card($radius: 32rpx) {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: $radius;
   border: 1rpx solid rgba(255, 255, 255, 0.8);
   box-shadow:
-    0 8rpx 24rpx rgba(24, 144, 255, 0.06),
-    0 4rpx 8rpx rgba(0, 0, 0, 0.02);
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 8px 24px rgba(0, 0, 0, 0.06);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ========== Mixin: 毛玻璃列表项（v8.0 第二层） ========== */
+/* ========== Mixin: 毛玻璃列表项（v9.0） ========== */
 @mixin rw-glass-item($radius: 24rpx) {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: $radius;
   border: 1rpx solid rgba(255, 255, 255, 0.8);
   box-shadow:
-    0 8rpx 24rpx rgba(24, 144, 255, 0.06),
-    0 4rpx 8rpx rgba(0, 0, 0, 0.02);
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 8px 24px rgba(0, 0, 0, 0.06);
 }
 
 /* ========== Mixin: 高光悬浮胶囊按钮（v8.0 第三层 — 晶莹亮面玻璃） ========== */

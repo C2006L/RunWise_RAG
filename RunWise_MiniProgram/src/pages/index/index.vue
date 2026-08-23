@@ -316,24 +316,17 @@ onPullDownRefresh(() => {
   font-weight: 600;
 }
 
-/* ========== 快捷入口（v8.4 三层清晰分离） ========== */
+/* ========== 快捷入口（v9.0 轻毛玻璃底座） ========== */
 .quick-actions {
+  @include rw-glass-card(32rpx);
   display: flex;
   justify-content: space-around;
   align-items: center;
   padding: 32rpx 16rpx;
   margin-top: 24rpx;
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 32rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.7);
-  box-shadow:
-    0 8rpx 24rpx rgba(24, 144, 255, 0.08),
-    0 4rpx 8rpx rgba(0, 0, 0, 0.03);
 }
 
-/* 第二层：玻璃质感按钮 */
+/* 第二层：纯白按钮（不加模糊，保证清晰） */
 .action-bubble {
   display: flex;
   flex-direction: column;
@@ -341,20 +334,16 @@ onPullDownRefresh(() => {
   justify-content: center;
   width: 180rpx;
   padding: 28rpx 0 22rpx;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FAFBFD 100%);
+  background: #FFFFFF;
   border-radius: 24rpx;
-  border: 1rpx solid rgba(220, 225, 230, 0.5);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.95),
-    0 3px 10px rgba(0, 0, 0, 0.04);
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:active {
     transform: scale(0.96);
-    background: linear-gradient(180deg, #F5F7FA 0%, #EEF1F5 100%);
-    box-shadow:
-      inset 0 1px 2px rgba(255, 255, 255, 0.6),
-      0 1px 4px rgba(0, 0, 0, 0.06);
+    background: #F5F7FA;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   }
 }
 
@@ -391,19 +380,22 @@ onPullDownRefresh(() => {
 }
 
 /* 强制覆盖 uni-icons 颜色（小程序兼容） */
-.icon-record /deep/ .uni-icons,
-.icon-record .uni-icons {
-  color: #FF6B35 !important;
+.icon-record {
+  :deep(.uni-icons) {
+    color: #FF6B35 !important;
+  }
 }
 
-.icon-ask /deep/ .uni-icons,
-.icon-ask .uni-icons {
-  color: #1890FF !important;
+.icon-ask {
+  :deep(.uni-icons) {
+    color: #1890FF !important;
+  }
 }
 
-.icon-calendar /deep/ .uni-icons,
-.icon-calendar .uni-icons {
-  color: #00C853 !important;
+.icon-calendar {
+  :deep(.uni-icons) {
+    color: #00C853 !important;
+  }
 }
 
 /* ========== 本周概览（内嵌于状态卡片） ========== */
@@ -451,17 +443,18 @@ onPullDownRefresh(() => {
 }
 
 /* ================================================================
-   新手常问 v8.0 — iOS 毛玻璃 + 云雾交错胶囊
+   新手常问 v9.0 — 宽胶囊 + 交错云朵 + 玻璃透亮
    ================================================================ */
 
 .chat-faq-section {
-  padding: 0 24rpx 24rpx;
+  padding: 0 0 24rpx;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  padding: 32rpx 0 16rpx;
+  padding: 32rpx 24rpx 16rpx;
+  margin-bottom: 16rpx;
 }
 
 .robot-avatar-wrap {
@@ -481,14 +474,15 @@ onPullDownRefresh(() => {
   color: $rw-text-primary;
 }
 
-/* 第二层：横向滚动容器（毛玻璃基底） */
+/* 横向滚动容器 — 使用毛玻璃卡片做底 */
 .cloud-scroll-wrap {
   @include rw-glass-card(40rpx);
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 32rpx 24rpx;
+  padding: 32rpx 20rpx;
+  margin: 0 0;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
@@ -496,42 +490,45 @@ onPullDownRefresh(() => {
   }
 }
 
-/* 第三层：云雾交错胶囊 */
+/* 气泡 — 纯白底，无模糊，保证清晰和性能 */
 .cloud-bubble {
-  @include rw-glossy-pill(22rpx, 40rpx);
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-right: -12rpx;
+  padding: 24rpx 52rpx;
+  margin-right: 20rpx;
   white-space: nowrap;
-  z-index: 1;
+  background: #FFFFFF;
+  border-radius: 9999rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:last-child {
     margin-right: 0;
   }
 
-  &:nth-child(odd) {
-    z-index: 2;
-    transform: translateY(-8rpx);
+  &:nth-child(2n) {
+    transform: translateY(-16rpx);
   }
 
-  &:nth-child(even) {
-    z-index: 1;
-    transform: translateY(8rpx);
+  &:nth-child(2n+1) {
+    transform: translateY(12rpx);
   }
 
   &:active {
-    @include rw-glossy-pill-active;
-    z-index: 3;
+    transform: scale(0.96);
+    background: #F5F7FA;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   }
 }
 
 .cloud-bubble-text {
-  font-size: 27rpx;
-  color: #1F2937;
+  font-size: 28rpx;
+  color: #374151;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: nowrap;
 }
 
@@ -547,8 +544,9 @@ onPullDownRefresh(() => {
 
 .more-text {
   font-size: 25rpx;
-  color: $rw-text-placeholder;
+  color: #4B5563;
   font-style: italic;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .more-link {

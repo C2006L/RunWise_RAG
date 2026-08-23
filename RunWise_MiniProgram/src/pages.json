@@ -10,6 +10,8 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "RunWise",
+        "navigationBarBackgroundColor": "#F6F7F9",
+        "navigationBarTextStyle": "black",
         "enablePullDownRefresh": true,
         "backgroundTextStyle": "dark"
       }
@@ -66,13 +68,13 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "RunWise",
-    "navigationBarBackgroundColor": "#FFFFFF",
-    "backgroundColor": "#F8FAFC"
+    "navigationBarBackgroundColor": "#F6F7F9",
+    "backgroundColor": "#F6F7F9"
   },
   "tabBar": {
     "color": "#9CA3AF",
     "selectedColor": "#FF6B35",
-    "backgroundColor": "#FFFFFF",
+    "backgroundColor": "rgba(255,255,255,0.8)",
     "borderStyle": "white",
     "list": [
       {

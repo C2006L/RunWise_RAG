@@ -290,16 +290,30 @@ function onLogout() {
   transform: rotate(-45deg);
 }
 
-/* ========== 退出登录（iOS 毛玻璃胶囊 v8.0） ========== */
+/* ========== 退出登录（v9.0 苹果风格毛玻璃胶囊） ========== */
 .logout-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 96rpx;
   margin-top: 48rpx;
-  @include rw-glossy-pill(0, 0);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 48rpx;
-  @include rw-tappable;
+  border: 1rpx solid rgba(255, 255, 255, 0.8);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:active {
+    transform: scale(0.96);
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.7),
+      0 2px 6px rgba(0, 0, 0, 0.03);
+  }
 }
 
 .logout-text {
