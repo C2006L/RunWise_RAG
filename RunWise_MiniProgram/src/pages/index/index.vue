@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <!-- 背景图片层 -->
+    <image class="page-bg" src="/static/blurry-gradient-haikei.png" mode="aspectFill"></image>
+
     <!-- 顶部标题 -->
     <view class="header">
       <text class="header-title">RunWise</text>
@@ -49,17 +52,17 @@
           <view class="week-divider-line"></view>
           <view class="week-overview-row">
             <view class="week-overview-col">
-              <text class="week-overview-num">{{ weekStats.distance }}</text>
+              <text class="week-overview-num week-num-accent">{{ weekStats.distance }}</text>
               <text class="week-overview-label">本周里程</text>
             </view>
             <view class="week-overview-sep"></view>
             <view class="week-overview-col">
-              <text class="week-overview-num">{{ weekStats.count }}</text>
+              <text class="week-overview-num week-num-sub">{{ weekStats.count }}</text>
               <text class="week-overview-label">本周打卡</text>
             </view>
             <view class="week-overview-sep"></view>
             <view class="week-overview-col">
-              <text class="week-overview-num">{{ weekStats.duration }}</text>
+              <text class="week-overview-num week-num-sub">{{ weekStats.duration }}</text>
               <text class="week-overview-label">本周时长</text>
             </view>
           </view>
@@ -101,12 +104,17 @@
       <view class="cloud-scroll-wrap">
         <view
           class="cloud-bubble"
-          v-for="(q, idx) in hotQuestions"
+          v-for="(q, idx) in hotQuestions.slice(0, 4)"
           :key="idx"
           hover-class="cloud-bubble-hover"
           @click="goQuestion(q)"
         >
-          <text class="cloud-bubble-text">{{ q }}</text>
+          <view class="cloud-bubble-inner">
+            <view class="cloud-bubble-text">
+              <text class="bubble-line1">{{ splitQuestion(q).line1 }}</text>
+              <text class="bubble-line2">{{ splitQuestion(q).line2 }}</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -122,6 +130,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { onPullDownRefresh } from "@dcloudio/uni-app";
+
 
 const todayDate = ref("08/06 周四");
 
@@ -143,6 +152,10 @@ const hotQuestions = ref([
   "第一次跑步该跑多远？",
   "跑完膝盖疼怎么办？",
   "新手怎么选跑鞋？",
+  "跑步时心率多少合适？",
+  "晨跑好还是夜跑好？",
+  "跑步前要热身多久？",
+  "如何提高跑步配速？",
 ]);
 
 const goCheckin = () => {
@@ -176,6 +189,12 @@ const goQuestion = (question: string) => {
   uni.switchTab({ url: "/pages/qa/qa" });
 };
 
+const splitQuestion = (text: string) => {
+  const len = text.length;
+  const mid = Math.ceil(len / 2);
+  return { line1: text.slice(0, mid), line2: text.slice(mid) };
+};
+
 const onRefresh = () => {
   // mock 刷新：模拟拉取最新打卡数据
   setTimeout(() => {
@@ -190,9 +209,21 @@ onPullDownRefresh(() => {
 
 <style lang="scss">
 .page {
+  position: relative;
   min-height: 100vh;
   padding: 0 32rpx 48rpx;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  filter: brightness(1.15) saturate(1.3);
 }
 
 /* ========== 顶部标题 ========== */
@@ -288,7 +319,7 @@ onPullDownRefresh(() => {
     font-weight: 500;
     border-radius: 24rpx;
     line-height: 1;
-    color: #FF6B35;
+    color: #FF8A65;
   }
 
   &.secondary {
@@ -318,7 +349,7 @@ onPullDownRefresh(() => {
 
 /* ========== 快捷入口（v9.0 轻毛玻璃底座） ========== */
 .quick-actions {
-  @include rw-glass-card(32rpx);
+  @include rw-glass-card;
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -326,7 +357,7 @@ onPullDownRefresh(() => {
   margin-top: 24rpx;
 }
 
-/* 第二层：纯白按钮（不加模糊，保证清晰） */
+/* 第二层：毛玻璃按钮（加强立体感） */
 .action-bubble {
   display: flex;
   flex-direction: column;
@@ -334,16 +365,24 @@ onPullDownRefresh(() => {
   justify-content: center;
   width: 180rpx;
   padding: 28rpx 0 22rpx;
-  background: #FFFFFF;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 24rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.04);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  border: 1px solid #E8E8E8;
+  box-shadow:
+    0 8rpx 24rpx rgba(0, 0, 0, 0.08),
+    0 4rpx 12rpx rgba(0, 0, 0, 0.04),
+    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.9);
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:active {
-    transform: scale(0.96);
-    background: #F5F7FA;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transform: scale(0.95) translateY(2rpx);
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow:
+      0 4rpx 12rpx rgba(0, 0, 0, 0.06),
+      0 2rpx 6rpx rgba(0, 0, 0, 0.03),
+      inset 0 1rpx 2rpx rgba(255, 255, 255, 0.8);
   }
 }
 
@@ -358,8 +397,8 @@ onPullDownRefresh(() => {
 }
 
 .icon-record {
-  background: rgba(255, 107, 53, 0.18);
-  border: 1rpx solid rgba(255, 107, 53, 0.25);
+  background: rgba(255, 138, 101, 0.18);
+  border: 1rpx solid rgba(255, 138, 101, 0.25);
 }
 
 .icon-ask {
@@ -382,7 +421,7 @@ onPullDownRefresh(() => {
 /* 强制覆盖 uni-icons 颜色（小程序兼容） */
 .icon-record {
   :deep(.uni-icons) {
-    color: #FF6B35 !important;
+    color: #FF8A65 !important;
   }
 }
 
@@ -425,9 +464,14 @@ onPullDownRefresh(() => {
 .week-overview-num {
   font-size: 32rpx;
   font-weight: 700;
-  color: $rw-primary;
-  line-height: 1.2;
-  letter-spacing: 0.5px;
+}
+
+.week-num-accent {
+  color: $rw-accent;
+}
+
+.week-num-sub {
+  color: $rw-text-secondary;
 }
 
 .week-overview-label {
@@ -443,7 +487,7 @@ onPullDownRefresh(() => {
 }
 
 /* ================================================================
-   新手常问 v9.0 — 宽胶囊 + 交错云朵 + 玻璃透亮
+   新手常问 v10.0 — 大圆角胶囊 + margin-top 上下交错
    ================================================================ */
 
 .chat-faq-section {
@@ -461,7 +505,7 @@ onPullDownRefresh(() => {
   width: 44rpx;
   height: 44rpx;
   border-radius: 12rpx;
-  background: linear-gradient(135deg, rgba(24, 144, 255, 0.15), rgba(24, 144, 255, 0.08));
+  background: linear-gradient(135deg, rgba(255, 138, 101, 0.15), rgba(255, 138, 101, 0.08));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -474,15 +518,18 @@ onPullDownRefresh(() => {
   color: $rw-text-primary;
 }
 
-/* 横向滚动容器 — 使用毛玻璃卡片做底 */
+/* 泡泡容器（与快捷按钮区域统一样式） */
 .cloud-scroll-wrap {
-  @include rw-glass-card(40rpx);
+  @include rw-glass-card;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: nowrap;
+  align-items: center;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 32rpx 20rpx;
-  margin: 0 0;
+  padding: 28rpx 24rpx;
+  margin: 0 0 16rpx;
+  gap: 0;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
@@ -490,56 +537,84 @@ onPullDownRefresh(() => {
   }
 }
 
-/* 气泡 — 纯白底，无模糊，保证清晰和性能 */
+/* 单个气泡样式（田径场贴图+文字叠加） */
 .cloud-bubble {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24rpx 52rpx;
-  margin-right: 20rpx;
-  white-space: nowrap;
-  background: #FFFFFF;
-  border-radius: 9999rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.04);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  width: 260rpx;
+  height: 220rpx;
+  margin-right: 44rpx;
+  border-radius: 28rpx;
+  overflow: hidden;
+  transition: all 0.3s;
 
   &:last-child {
-    margin-right: 0;
+    margin-right: 28rpx;
   }
 
-  &:nth-child(2n) {
-    transform: translateY(-16rpx);
-  }
-
-  &:nth-child(2n+1) {
-    transform: translateY(12rpx);
-  }
+  &:nth-child(1) { margin-top: 0; }
+  &:nth-child(2) { margin-top: 10px; }
+  &:nth-child(3) { margin-top: -10px; }
+  &:nth-child(4) { margin-top: 0; }
+  &:nth-child(5) { margin-top: 10px; }
+  &:nth-child(6) { margin-top: -10px; }
 
   &:active {
-    transform: scale(0.96);
-    background: #F5F7FA;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transform: scale(0.95);
   }
+}
+
+.cloud-bubble-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-image: url('/static/track-field.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.65;
 }
 
 .cloud-bubble-text {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 12rpx;
+  padding: 12rpx 20rpx;
+}
+
+.bubble-line1,
+.bubble-line2 {
   font-size: 28rpx;
-  color: #374151;
-  font-weight: 500;
-  line-height: 1.4;
+  color: #000000;
+  font-weight: 700;
+  line-height: 1.5;
   white-space: nowrap;
+  text-shadow: 0 1rpx 3rpx rgba(255, 255, 255, 0.9);
+}
+
+.bubble-line2 {
+  margin-left: 20rpx;
 }
 
 .cloud-bubble-hover {
-  @include rw-glossy-pill-active;
+  transform: scale(0.96);
+  opacity: 0.85;
 }
 
 .faq-more {
   text-align: center;
-  padding: 48rpx 0 32rpx;
+  padding: 48rpx 0 calc(32rpx + env(safe-area-inset-bottom));
   margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .more-text {
@@ -550,10 +625,13 @@ onPullDownRefresh(() => {
 }
 
 .more-link {
-  font-size: 26rpx;
-  color: $rw-primary;
-  font-weight: 500;
-  margin-left: 8rpx;
+  font-size: 24rpx;
+  color: #ffffff;
+  font-weight: 600;
+  background: $rw-primary;
+  padding: 12rpx 32rpx;
+  border-radius: 9999rpx;
+  box-shadow: $rw-shadow-btn;
 }
 
 </style>

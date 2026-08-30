@@ -93,7 +93,7 @@
         <view class="section">
           <text class="section-title">八、联系我们</text>
           <text class="section-content"
-            >如您对本隐私政策有任何疑问、意见或建议，可通过以下方式与我们联系：通过应用内"我的→消息通知"功能发送反馈；发送邮件至 runwise@example.com。我们将在15个工作日内回复您的请求。</text
+            >如您对本隐私政策有任何疑问、意见或建议，可通过以下方式与我们联系：通过应用内"我的→消息通知"功能发送反馈；发送邮件至 15853831797@163.com。我们将在15个工作日内回复您的请求。</text
           >
         </view>
       </view>

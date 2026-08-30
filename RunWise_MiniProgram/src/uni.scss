@@ -1,26 +1,51 @@
 /**
- * RunWise 小程序主题变量（白蓝橙方案 v4.0）
- * 基于 PRD v4.0 色彩系统 — 新增立体阴影、渐变、毛玻璃材质
+ * RunWise 小程序主题变量（白蓝橙方案 v10.0）
+ * 基于 PRD v4.0 色彩系统 — 新增 CSS 自定义属性、统一卡片/按钮样式
  */
 
+/* ========== CSS 自定义属性（供全局复用） ========== */
+page {
+  --primary-color: #FF8C42;
+  --accent-color: #FF6B35;
+  --info-color: #5B9BD5;
+  --success-color: #4CAF50;
+  --primary-light: #FFCC80;
+  --primary-bg: rgba(255, 140, 66, 0.08);
+  --text-primary: #333333;
+  --text-secondary: #999999;
+  --text-placeholder: #9CA3AF;
+  --bg-page: #F5F7FA;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --glass-blur: blur(15px);
+  --card-radius: 24rpx;
+  --card-padding: 32rpx;
+  --card-gap: 24rpx;
+  --bubble-radius: 100rpx;
+  --shadow-card: 0 16rpx 48rpx rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+  --border-glass: 1px solid rgba(255, 255, 255, 0.2);
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* ========== 品牌色 ========== */
-$rw-primary: #ff6b35 !default; // 活力橙 - 主强调色
-$rw-primary-light-end: #ff8a65 !default; // 渐变浅端
-$rw-secondary: #1890ff !default; // 科技蓝 - 次强调色
+$rw-primary: #FF8C42 !default; // 主橙
+$rw-accent: #FF6B35 !default; // 强调橙红（数字、打卡红点）
+$rw-primary-light-end: #FFAB91 !default; // 渐变浅端
+$rw-secondary: #5B9BD5 !default; // 辅助蓝（链接、次要按钮）
 $rw-secondary-light-end: #40a9ff !default; // 蓝色渐变浅端
-$rw-success: #00c853 !default; // 成功绿 - 打卡完成
+$rw-success: #4CAF50 !default; // 成功绿
 $rw-warning: #f59e0b !default; // 警告橙
 $rw-error: #ef4444 !default; // 错误红
 
 /* ========== 背景色 ========== */
-$rw-bg-page: #F6F7F9 !default; // 页面背景 — 极简浅灰白
+$rw-bg-page: #F5F7FA !default; // 页面背景
 $rw-bg-card: #ffffff !default; // 卡片背景
 $rw-bg-hover: #f1f5f9 !default; // 悬浮/按压态
 $rw-bg-mask: rgba(0, 0, 0, 0.4) !default; // 遮罩
 
 /* ========== 文字色 ========== */
-$rw-text-primary: #1f2937 !default; // 主文字
-$rw-text-secondary: #6b7280 !default; // 次级文字
+$rw-text-primary: #333333 !default; // 主文字
+$rw-text-secondary: #999999 !default; // 次级文字
 $rw-text-placeholder: #9ca3af !default; // 弱文字/占位符
 
 /* ========== 边框/分割线 ========== */
@@ -72,8 +97,10 @@ $rw-radius-full: 9999rpx !default;
 
 /* ========== 卡片材质（v4.1 → v5.0 毛玻璃升级） ========== */
 $rw-card-border: 1rpx solid rgba(255, 255, 255, 0.6) !default;
-$rw-card-bg: rgba(255, 255, 255, 0.8) !default;
-$rw-card-radius: 32rpx !default;
+$rw-card-bg: rgba(255, 255, 255, 0.85) !default;
+$rw-card-radius: 24rpx !default;
+$rw-card-padding: 32rpx !default;
+$rw-card-gap: 24rpx !default;
 
 /* ========== 渐变（v4.0 新增，v4.2 扩展） ========== */
 $rw-gradient-primary: linear-gradient(
@@ -117,34 +144,30 @@ $rw-gradient-warm: linear-gradient(
   #fee140
 ) !default; // 暖色渐变
 
-/* ========== 毛玻璃材质（v9.0 极简轻毛玻璃） ========== */
-$rw-glass-bg: rgba(255, 255, 255, 0.55) !default;
-$rw-glass-border: rgba(255, 255, 255, 0.8) !default;
+/* ========== 毛玻璃材质（v12.0 极简浅灰渐变） ========== */
+$rw-glass-bg: rgba(255, 255, 255, 0.8) !default;
+$rw-glass-border: #E8E8E8 !default;
 $rw-glass-blur: blur(12px) !default;
 
-/* ========== Mixin: 毛玻璃卡片（v9.0 — 核心玻璃配方） ========== */
-@mixin rw-glass-card($radius: 32rpx) {
-  background: rgba(255, 255, 255, 0.55);
+/* ========== Mixin: 毛玻璃卡片（v12.0 — 极简浅灰体系） ========== */
+@mixin rw-glass-card($radius: 24rpx) {
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: $radius;
-  border: 1rpx solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    0 8px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid #E8E8E8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ========== Mixin: 毛玻璃列表项（v9.0） ========== */
+/* ========== Mixin: 毛玻璃列表项（v12.0） ========== */
 @mixin rw-glass-item($radius: 24rpx) {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: $radius;
-  border: 1rpx solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    0 8px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid #E8E8E8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 /* ========== Mixin: 高光悬浮胶囊按钮（v8.0 第三层 — 晶莹亮面玻璃） ========== */

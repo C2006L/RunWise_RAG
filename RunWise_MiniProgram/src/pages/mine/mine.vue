@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <!-- 背景图片层 -->
+    <image class="page-bg" src="/static/blurry-gradient-haikei.png" mode="aspectFill"></image>
+
     <!-- 个人资料卡片 -->
     <view class="profile-card">
       <view class="avatar">
@@ -13,7 +16,7 @@
       </view>
       <view class="profile-info">
         <text class="nickname">{{ userInfo.nickname }}</text>
-        <text class="join-days">已加入 {{ userInfo.joinDays }} 天</text>
+        <text class="join-days">🔥 已坚持 {{ userInfo.joinDays }} 天</text>
       </view>
     </view>
 
@@ -83,7 +86,7 @@ const achievements = ref({
 const settingItems = [
    { key: "profile", icon: "person", label: "个人资料" },
   { key: "notification", icon: "notification", label: "消息通知" },
-  { key: "update", icon: "refresh", label: "检查更新" },
+  { key: "feedback", icon: "chat", label: "意见反馈" },
   { key: "privacy", icon: "locked", label: "隐私政策" },
   { key: "agreement", icon: "paperclip", label: "用户协议" },
 ];
@@ -103,12 +106,12 @@ function onSettingTap(item: (typeof settingItems)[number]) {
   const url = routeMap[item.key];
   if (url) {
     uni.navigateTo({ url });
-  } else if (item.key === "update") {
-    uni.showModal({
-      title: "检查更新",
-      content: "当前版本：v1.0.0\n\n已是最新版本",
-      showCancel: false,
-      confirmText: "确定",
+  } else if (item.key === "feedback") {
+    // 微信原生反馈面板
+    // @ts-ignore
+    wx.openCustomerServiceChat?.({
+      extInfo: { url: "" },
+      corpId: "",
     });
   }
 }
@@ -133,10 +136,22 @@ function onLogout() {
 
 <style lang="scss">
 .page {
+  position: relative;
   min-height: 100vh;
   padding: 24rpx;
   padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  filter: brightness(1.15) saturate(1.3);
 }
 
 /* ========== 个人资料卡片 ========== */
@@ -187,7 +202,12 @@ function onLogout() {
 
 .join-days {
   font-size: 24rpx;
-  color: $rw-text-secondary;
+  color: $rw-accent;
+  background: rgba(255, 107, 53, 0.1);
+  padding: 4rpx 16rpx;
+  border-radius: 9999rpx;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ========== 数据成就（3列并排 v8.0） ========== */
@@ -211,7 +231,7 @@ function onLogout() {
   font-family: 'JetBrains Mono', 'Courier New', monospace;
   font-size: 36rpx;
   font-weight: 700;
-  color: $rw-secondary;
+  color: $rw-accent;
   line-height: 1.2;
   letter-spacing: -0.5px;
 }
@@ -297,22 +317,17 @@ function onLogout() {
   justify-content: center;
   height: 96rpx;
   margin-top: 48rpx;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 48rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    0 4px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid #E8E8E8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:active {
-    transform: scale(0.96);
-    background: rgba(255, 255, 255, 0.35);
-    box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.7),
-      0 2px 6px rgba(0, 0, 0, 0.03);
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.6);
   }
 }
 

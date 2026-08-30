@@ -219,10 +219,24 @@ onLaunch(() => {
 }
 
 page {
-  background-color: #F6F7F9;
-  background-image: radial-gradient(circle at 10% 10%, rgba(255, 107, 53, 0.1) 0%, transparent 50%);
+  background: linear-gradient(135deg, #F5F7FA, #FFFFFF);
   background-attachment: fixed;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --primary-color: #FF8A65;
+  --primary-light: #FFCC80;
+  --primary-bg: rgba(255, 138, 101, 0.08);
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-placeholder: #9CA3AF;
+  --bg-page: #F5F7FA;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --glass-blur: blur(15px);
+  --card-radius: 40rpx;
+  --bubble-radius: 100rpx;
+  --shadow-card: 0 16rpx 48rpx rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
+  --border-glass: 1px solid rgba(255, 255, 255, 0.2);
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>

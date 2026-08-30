@@ -68,13 +68,13 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "RunWise",
-    "navigationBarBackgroundColor": "#F6F7F9",
-    "backgroundColor": "#F6F7F9"
+    "navigationBarBackgroundColor": "#F5F7FA",
+    "backgroundColor": "#F5F7FA"
   },
   "tabBar": {
-    "color": "#9CA3AF",
-    "selectedColor": "#FF6B35",
-    "backgroundColor": "rgba(246,247,249,0.8)",
+    "color": "#666666",
+    "selectedColor": "#FF8A65",
+    "backgroundColor": "rgba(255,255,255,0.9)",
     "borderStyle": "white",
     "list": [
       {

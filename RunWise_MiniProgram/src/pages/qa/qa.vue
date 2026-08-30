@@ -1,5 +1,8 @@
 <template>
   <view class="qa-page">
+    <!-- 背景图片层 -->
+    <image class="page-bg" src="/static/blurry-gradient-haikei.png" mode="aspectFill"></image>
+
     <!-- 二级导航 -->
     <view class="sub-nav">
       <view
@@ -9,6 +12,8 @@
       >
         <text class="nav-text">问答</text>
       </view>
+      <!-- 历史Tab暂时隐藏，功能完成后恢复 -->
+      <!--
       <view
         class="nav-item"
         :class="{ 'nav-item--active': currentTab === 1 }"
@@ -16,6 +21,7 @@
       >
         <text class="nav-text">历史</text>
       </view>
+      -->
     </view>
 
     <!-- 可滚动内容 -->
@@ -43,7 +49,7 @@
           </view>
         </view>
 
-        <!-- 热门问题（棉花糖云朵 v6.0：横向滑动 + 交错重叠） -->
+        <!-- 热门问题（跑道气泡卡片：横向滑动，与首页新手常问风格统一） -->
         <view class="hot-section">
           <view class="section-header">
             <view class="section-icon-wrap">
@@ -60,9 +66,49 @@
               hover-class="cloud-bubble-hover"
               @tap="onHotQuestionTap(q)"
             >
-              <text class="cloud-bubble-text">{{ q }}</text>
+              <view class="cloud-bubble-inner">
+                <view class="cloud-bubble-text">
+                  <text class="bubble-line1">{{ splitQuestion(q).line1 }}</text>
+                  <text class="bubble-line2">{{ splitQuestion(q).line2 }}</text>
+                </view>
+              </view>
             </view>
           </view>
+        </view>
+
+        <!-- 最新回答（暂未开发，注释保留） -->
+        <!--
+        <view class="latest-section" v-if="!messages.length">
+          <view class="section-header">
+            <view class="section-icon-wrap latest-icon">
+              <uni-icons type="chat" size="16" color="#ffffff"></uni-icons>
+            </view>
+            <text class="section-title">最新回答</text>
+          </view>
+          <view class="latest-list">
+            <view
+              class="latest-item"
+              v-for="(item, idx) in latestAnswers"
+              :key="idx"
+              @tap="onHotQuestionTap(item.question)"
+            >
+              <view class="latest-q">Q: {{ item.question }}</view>
+              <view class="latest-a">A: {{ item.answer }}</view>
+              <view class="latest-meta">
+                <text>👍 {{ item.likes }}</text>
+                <text class="latest-time">{{ item.time }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+        -->
+
+        <!-- AI教练引导文案 -->
+        <view class="coach-greeting" v-if="!messages.length">
+          <view class="coach-avatar">
+            <uni-icons type="chatboxes-filled" size="20" color="#ffffff"></uni-icons>
+          </view>
+          <text class="coach-text">你好，我是你的AI跑步教练 🏃</text>
         </view>
 
         <!-- Loading 提示 -->
@@ -181,6 +227,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+
 
 // 接口定义
 interface ChatMessage {
@@ -303,6 +350,9 @@ onMounted(async () => {
             "跑完膝盖疼怎么办？",
             "新手怎么选跑鞋？",
             "跑步时心率多少合适？",
+            "晨跑好还是夜跑好？",
+            "跑步前要热身多久？",
+            "如何提高跑步配速？",
           ];
   } catch (error) {
     console.error("初始化数据加载失败");
@@ -467,6 +517,47 @@ const onHotQuestionTap = (q: string) => {
   sendMessage(q);
 };
 
+const onMoreQuestions = () => {
+  if (hotQuestions.value.length > 3) {
+    const rest = hotQuestions.value.slice(3);
+    uni.showActionSheet({
+      itemList: rest,
+      success: (res) => {
+        sendMessage(rest[res.tapIndex]);
+      },
+    });
+  } else {
+    uni.showToast({ title: '暂无更多问题', icon: 'none' });
+  }
+};
+
+const splitQuestion = (text: string) => {
+  const len = text.length;
+  const mid = Math.ceil(len / 2);
+  return { line1: text.slice(0, mid), line2: text.slice(mid) };
+};
+
+const latestAnswers = ref([
+  {
+    question: "跑完膝盖疼怎么办？",
+    answer: "先判断疼痛位置是髌骨还是外侧，髌骨疼可减少跑量加强股四头肌，外侧疼注意鞋底磨损…",
+    likes: 23,
+    time: "2小时前",
+  },
+  {
+    question: "晨跑好还是夜跑好？",
+    answer: "各有优势：晨跑提升代谢、夜跑释放压力。关键看个人作息规律，坚持比选择更重要…",
+    likes: 18,
+    time: "5小时前",
+  },
+  {
+    question: "如何提高配速？",
+    answer: "建议采用80/20法则：80%慢跑+20%间歇。每周一次节奏跑，逐步提升乳酸阈值…",
+    likes: 15,
+    time: "昨天",
+  },
+]);
+
 // 点击分类
 const onCategoryTap = (item: any) => {
   activeCategory.value = item.name;
@@ -494,11 +585,23 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 
 <style lang="scss">
 .qa-page {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
   padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+.page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  filter: brightness(1.15) saturate(1.3);
 }
 
 /* ========== 二级导航 ========== */
@@ -605,31 +708,31 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 /* ================================================================
-   热门问题 v9.0 — 极简纯白胶囊 + 毛玻璃卡片底座
+   热门问题 — 跑道气泡卡片：横向滚动，与首页新手常问风格统一
    ================================================================ */
 
 .hot-section {
-  @include rw-glass-card(40rpx);
-  margin: 0 16rpx 24rpx;
-  padding: 28rpx 28rpx;
+  margin: 0 0 16rpx;
+  padding: 8rpx 0;
+  overflow: visible;
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  margin-bottom: 24rpx;
+  padding: 0 24rpx 24rpx;
 }
 
 .section-icon-wrap {
   width: 44rpx;
   height: 44rpx;
   border-radius: 14rpx;
-  background: linear-gradient(135deg, #FF9A56, #FF6B35);
+  background: linear-gradient(135deg, #FFAB91, #FF8A65);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 12rpx;
-  box-shadow: 0 3rpx 10rpx rgba(255, 107, 53, 0.25);
+  box-shadow: 0 3rpx 10rpx rgba(255, 138, 101, 0.25);
 }
 
 .section-title {
@@ -639,12 +742,17 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   letter-spacing: 1rpx;
 }
 
-/* 横向滚动容器 */
 .cloud-scroll-wrap {
+  @include rw-glass-card;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: nowrap;
+  align-items: center;
   overflow-x: auto;
   overflow-y: visible;
+  padding: 28rpx 24rpx;
+  margin: 0 0 16rpx;
+  gap: 0;
   -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
@@ -652,50 +760,118 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   }
 }
 
-/* 气泡 — 纯白底，无模糊，保证清晰和性能 */
 .cloud-bubble {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24rpx 52rpx;
-  margin-right: 20rpx;
-  white-space: nowrap;
-  background: #FFFFFF;
-  border-radius: 9999rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.04);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  width: 260rpx;
+  height: 220rpx;
+  margin-right: 44rpx;
+  border-radius: 28rpx;
+  overflow: hidden;
+  transition: all 0.3s;
 
-  &:last-child {
-    margin-right: 0;
+  &:last-of-type {
+    margin-right: 24rpx;
   }
 
-  &:nth-child(2n) {
-    transform: translateY(-16rpx);
-  }
-
-  &:nth-child(2n+1) {
-    transform: translateY(12rpx);
-  }
+  &:nth-child(1) { margin-top: 0; }
+  &:nth-child(2) { margin-top: 10px; }
+  &:nth-child(3) { margin-top: -10px; }
 
   &:active {
-    transform: scale(0.96);
-    background: #F5F7FA;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    transform: scale(0.95);
   }
+}
+
+.cloud-bubble-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background-image: url('/static/track-field.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.65;
 }
 
 .cloud-bubble-text {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 12rpx;
+  padding: 12rpx 20rpx;
+}
+
+.bubble-line1,
+.bubble-line2 {
   font-size: 28rpx;
-  color: #374151;
-  font-weight: 500;
-  line-height: 1.4;
+  color: #000000;
+  font-weight: 700;
+  line-height: 1.5;
   white-space: nowrap;
+  text-shadow: 0 1rpx 3rpx rgba(255, 255, 255, 0.9);
+}
+
+.bubble-line2 {
+  margin-left: 20rpx;
 }
 
 .cloud-bubble-hover {
-  @include rw-glossy-pill-active;
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+.cloud-bubble-more {
+  flex-shrink: 0;
+  width: 120rpx;
+  height: 220rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.5);
+  border: 2rpx dashed rgba(255, 140, 66, 0.4);
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.more-text-inner {
+  font-size: 28rpx;
+  color: $rw-primary;
+  font-weight: 600;
+}
+
+/* AI教练引导文案 */
+.coach-greeting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 24rpx 16rpx;
+  gap: 12rpx;
+}
+
+.coach-avatar {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $rw-primary, $rw-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.25);
+}
+
+.coach-text {
+  font-size: 28rpx;
+  color: $rw-text-primary;
+  font-weight: 500;
 }
 
 /* ========== Loading 提示 ========== */
@@ -856,14 +1032,10 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   align-items: center;
   padding: 24rpx 28rpx;
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border-top: 1rpx solid rgba(0, 0, 0, 0.08);
-  box-shadow:
-    0 -8rpx 28rpx rgba(0, 0, 0, 0.06),
-    0 -2rpx 8rpx rgba(0, 0, 0, 0.03),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-top: 1px solid rgba(0, 0, 0, 0.02);
   z-index: 10;
 }
 
@@ -871,14 +1043,14 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   flex: 1;
   height: 80rpx;
   padding: 0 36rpx;
-  background: rgba(245, 247, 250, 0.9);
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
-  border-radius: 56rpx;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: none;
+  border-radius: 64rpx;
   font-size: 28rpx;
   color: $rw-text-primary;
-  box-shadow:
-    inset 0 2rpx 4rpx rgba(0, 0, 0, 0.04),
-    inset 0 -1rpx 2rpx rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .input-placeholder {
@@ -891,7 +1063,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   width: 88rpx;
   height: 88rpx;
   border-radius: 56rpx;
-  background: $rw-text-placeholder;
+  background: rgba(255, 140, 66, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -904,15 +1076,15 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 .send-btn--active {
-  background: linear-gradient(135deg, #FF6B35, #FF8F5E);
+  background: $rw-primary;
   box-shadow:
-    0 10rpx 28rpx rgba(255, 107, 53, 0.3),
-    0 4rpx 12rpx rgba(255, 107, 53, 0.18),
+    0 10rpx 28rpx rgba(255, 140, 66, 0.3),
+    0 4rpx 12rpx rgba(255, 140, 66, 0.18),
     inset 0 1rpx 3rpx rgba(255, 255, 255, 0.5);
 
   &:active {
     transform: scale(0.92) translateY(2rpx);
-    background: linear-gradient(135deg, #FF8A65, #FFAB91);
+    background: linear-gradient(135deg, #FFAB91, #FFCCBC);
   }
 }
 

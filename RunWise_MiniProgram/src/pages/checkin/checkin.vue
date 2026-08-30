@@ -1,5 +1,8 @@
 <template>
   <view class="page">
+    <!-- 背景图片层 -->
+    <image class="page-bg" src="/static/blurry-gradient-haikei.png" mode="aspectFill"></image>
+
     <!-- 二级导航 -->
     <view class="sub-nav">
       <view
@@ -96,9 +99,13 @@
           <text class="remark-text">{{ selectedDayCheckin.remark }}</text>
         </view>
       </view>
-      <view v-else class="empty-state">
-        <view class="empty-icon"></view>
-        <text class="empty-text">{{ selectedDateLabel }} 暂无打卡记录</text>
+      <view v-else class="card empty-state-card">
+        <view class="empty-runner-icon">🏃</view>
+        <text class="empty-date-label">{{ selectedDateLabel }}</text>
+        <text class="empty-main-text">暂无打卡记录</text>
+        <view class="empty-go-btn" @click="onFabClick">
+          <text class="empty-go-text">去打卡 →</text>
+        </view>
       </view>
     </view>
 
@@ -251,15 +258,15 @@ const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
 const currentTab = ref(0);
 
 const calendarData = ref<CalendarItem[]>([
-  { date: "2026-08-01", distance: 3.5, duration: 25, mood: "轻松" },
-  { date: "2026-08-03", distance: 5.2, duration: 32, mood: "适中" },
-  { date: "2026-08-05", distance: 4.0, duration: 28, mood: "轻松" },
+  { date: "2025-08-01", distance: 3.5, duration: 25, mood: "轻松" },
+  { date: "2025-08-03", distance: 5.2, duration: 32, mood: "适中" },
+  { date: "2025-08-05", distance: 4.0, duration: 28, mood: "轻松" },
 ]);
 
 const checkinList = ref<CheckinItem[]>([
   {
     id: 1,
-    checkinDate: "2026-08-05",
+    checkinDate: "2025-08-05",
     distance: 4.0,
     duration: 28,
     pace: 7.0,
@@ -269,7 +276,7 @@ const checkinList = ref<CheckinItem[]>([
   },
   {
     id: 2,
-    checkinDate: "2026-08-03",
+    checkinDate: "2025-08-03",
     distance: 5.2,
     duration: 32,
     pace: 6.15,
@@ -279,7 +286,7 @@ const checkinList = ref<CheckinItem[]>([
   },
   {
     id: 3,
-    checkinDate: "2026-08-01",
+    checkinDate: "2025-08-01",
     distance: 3.5,
     duration: 25,
     pace: 7.14,
@@ -468,8 +475,20 @@ function onItemClick(item: CheckinItem) {
 
 <style lang="scss">
 .page {
+  position: relative;
   min-height: 100vh;
   padding-bottom: 240rpx;
+  overflow: hidden;
+}
+
+.page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  filter: brightness(1.15) saturate(1.3);
 }
 
 /* ========== 二级导航 ========== */
@@ -704,41 +723,50 @@ function onItemClick(item: CheckinItem) {
   color: $rw-text-secondary;
 }
 
-/* ========== 空状态（轻盈浮动式） ========== */
-.empty-state {
+/* ========== 空状态（卡片化） ========== */
+.empty-state-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 64rpx 0;
+  padding: 48rpx 32rpx;
+  margin-bottom: 24rpx;
 }
 
-/* CSS 跑步图标 — 圆形轮廓 + 内部线条 */
-.empty-icon {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  border: 4rpx solid rgba(24, 144, 255, 0.15);
-  background: rgba(24, 144, 255, 0.04);
-  position: relative;
+.empty-runner-icon {
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
+}
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 24rpx;
-    height: 24rpx;
-    border-radius: 50%;
-    border: 3rpx solid rgba(24, 144, 255, 0.25);
+.empty-date-label {
+  font-size: 24rpx;
+  color: $rw-text-secondary;
+  margin-bottom: 8rpx;
+}
+
+.empty-main-text {
+  font-size: 28rpx;
+  color: #666666;
+  font-weight: 500;
+  margin-bottom: 24rpx;
+}
+
+.empty-go-btn {
+  background: $rw-primary;
+  border-radius: 9999rpx;
+  padding: 16rpx 48rpx;
+  box-shadow: $rw-shadow-fab;
+
+  &:active {
+    transform: scale(0.95);
+    opacity: 0.9;
   }
 }
 
-.empty-text {
-  font-size: 26rpx;
-  color: $rw-text-placeholder;
-  margin-top: 16rpx;
+.empty-go-text {
+  font-size: 28rpx;
+  color: #ffffff;
+  font-weight: 600;
 }
 
 /* ========== 心情标签 ========== */
