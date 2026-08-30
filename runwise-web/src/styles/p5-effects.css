@@ -1,0 +1,40 @@
+/* =====================================================================
+   P5 效果工具类（工程计划 3.2）
+   M1 仅收「切角卡片」一类；胶带贴纸 / 错位投影类随后续里程碑补入
+   ===================================================================== */
+
+/* 全站统一的双对角斜切：右上 + 左下各切 --cut（18px） */
+.p5-card {
+  position: relative;
+  background: var(--p5-panel);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut))
+  );
+}
+
+/* clip-path 会裁掉 box-shadow，投影挂到外层容器用 drop-shadow */
+.has-card-shadow {
+  filter: drop-shadow(0 6px 16px var(--p5-shadow));
+}
+
+/* 右下红色三角角标：打样图四宫格的标志性收尾（P5Card accent 开关控制） */
+.p5-card::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 34px;
+  height: 34px;
+  background: var(--p5-red);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+/* accent=false 时隐藏角标（P5Card 组件绑定） */
+.p5-card--plain::after {
+  display: none;
+}
