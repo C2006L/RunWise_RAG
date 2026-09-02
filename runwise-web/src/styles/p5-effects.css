@@ -38,3 +38,132 @@
 .p5-card--plain::after {
   display: none;
 }
+
+/* =====================================================================
+   页头与标题工具类（UI 精修 v2.0 · P1-1 / P1-2 / P1-3 / P3-1）
+   ===================================================================== */
+
+/* 大标题：白色主体 + 纯色实心红色错位层（禁用半透明残影与 blur，保证边缘锐利） */
+.p5-page-title {
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--p5-white);
+  text-shadow: 5px 5px 0 var(--p5-red);
+  animation: p5-title-in 0.25s ease-out 0.08s both;
+}
+
+/* 页头：红色斜切竖条 + 低透明度斜纹底（打破纯平黑） */
+.p5-page-header {
+  position: relative;
+  padding-left: 32px;
+  padding-bottom: var(--sp-6);
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 14px,
+    rgba(230, 0, 18, 0.05) 14px 15px
+  );
+}
+
+/* 斜切竖条：-12° 与 NavBar 斜块角度语言统一 */
+.p5-page-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 12px;
+  background: var(--p5-red);
+  transform: skewX(-12deg);
+  animation: p5-bar-in 0.25s ease-out both;
+}
+
+/* 展示数字：Anton 栈 + 等宽对齐（中文单位由 fallback 黑体渲染） */
+.p5-num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* =====================================================================
+   GlitchTitle（M6 首页海报化 · 工程计划 4.1）：纯色实心错位投影，禁用模糊
+   ===================================================================== */
+
+/* 内容页级：h1 尺寸，5px 实心红影 */
+.p5-glitch--page {
+  font-size: var(--fs-h1);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--p5-white);
+  text-shadow: 5px 5px 0 var(--p5-red);
+}
+
+/* 海报级：首页 RUN WISE（Anton + --fs-hero），8px 实心红影 */
+.p5-glitch--hero {
+  font-family: var(--font-display);
+  font-size: var(--fs-hero);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--p5-white);
+  text-shadow: 8px 8px 0 var(--p5-red);
+}
+
+/* ===== 进场动画（P3-1）：红条先入，标题随后从左滑入 ===== */
+@keyframes p5-bar-in {
+  from {
+    opacity: 0;
+    transform: skewX(-12deg) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: skewX(-12deg) translateY(0);
+  }
+}
+
+@keyframes p5-title-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* =====================================================================
+   斜切分隔带（工程计划 3.4.2 规则 5 · M10 构图改造）：
+   分区之间用红 / 黑交错的斜切块替代水平分割线；
+   斜切角度与 --cut 同族（12px 切角）。纯装饰，pointer-events 穿透。
+   ===================================================================== */
+.p5-divider {
+  position: relative;
+  height: 16px;
+  margin: var(--sp-2) 0 var(--sp-6);
+  pointer-events: none;
+}
+
+/* 主红条：左 38% 宽，两端 12° 斜切 */
+.p5-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  background: var(--p5-red);
+  clip-path: polygon(0 100%, 12px 0, 100% 0, calc(100% - 12px) 100%);
+}
+
+/* 副条：右侧错位的半透明红短块，与主条形成红黑交错节奏 */
+.p5-divider::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 46%;
+  width: 18%;
+  background: var(--p5-red);
+  opacity: 0.35;
+  clip-path: polygon(0 100%, 12px 0, 100% 0, calc(100% - 12px) 100%);
+}
+

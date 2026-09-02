@@ -5,7 +5,13 @@ import NavBar from './components/layout/NavBar.vue'
 
 <template>
   <NavBar v-if="!$route.meta.hideNav" />
-  <main class="app-main" :class="{ 'app-main--flat': $route.meta.hideNav }">
+  <main
+    class="app-main"
+    :class="{
+      'app-main--flat': $route.meta.hideNav,
+      'app-main--full': $route.meta.fullBleed,
+    }"
+  >
     <router-view />
   </main>
 </template>
@@ -14,12 +20,18 @@ import NavBar from './components/layout/NavBar.vue'
 .app-main {
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--sp-7) var(--sp-5) var(--sp-8);
+  padding: var(--sp-7) var(--sp-5) var(--sp-6);
   /* NavBar 为固定定位，主内容区下移一个导航高度 */
   padding-top: calc(var(--nav-h) + var(--sp-6));
 }
 
 .app-main--flat {
   padding-top: var(--sp-7);
+}
+
+/* 全出血页（首页 Hero）：去掉通用内边距，Hero 自 100vh 从页面顶开始 */
+.app-main--full {
+  max-width: none;
+  padding: 0;
 }
 </style>

@@ -5,3 +5,6 @@ export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== "false";
 export * as auth from "./user";
 export * as checkin from "./checkin";
 export * as qa from "./qa";
+export * as stats from "./stats";
+export * as plan from "./plan";
+export * as injury from "./injury";

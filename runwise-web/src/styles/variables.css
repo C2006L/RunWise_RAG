@@ -9,6 +9,7 @@
   --p5-black: #0a0a0a; /* 主黑：页面底色。已冻结，禁止再改 */
   --p5-cream: #f5f0e6; /* 米色：胶带贴纸、纸片元素。已冻结，禁止再改 */
   --p5-white: #ffffff; /* 白：正文、大标题主体 */
+  --p5-gray: #9c9ca3; /* 灰：装饰素材（P5 素材包）第四色，与 --p5-text-dim 同值 */
 
   /* ===== 扩展色（由四色派生，仍受变量收敛约束） ===== */
   --p5-panel: #17171a; /* 面板黑：卡片底色（黑上加黑的层次） */
@@ -43,10 +44,13 @@
   --radius-tag: 2px; /* 小标签 */
   --radius-pill: 999px; /* 胶囊按钮 / tab */
 
-  /* ===== 字体栈 ===== */
+  /* ===== 字体栈（V2 规格书第 0 部分，Google Fonts 引入于 index.html） ===== */
   --font-display:
-    "Bebas Neue", "Impact", "Arial Narrow", sans-serif; /* 英文大标题与数字 */
-  --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    "Anton", "Impact", "Arial Narrow", sans-serif; /* 英文大标题与数字（展示字体） */
+  --font-body:
+    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; /* 中文正文（标题用 900） */
+  --font-fun:
+    "ZCOOL KuaiLe", "Noto Sans SC", sans-serif; /* 趣味点缀，全站 ≤3 处 */
 
   /* ===== 层级 ===== */
   --z-nav: 100;
@@ -58,4 +62,13 @@
   --page-max: 1200px;
   --nav-h: 64px;
   --cut: 18px; /* 全站统一切角尺寸 */
+
+  /* ===== 倾斜令牌（工程计划 3.4.1 / M10 构图改造）=====
+     仅用于卡片级容器与装饰元素；正文与表单控件禁止倾斜（3.4.3 硬规则）。
+     业务代码禁止写死角度，一律引用令牌。 */
+  --tilt-1: -3deg; /* 大卡 / Hero 标题 */
+  --tilt-2: 2deg; /* 小卡 A */
+  --tilt-3: -1.5deg; /* 小卡 B */
+  --tilt-4: 3deg; /* 小卡 C / 胶带 */
+  --tilt-hero: -2deg; /* Hero 文案区整体微倾 */
 }

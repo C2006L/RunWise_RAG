@@ -1,6 +1,9 @@
 <script setup>
-// 米色胶带标签（工程计划 3.2② / 4.1）：撕口锯齿 + 斜贴
-// 默认绝对定位于父容器左上（父容器需 position: relative），z-tape 保证压在卡片之上
+// 米色胶带标签（工程计划 3.2② / 4.1 / v2.0 3.4.2 规则 4）：
+// 撕口锯齿 + 斜贴 + 位置覆写
+// - 默认定位父容器左上（父容器需 position: relative），z-tape 压在卡片之上
+// - v2.0 胶带自由化：top / right / bottom / left 支持实例覆写（可为负值
+//   横跨卡片边界），rotate 建议取 -8°~+6° 且同页不重复
 defineProps({
   text: {
     type: String,
@@ -8,13 +11,39 @@ defineProps({
   },
   rotate: {
     type: String,
-    default: '-6deg', // 斜贴角度，可按实例覆写（如 -5deg）
+    default: "-6deg", // 斜贴角度，可按实例覆写
   },
-})
+  // 位置覆写：传入即覆盖默认左上定位（CSS 合法值，负值 = 跨边界出血）
+  top: {
+    type: String,
+    default: "",
+  },
+  right: {
+    type: String,
+    default: "",
+  },
+  bottom: {
+    type: String,
+    default: "",
+  },
+  left: {
+    type: String,
+    default: "",
+  },
+});
 </script>
 
 <template>
-  <span class="tape" :style="{ transform: `rotate(${rotate})` }">{{ text }}</span>
+  <span
+    class="tape"
+    :style="{
+      transform: `rotate(${rotate})`,
+      // 位置覆写：right/bottom 定位时清掉默认 left，避免双向拉伸
+      ...(right ? { right, left: 'auto' } : left ? { left } : {}),
+      ...(bottom ? { bottom, top: 'auto' } : top ? { top } : {}),
+    }"
+    >{{ text }}</span
+  >
 </template>
 
 <style scoped>

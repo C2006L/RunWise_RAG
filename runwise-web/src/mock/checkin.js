@@ -128,6 +128,12 @@ export async function getCheckinByDate(date, token) {
   return records.get(date) || null
 }
 
+// 供 mock/stats 复用同一记录集（工程计划 5.2：checkin 是全部统计数字的单一数据源）
+export function getRawRecords(token) {
+  verifyAccess(token)
+  return ensureData().records
+}
+
 // 创建 / 补录打卡：pace 由距离时长推导写入，按日期 upsert（当天重复提交即覆盖）
 export async function createCheckin(data, token) {
   verifyAccess(token)

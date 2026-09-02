@@ -2,15 +2,18 @@
 import { onMounted } from "vue";
 import { useAuth } from "../../composables/useAuth";
 
-// 顶部斜切导航（工程计划 4.1）：四个入口 + 红色斜块激活态（右上切角与 P5Card 统一）
+// 顶部斜切导航（工程计划 4.1 v2.0）：六项入口 + 红色斜块激活态（右上切角与 P5Card 统一）
+// 数据统计移出导航（低频回访页，入口保留在首页数据条与个人中心）；/stats 路由保留
 // M2：接入登录态（昵称 + 退出），onMounted 拉取用户信息（token 恢复 / 静默刷新链路入口）
 const { store, logout } = useAuth();
 
 const links = [
   { path: "/home", label: "首页" },
   { path: "/checkin", label: "打卡记录" },
+  { path: "/plan", label: "训练计划" },
   { path: "/qa", label: "AI 答疑" },
-  { path: "/stats", label: "数据统计" },
+  { path: "/injury", label: "伤病预防" },
+  { path: "/profile", label: "个人中心" },
 ];
 
 onMounted(() => {
@@ -75,7 +78,7 @@ async function handleLogout() {
   justify-content: space-between;
 }
 
-/* 品牌区：Bebas Neue 栈（M1 未自托管字体文件，暂由 Impact 兜底）+ 错位投影 */
+/* 品牌区：Anton 栈（Google Fonts 引入，Impact 兜底）+ 错位投影 */
 .nav-brand {
   font-family: var(--font-display);
   font-size: var(--fs-h2);

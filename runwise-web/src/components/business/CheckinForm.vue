@@ -94,7 +94,7 @@ async function handleSubmit() {
         </div>
         <div class="ck-item">
           <span class="ck-label">心情</span>
-          <span class="ck-value">{{ moodLabel(record.mood) }}</span>
+          <span class="ck-value ck-value--text">{{ moodLabel(record.mood) }}</span>
         </div>
       </div>
 
@@ -181,6 +181,8 @@ async function handleSubmit() {
   padding: var(--sp-6);
   display: flex;
   flex-direction: column;
+  /* 打卡页双栏等高拉伸：表单卡随日历卡高度填满（空白压缩） */
+  height: 100%;
 }
 
 .ck-kicker {
@@ -223,10 +225,21 @@ async function handleSubmit() {
 }
 
 .ck-value {
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  /* 展示字体 + 等宽数字（UI 精修 P1-3），中文单位 / 备注保持正文字体 */
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.2;
   color: var(--p5-white);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 心情为中文文本：恢复正文字体，仅保留尺寸与颜色 */
+.ck-value--text {
+  font-family: var(--font-body);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .ck-value i {
@@ -301,6 +314,8 @@ async function handleSubmit() {
 
 .mood-chip {
   padding: var(--sp-2) var(--sp-4);
+  /* 趣味点缀 3/3：ZCOOL KuaiLe 心情贴纸 */
+  font-family: var(--font-fun);
   font-size: var(--fs-sub);
   color: var(--p5-text-dim);
   border: 1px solid var(--p5-line);

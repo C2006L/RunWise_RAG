@@ -28,6 +28,8 @@ const INJURY_WORDS = [
 const SAFETY_TIP = "以上建议仅供参考，若疼痛持续或加重请及时就医。";
 
 // ===== sources 两种形态：模型标识（直连）/ 模拟文档名（RAG 检索） =====
+// 注意：'Qwen3.5-Flash大模型生成' 为 mock 预置文案，真实接入后由后端
+// /api/qa/ask 返回的 sources 直接替换（LLM 直连返回模型标识，RAG 返回检索文档名）
 const MODEL_SOURCES = ["Qwen3.5-Flash大模型生成"];
 const INJURY_DOC_SOURCES = [
   "《跑步伤病预防手册》第2节",
@@ -191,13 +193,33 @@ const PRESET_HISTORY = [
 
 // ===== 历史记录集：localStorage 持久化（镜像后端落库行为，刷新后反馈状态经 history 仍保持） =====
 // 首次访问写入预置 8 条；ask / feedback 的变更实时持久化；存储损坏时回退预置数据
+// v2.0 去重规则：历史按「日期 + 问题」唯一——ask 重复提问当日不落新记录（覆盖更新
+// 反馈与时间），预置数据清洗同口径，杜绝同一条记录重复出现 3 次的问题
 const STORAGE_KEY = "runwise-mock-qa-history";
+
+// 去重键：createTime 前 10 位（日期）+ 问题文本
+function dedupeKey(record) {
+  return `${(record.createTime || "").slice(0, 10)}|${record.question}`;
+}
+
+// 清洗：同键保留最新一条（列表已按时间倒序，后者覆盖前者）
+function dedupeList(list) {
+  const seen = new Set();
+  const result = [];
+  for (const record of list) {
+    const key = dedupeKey(record);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(record);
+  }
+  return result;
+}
 
 function initStore() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const list = JSON.parse(raw);
+      const list = dedupeList(JSON.parse(raw));
       if (Array.isArray(list) && list.length) {
         return { list, nextId: Math.max(...list.map((r) => r.id)) + 1 };
       }
@@ -205,11 +227,12 @@ function initStore() {
   } catch {
     // 存储损坏时回退预置数据
   }
-  return { list: [...PRESET_HISTORY], nextId: PRESET_HISTORY.length + 1 };
+  const preset = dedupeList([...PRESET_HISTORY]);
+  return { list: preset, nextId: preset.length + 1 };
 }
 
 const initialStore = initStore();
-const historyStore = initialStore.list;
+let historyStore = initialStore.list;
 let nextId = initialStore.nextId;
 
 function persist() {
@@ -235,15 +258,25 @@ export async function ask(question, token) {
     ...(isInjury ? { safetyTip: SAFETY_TIP } : {}),
   };
 
-  historyStore.unshift({
-    id: nextId++,
-    userId: "10086",
-    question: q,
-    answer: result.answer,
-    sources: JSON.stringify(result.sources),
-    feedback: 0,
-    createTime: formatDateTime(new Date()),
-  });
+  // v2.0 去重：同日同问不落新记录——把已存在记录顶到首位并覆盖回答 / 反馈 / 时间
+  const today = formatDateTime(new Date()).slice(0, 10);
+  const existing = historyStore.find((r) => dedupeKey(r) === `${today}|${q}`);
+  if (existing) {
+    existing.answer = result.answer;
+    existing.sources = JSON.stringify(result.sources);
+    existing.createTime = formatDateTime(new Date());
+    historyStore = [existing, ...historyStore.filter((r) => r !== existing)];
+  } else {
+    historyStore.unshift({
+      id: nextId++,
+      userId: "10086",
+      question: q,
+      answer: result.answer,
+      sources: JSON.stringify(result.sources),
+      feedback: 0,
+      createTime: formatDateTime(new Date()),
+    });
+  }
   persist();
 
   return result;

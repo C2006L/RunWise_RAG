@@ -20,7 +20,8 @@ const routes = [
     path: "/home",
     name: "home",
     component: () => import("../views/HomeView.vue"),
-    meta: { requiresAuth: true, title: "首页" },
+    // fullBleed：首页 Hero 全出血（100vh 从页面顶开始，main 不加通用 padding）
+    meta: { requiresAuth: true, title: "首页", fullBleed: true },
   },
   {
     path: "/checkin",
@@ -29,16 +30,40 @@ const routes = [
     meta: { requiresAuth: true, title: "打卡记录" },
   },
   {
+    path: "/plan",
+    name: "plan",
+    component: () => import("../views/PlanView.vue"),
+    meta: { requiresAuth: true, title: "训练计划" },
+  },
+  {
     path: "/qa",
     name: "qa",
     component: () => import("../views/QaView.vue"),
     meta: { requiresAuth: true, title: "AI 答疑" },
   },
   {
+    path: "/injury",
+    name: "injury",
+    component: () => import("../views/InjuryView.vue"),
+    meta: { requiresAuth: true, title: "伤病预防" },
+  },
+  {
+    path: "/profile",
+    name: "profile",
+    component: () => import("../views/ProfileView.vue"),
+    meta: { requiresAuth: true, title: "个人中心" },
+  },
+  {
     path: "/stats",
     name: "stats",
     component: () => import("../views/StatsView.vue"),
     meta: { requiresAuth: true, title: "数据统计" },
+  },
+  {
+    path: "/shapes-preview",
+    name: "shapes-preview",
+    component: () => import("../assets/shapes/ShapePreview.vue"),
+    meta: { requiresAuth: true, title: "素材预览" },
   },
 ];
 

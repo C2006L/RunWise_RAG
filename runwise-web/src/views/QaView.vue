@@ -1,40 +1,64 @@
 <script setup>
 import { nextTick, onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import P5Card from "../components/common/P5Card.vue";
 import QaChatMessage from "../components/business/QaChatMessage.vue";
 import * as qaApi from "../api/qa";
+import * as statsApi from "../api/stats";
 
-// 答疑页（工程计划 4.5 / M4 功能态）：聊天式 AI 问答
+// 答疑页（工程计划 4.5 / v2.0 交互修正）：聊天式 AI 问答
 // - 会话消息为组件局部状态（不建 store，工程计划 4.5 约定）
-// - 历史记录侧栏分页拉取，点击条目将问答对载入聊天流顶部
-// - ask 成功后回拉历史首页：既刷新侧栏，也把新落库记录的 id 绑定到
-//   助手消息上（反馈按钮依赖 recordId），契约保持 { answer, sources, safetyTip }
+// - v2.0 交互硬规则：热门问题 / 历史 / 空状态 / 分类候选一律「填入输入框并聚焦」，
+//   由用户确认发送——页面内不存在任何未确认的自动发送行为
+// - 分类 chips 为二级候选条：点击分类展开 3~4 条候选问题，第一条由
+//   getWeeklyStats 实时组装（数据注入），点击候选填入草稿
+// - 伤病预防页「问 AI 助手」跳转携带 ?draft=，进页填入草稿并聚焦
 const HISTORY_PAGE_SIZE = 5;
 
-// 分类快捷提问的预设问题（点击分类 chip 即以该问题发起提问）
-const CATEGORY_PRESET = {
-  训练计划: "初学者如何安排每周三次的跑步训练？",
-  装备选择: "如何选择适合自己的第一双跑鞋？",
-  伤痛预防: "跑步时膝盖疼，我该怎么办？",
-  跑步技术: "怎样的跑步姿势才更省力？",
+// ===== 分类候选问题（第一条为数据注入占位，运行时由 weekly 数据组装） =====
+const CATEGORY_CANDIDATES = {
+  训练计划: {
+    injected: (w) =>
+      `我这周跑了 ${w.totalKm}km、打卡 ${w.checkinCount} 次，已连续 ${w.streakDays} 天，下周课表怎么安排？`,
+    fallback: "我每周跑 3 次，下周课表怎么安排比较好？",
+    rest: [
+      "5K 破 25 分钟需要什么样的训练结构？",
+      "每周跑步频率和休息日怎么分配最科学？",
+    ],
+  },
+  装备选择: {
+    fallback: "",
+    rest: [
+      "如何选择适合自己的第一双跑鞋？",
+      "跑鞋多久该换一次？看哪些信号？",
+      "跑步手表有必要买吗？入门款怎么选？",
+    ],
+  },
+  伤痛预防: {
+    fallback: "",
+    rest: [
+      "跑步时膝盖疼，我该怎么办？",
+      "跑完小腿紧绷是正常的吗？怎么缓解？",
+      "如何判断该休息还是该就医？",
+    ],
+  },
+  跑步技术: {
+    fallback: "",
+    rest: [
+      "怎样的跑步姿势才更省力？",
+      "步频和步幅，先练哪个更重要？",
+      "跑步时该怎么呼吸？",
+    ],
+  },
 };
 
-const welcomeMsg = {
-  key: "welcome",
-  role: "assistant",
-  text: "你好，我是 RunWise 智能训练助手。训练计划、装备选择、伤痛预防、跑步技术方面的疑问都可以直接问我，也可以点击下方分类标签快速提问。",
-  sources: [],
-  safetyTip: null,
-  feedback: 0,
-  recordId: null,
-  loading: false,
-  error: false,
-};
+// 空状态点击时填入的预设第一问（热门问题榜首）
+const FIRST_QUESTION = "初学者应该怎么开始跑步？";
 
 // ===== 状态 =====
 const messages = ref([]); // 聊天流（user / assistant 消息）
 const inputText = ref("");
-const inputRef = ref(null);
+const chatInput = ref(null); // 输入框元素（聚焦用）
 const chatBody = ref(null);
 const asking = ref(false);
 
@@ -45,22 +69,24 @@ const historyTotal = ref(0);
 const historyPage = ref(1);
 const historyLoading = ref(false);
 
+// 二级候选条状态：当前展开的分类名（'' = 收起）与候选问题列表
+const activeCategory = ref("");
+const candidateQuestions = ref([]);
+const weeklyStats = ref(null); // 数据注入用（getWeeklyStats，失败降级 fallback）
+
 let msgSeq = 0;
 
-// ===== 工具 =====
-// 后端 sources 落库为字符串，JSON.parse 后渲染，容错处理空值
-function parseSources(raw) {
-  if (!raw) return [];
-  try {
-    const v = JSON.parse(raw);
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
-}
+const route = useRoute();
 
+// ===== 工具 =====
 function shortTime(time) {
   return (time || "").slice(5, 16); // 'MM-DD HH:mm'
+}
+
+// 草稿填写：全站唯一入口，填入 + 聚焦光标（v2.0 交互规则）
+function fillDraft(text) {
+  inputText.value = text;
+  nextTick(() => chatInput.value?.focus());
 }
 
 async function scrollToBottom() {
@@ -82,7 +108,19 @@ onMounted(() => {
       hotQuestions.value = list || [];
     })
     .catch(() => {});
+  // 数据注入候选问题用（失败静默降级 fallback 文案）
+  statsApi
+    .getWeeklyStats()
+    .then((w) => {
+      weeklyStats.value = w;
+    })
+    .catch(() => {});
   loadHistoryPage(1);
+
+  // 伤病预防页跳转携带 ?draft=：填入草稿并聚焦（不自动发送）
+  if (route.query.draft) {
+    fillDraft(String(route.query.draft));
+  }
 });
 
 async function loadHistoryPage(page) {
@@ -94,9 +132,7 @@ async function loadHistoryPage(page) {
       historyList.value = res.list;
     } else {
       const existing = new Set(historyList.value.map((r) => r.id));
-      historyList.value.push(
-        ...res.list.filter((r) => !existing.has(r.id)),
-      );
+      historyList.value.push(...res.list.filter((r) => !existing.has(r.id)));
     }
     historyPage.value = page;
   } catch {
@@ -111,17 +147,42 @@ function loadMoreHistory() {
   loadHistoryPage(historyPage.value + 1);
 }
 
-// ===== 提问链路 =====
+// ===== 空状态：点击填入预设第一问（不发送） =====
+function startFromEmpty() {
+  fillDraft(FIRST_QUESTION);
+}
+
+// ===== 分类 chips：二级候选条（点击展开 / 再点收起） =====
+function toggleCategory(category) {
+  if (activeCategory.value === category.name) {
+    activeCategory.value = "";
+    return;
+  }
+  const preset = CATEGORY_CANDIDATES[category.name];
+  if (!preset) return;
+  const candidates = [];
+  if (preset.injected && weeklyStats.value) {
+    candidates.push(preset.injected(weeklyStats.value));
+  } else if (preset.fallback || preset.rest.length) {
+    candidates.push(preset.fallback || preset.rest[0]);
+  }
+  candidates.push(...(preset.injected ? preset.rest : preset.rest.slice(1)));
+  candidateQuestions.value = candidates;
+  activeCategory.value = category.name;
+}
+
+// 候选问题点击 → 填入草稿并收起候选条
+function pickCandidate(question) {
+  fillDraft(question);
+  activeCategory.value = "";
+}
+
+// ===== 提问链路（仅输入框回车 / 发送按钮触发） =====
 async function sendFromInput() {
   const q = inputText.value.trim();
   if (!q || asking.value) return;
   inputText.value = "";
   send(q);
-}
-
-function askByCategory(category) {
-  if (asking.value) return;
-  send(CATEGORY_PRESET[category.name] || `关于${category.name}的建议`);
 }
 
 async function send(question) {
@@ -213,52 +274,70 @@ async function handleFeedback(msg, value) {
   }
 }
 
-// ===== 侧栏交互 =====
-function fillInput(question) {
-  inputText.value = question;
-  inputRef.value?.focus();
+// ===== 侧栏交互（v2.0：一律填入草稿 + 聚焦，不发送） =====
+// 热门问题点击 → 问题文本填入输入框
+function askHot(question) {
+  fillDraft(question);
 }
 
-// 历史条目 → 载入聊天流顶部（已载入过的仅滚动到顶部）
+// 历史条目点击 → 该问题填入输入框（可编辑后重发）
 function loadHistoryIntoChat(record) {
-  if (messages.value.some((m) => m.recordId === record.id)) {
-    chatBody.value?.scrollTo({ top: 0, behavior: "smooth" });
-    return;
-  }
-  messages.value.unshift(
-    { key: `m${++msgSeq}`, role: "user", text: record.question },
-    {
-      key: `m${++msgSeq}`,
-      role: "assistant",
-      text: record.answer,
-      sources: parseSources(record.sources),
-      safetyTip: null,
-      feedback: record.feedback,
-      recordId: record.id,
-      loading: false,
-      error: false,
-    },
-  );
-  nextTick(() => chatBody.value?.scrollTo({ top: 0 }));
+  fillDraft(record.question);
 }
 </script>
 
 <template>
   <div class="qa-page">
-    <header class="page-head">
+    <header class="page-head p5-page-header">
       <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title">AI 答疑</h1>
+      <h1 class="page-title p5-page-title">AI 答疑</h1>
       <p class="page-desc">
         训练计划、装备选择、伤痛预防 —— 有疑问，随时问 RunWise 助手。
       </p>
     </header>
+
+    <div class="p5-divider" aria-hidden="true"></div>
 
     <div class="qa-layout">
       <!-- 主区：聊天流 -->
       <P5Card tag="RUNWISE 助手" tag-rotate="-5deg">
         <div class="qa-chat">
           <div ref="chatBody" class="chat-body">
-            <QaChatMessage :message="welcomeMsg" />
+            <!-- 空状态：跑者剪影 + 引导文案，点击填入预设第一问（不自动发送，v2.0） -->
+            <button
+              v-if="!messages.length"
+              class="chat-empty"
+              type="button"
+              @click="startFromEmpty"
+            >
+              <!-- 跑者剪影：红色错位层 + 白色主体，双影海报语言 -->
+              <span class="empty-runner" aria-hidden="true">
+                <svg
+                  class="runner-shadow"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4Z"
+                  />
+                </svg>
+                <svg
+                  class="runner-body"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4Z"
+                  />
+                </svg>
+              </span>
+              <span class="empty-title">你好，我是 RunWise 智能训练助手</span>
+              <span class="empty-desc">
+                训练计划、装备选择、伤痛预防、跑步技术方面的疑问都可以直接问我
+              </span>
+              <span class="empty-hint">点击此处，从第一个问题开始 →</span>
+              <span class="empty-note">（填入草稿，可编辑后发送）</span>
+            </button>
             <QaChatMessage
               v-for="m in messages"
               :key="m.key"
@@ -269,21 +348,35 @@ function loadHistoryIntoChat(record) {
           </div>
 
           <div class="chat-foot">
+            <!-- 分类快捷提问（v2.0 二级候选条）：点击分类展开候选问题，点击候选填入草稿 -->
             <div v-if="categories.length" class="chips">
               <button
                 v-for="c in categories"
                 :key="c.name"
                 class="chip"
                 type="button"
-                :disabled="asking"
-                @click="askByCategory(c)"
+                :class="{ 'chip--active': activeCategory === c.name }"
+                @click="toggleCategory(c)"
               >
-                {{ c.icon }} {{ c.name }}
+                {{ c.name }}
+              </button>
+            </div>
+            <!-- 二级候选条：该分类下的候选问题（第一条可能含实时数据注入） -->
+            <div v-if="activeCategory" class="candidates">
+              <button
+                v-for="(q, i) in candidateQuestions"
+                :key="q"
+                class="candidate"
+                type="button"
+                @click="pickCandidate(q)"
+              >
+                <span class="candidate-idx p5-num">{{ i + 1 }}</span>
+                <span class="candidate-text">{{ q }}</span>
               </button>
             </div>
             <div class="input-row">
               <input
-                ref="inputRef"
+                ref="chatInput"
                 v-model="inputText"
                 class="chat-input"
                 type="text"
@@ -314,16 +407,23 @@ function loadHistoryIntoChat(record) {
               :key="h.question"
               class="side-item side-item--hot"
               type="button"
-              @click="fillInput(h.question)"
+              @click="askHot(h.question)"
             >
-              <span class="hot-idx">{{ String(i + 1).padStart(2, "0") }}</span>
+              <span class="hot-idx p5-num">{{
+                String(i + 1).padStart(2, "0")
+              }}</span>
               <span class="side-text">{{ h.question }}</span>
             </button>
             <p v-if="!hotQuestions.length" class="side-empty">暂无热门问题</p>
           </div>
         </P5Card>
 
-        <P5Card tag="历史记录" tag-rotate="-4deg">
+        <P5Card
+          tag="历史记录"
+          tag-rotate="-4deg"
+          tag-top="-18px"
+          tag-left="44px"
+        >
           <div class="side-card">
             <h3 class="side-title">我的问答</h3>
             <button
@@ -340,10 +440,7 @@ function loadHistoryIntoChat(record) {
                 ><template v-else-if="r.feedback === -1"> · 已踩</template>
               </span>
             </button>
-            <p
-              v-if="!historyList.length && !historyLoading"
-              class="side-empty"
-            >
+            <p v-if="!historyList.length && !historyLoading" class="side-empty">
               暂无历史记录，提问后自动保存
             </p>
             <button
@@ -364,7 +461,7 @@ function loadHistoryIntoChat(record) {
 
 <style scoped>
 .page-head {
-  margin-bottom: var(--sp-6);
+  margin-bottom: 0; /* 间距由 p5-page-header 的 padding-bottom 提供 */
 }
 
 .page-kicker {
@@ -377,10 +474,7 @@ function loadHistoryIntoChat(record) {
 
 .page-title {
   font-size: 48px;
-  font-weight: 900;
-  letter-spacing: -0.01em;
   line-height: 1.2;
-  color: var(--p5-white);
   margin-bottom: var(--sp-3);
 }
 
@@ -392,7 +486,7 @@ function loadHistoryIntoChat(record) {
 /* ===== 布局：主聊天区 + 侧栏 ===== */
 .qa-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
   gap: var(--sp-5);
   align-items: start;
 }
@@ -413,7 +507,8 @@ function loadHistoryIntoChat(record) {
 .qa-chat {
   display: flex;
   flex-direction: column;
-  height: 640px;
+  /* 自适应视口：底部不出大段空白（视觉精修 · 空白压缩） */
+  height: clamp(460px, calc(100vh - 340px), 640px);
 }
 
 .chat-body {
@@ -437,12 +532,79 @@ function loadHistoryIntoChat(record) {
   background: transparent;
 }
 
+/* ===== 空状态：跑者剪影 + 引导文案（居中占满聊天区，点击发问） ===== */
+.chat-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  text-align: center;
+  color: var(--p5-text-dim);
+  transition: background 0.2s;
+}
+
+.chat-empty:hover {
+  background: var(--p5-red-soft);
+}
+
+.empty-runner {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-bottom: var(--sp-2);
+}
+
+.empty-runner svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 红色错位层：纯实心偏移，无模糊 */
+.runner-shadow {
+  color: var(--p5-red);
+  transform: translate(7px, 7px);
+}
+
+.runner-body {
+  color: var(--p5-white);
+}
+
+.empty-title {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  color: var(--p5-white);
+}
+
+.empty-desc {
+  max-width: 380px;
+  font-size: var(--fs-sub);
+  line-height: 1.7;
+}
+
+.empty-hint {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.12em;
+  color: var(--p5-red);
+}
+
+.empty-note {
+  font-size: var(--fs-caption);
+  color: var(--p5-text-dim);
+  opacity: 0.7;
+}
+
 .chat-foot {
   padding: var(--sp-4) var(--sp-6) var(--sp-5);
   border-top: 1px solid var(--p5-line);
 }
 
-/* ===== 分类快捷提问 chips（米色胶带质感） ===== */
+/* ===== 分类快捷提问 chips（米色胶带质感 + 红方块前缀） ===== */
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -453,8 +615,10 @@ function loadHistoryIntoChat(record) {
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
   padding: 6px 16px;
+  /* 趣味点缀 1/3：ZCOOL KuaiLe 贴纸手写感 */
+  font-family: var(--font-fun);
   font-size: var(--fs-sub);
   color: var(--p5-ink);
   background: var(--p5-cream);
@@ -462,21 +626,89 @@ function loadHistoryIntoChat(record) {
   transform: rotate(-1.2deg);
   transition:
     background 0.2s,
-    color 0.2s;
+    color 0.2s,
+    transform 0.2s,
+    filter 0.2s;
+}
+
+/* 红色小方块前缀：替代彩色 emoji，守住红黑米三色纪律（UI 精修 P2-4） */
+.chip::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: var(--p5-red);
+  transform: rotate(45deg);
 }
 
 .chip:nth-child(even) {
   transform: rotate(1.2deg);
 }
 
+/* hover：贴纸被「揭起」——上浮 + 投影加深 + 再旋 1° */
 .chip:hover:not(:disabled) {
   background: var(--p5-red);
   color: var(--p5-white);
+  transform: rotate(0.2deg) translateY(-2px);
+  filter: drop-shadow(0 4px 8px var(--p5-shadow));
+}
+
+.chip:hover:not(:disabled)::before {
+  background: var(--p5-white);
 }
 
 .chip:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* 激活态 chip：红底白字（候选条展开中） */
+.chip--active {
+  background: var(--p5-red);
+  color: var(--p5-white);
+  transform: rotate(0);
+}
+
+.chip--active::before {
+  background: var(--p5-white);
+}
+
+/* ===== 二级候选条（v2.0：分类展开的候选问题，点击填入草稿） ===== */
+.candidates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--p5-black);
+  border: 1px dashed var(--p5-red);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.candidate {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.candidate:hover {
+  background: var(--p5-red-soft);
+}
+
+.candidate-idx {
+  flex: none;
+  font-size: var(--fs-h3);
+  line-height: 1;
+  color: var(--p5-red);
+}
+
+.candidate-text {
+  font-size: var(--fs-sub);
+  line-height: 1.6;
+  color: var(--p5-cream);
 }
 
 /* ===== 输入行 ===== */
@@ -541,6 +773,7 @@ function loadHistoryIntoChat(record) {
 }
 
 .side-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -557,9 +790,26 @@ function loadHistoryIntoChat(record) {
   margin-top: var(--sp-2);
 }
 
+/* hover：红蒙层底 + 左侧红色竖条，明确「可点」（UI 精修 P2-2） */
+.side-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--p5-red);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
 .side-item:hover {
   border-color: var(--p5-red);
   background: var(--p5-red-soft);
+}
+
+.side-item:hover::before {
+  opacity: 1;
 }
 
 .side-item--hot {
