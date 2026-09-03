@@ -11,11 +11,12 @@ import { formatDate } from "../composables/useFormatDate";
 const store = useCheckinStore();
 
 const todayKey = formatDate(new Date());
-// 胶带文案与卡片内容严格一致（UI 精修 P0-3）：
-// 有记录 →「当日记录」（只读卡）；今天无记录 →「今日打卡」（表单）；过去无记录 →「补录打卡」（补录表单）
+// 胶带文案与卡片内容严格一致（UI 精修 P0-3 / B2 空态）：
+// 有记录 →「当日记录」（只读卡）；今天无记录 →「今日打卡」（表单）；
+// 过去无记录 →「暂无记录」（空态卡 + 去首页打卡链接）
 const formTag = computed(() => {
   if (store.selectedRecord) return "当日记录";
-  return store.selectedDate === todayKey ? "今日打卡" : "补录打卡";
+  return store.selectedDate === todayKey ? "今日打卡" : "暂无记录";
 });
 
 function loadMonth({ startDate, endDate }) {
@@ -42,10 +43,17 @@ onMounted(() => {
     <div class="p5-divider" aria-hidden="true"></div>
 
     <div class="checkin-layout">
-      <P5Card tag="训练日历" tag-rotate="-5deg">
+      <!-- B1：贴纸红底白字（全站贴纸已定红），框体保持默认切角工艺不变 -->
+      <P5Card tag="训练日历" tag-rotate="-5deg" tag-variant="red">
         <CheckinCalendar @month-change="loadMonth" />
       </P5Card>
-      <P5Card :tag="formTag" tag-rotate="4deg" tag-top="-15px" tag-right="36px">
+      <P5Card
+        :tag="formTag"
+        tag-rotate="4deg"
+        tag-top="-15px"
+        tag-right="36px"
+        tag-variant="red"
+      >
         <CheckinForm />
       </P5Card>
     </div>

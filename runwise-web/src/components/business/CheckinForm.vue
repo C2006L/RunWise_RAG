@@ -104,10 +104,22 @@ async function handleSubmit() {
       </div>
     </template>
 
-    <!-- 可编辑表单：选中日期无记录 -->
+    <!-- B2 空态：过去日期无记录（补录入口已收拢，今天无记录仍走下方表单） -->
+    <template v-else-if="!isToday">
+      <p class="ck-kicker">EMPTY · 暂无记录</p>
+      <h2 class="ck-date">{{ dateCn }}</h2>
+      <div class="ck-empty">
+        <p class="ck-empty-text">
+          这一天还没有记录 ·
+          <RouterLink to="/" class="ck-empty-link">去首页打卡 →</RouterLink>
+        </p>
+      </div>
+    </template>
+
+    <!-- 可编辑表单：今天无记录（打卡主链路：首页「去打卡」→ 本页） -->
     <template v-else>
-      <p class="ck-kicker">{{ isToday ? 'TODAY · 待打卡' : 'BACKFILL · 补录' }}</p>
-      <h2 class="ck-date">{{ isToday ? '今日打卡' : '补录 ' + dateCn }}</h2>
+      <p class="ck-kicker">TODAY · 待打卡</p>
+      <h2 class="ck-date">今日打卡</h2>
 
       <div class="field-row">
         <label class="field">
@@ -216,6 +228,34 @@ async function handleSubmit() {
   padding: var(--sp-3) var(--sp-4);
   background: var(--p5-black);
   border: 1px solid var(--p5-line);
+  /* B4：红色左边框 2px——与训练计划 TODAY 行同款语言 */
+  border-left: 2px solid var(--p5-red);
+}
+
+/* ===== B2 空态（过去日期无记录）===== */
+.ck-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6) 0;
+}
+
+.ck-empty-text {
+  font-size: var(--fs-sub);
+  color: var(--p5-text-dim);
+  letter-spacing: 0.04em;
+}
+
+.ck-empty-link {
+  color: var(--p5-red);
+  font-weight: 700;
+  transition: color 0.2s;
+}
+
+.ck-empty-link:hover {
+  color: var(--p5-red-dark);
+  text-decoration: underline;
 }
 
 .ck-label {

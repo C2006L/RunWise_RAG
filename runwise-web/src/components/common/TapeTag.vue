@@ -30,12 +30,22 @@ defineProps({
     type: String,
     default: "",
   },
+  // 配色变体：cream = 米色纸带（默认）；red = 红底白字实心（打卡卡 CHECK-IN 同款）；
+  // yellow = 警示黄底黑字（伤病预防页部位贴纸，Phase F1）
+  variant: {
+    type: String,
+    default: "cream",
+  },
 });
 </script>
 
 <template>
   <span
     class="tape"
+    :class="{
+      'tape--red': variant === 'red',
+      'tape--yellow': variant === 'yellow',
+    }"
     :style="{
       transform: `rotate(${rotate})`,
       // 位置覆写：right/bottom 定位时清掉默认 left，避免双向拉伸
@@ -75,5 +85,17 @@ defineProps({
     3% 48%,
     0 20%
   );
+}
+
+/* 红底白字变体（CHECK-IN 同款）：撕口锯齿 / 旋转 / 阴影结构不变 */
+.tape--red {
+  color: var(--p5-white);
+  background: var(--p5-red);
+}
+
+/* 警示黄底黑字变体（伤病预防页部位贴纸，F1）：结构同上 */
+.tape--yellow {
+  color: var(--p5-ink);
+  background: var(--accent-yellow);
 }
 </style>

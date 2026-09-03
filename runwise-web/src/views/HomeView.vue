@@ -1,18 +1,9 @@
 <script setup>
 // 首页（V3 终版）：Hero（含数据条/大卡/纯文字菜单，菜单路由直跳）+ 简洁页脚
 // - 下方三卡详情区已删除（功能入口由 Hero 菜单与顶部导航承担）
-// - 页脚补位：-12° 白细带延续海报语言 + RUN WISE 字标 + 导航文字链接
-import { useRouter } from "vue-router";
+// - 页脚（E 组去重）：只留 RUN WISE 小字标 + 版权行；导航链接与顶部重复已删；
+//   「To Every Runner」全页仅 Hero 签名处出现 1 次
 import HeroSection from "../components/business/HeroSection.vue";
-
-const router = useRouter();
-
-const FOOT_LINKS = [
-  { label: "首页", to: "/home" },
-  { label: "打卡", to: "/checkin" },
-  { label: "AI 答疑", to: "/qa" },
-  { label: "个人中心", to: "/profile" },
-];
 </script>
 
 <template>
@@ -22,12 +13,7 @@ const FOOT_LINKS = [
       <span class="footer-band" aria-hidden="true"></span>
       <div class="footer-inner">
         <span class="footer-logo">RUN WISE</span>
-        <span class="footer-copy">© 2024 RunWise · To Every Runner</span>
-        <nav class="footer-links">
-          <a v-for="l in FOOT_LINKS" :key="l.to" @click="router.push(l.to)">{{
-            l.label
-          }}</a>
-        </nav>
+        <span class="footer-copy">© 2024 RunWise</span>
       </div>
     </footer>
   </div>
@@ -83,23 +69,6 @@ const FOOT_LINKS = [
   font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--p5-text-dim);
-}
-
-.footer-links {
-  display: flex;
-  gap: var(--sp-5);
-}
-
-.footer-links a {
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  color: var(--p5-text-dim);
-  cursor: pointer;
-  transition: color 0.15s;
-}
-
-.footer-links a:hover {
-  color: var(--p5-red);
 }
 
 @media (max-width: 768px) {

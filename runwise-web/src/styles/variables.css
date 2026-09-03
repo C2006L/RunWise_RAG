@@ -18,6 +18,11 @@
   --p5-text-dim: #9c9ca3; /* 次要文字：备注、时间戳 */
   --p5-ink: #2a2a2a; /* 米色纸片上的深色文字 */
   --p5-shadow: rgba(0, 0, 0, 0.55); /* 卡片投影 */
+  --p5-shadow-red: #5c1518; /* 深红错位影：红框卡片实心投影（6px 6px 0，AI 页三卡同首页打卡卡工艺） */
+
+  /* ===== 扩展点缀色（Phase A 注册，暂未应用于界面元素） ===== */
+  --accent-blue: #35a7ff; /* 强调蓝：预留 */
+  --accent-yellow: #ffc53d; /* 强调黄：预留 */
 
   /* ===== 字号 ===== */
   --fs-hero: clamp(64px, 9vw, 120px); /* 首页 RUN WISE */
@@ -51,6 +56,8 @@
     "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; /* 中文正文（标题用 900） */
   --font-fun:
     "ZCOOL KuaiLe", "Noto Sans SC", sans-serif; /* 趣味点缀，全站 ≤3 处 */
+  --font-cn-display:
+    "ZCOOL QingKe HuangYou", "Noto Sans SC", sans-serif; /* 中文展示：粗犷游戏感，与 Anton 搭配 */
 
   /* ===== 层级 ===== */
   --z-nav: 100;

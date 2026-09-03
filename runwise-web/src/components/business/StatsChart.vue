@@ -61,7 +61,9 @@ function buildOption() {
         return `${p.name}<br/>${v > 0 ? `${v} ${props.unit}` : "未打卡"}`;
       },
     },
-    grid: { left: 56, right: 24, top: 40, bottom: 40 },
+    // E5：y 轴名「单位 km」横向单行——name 默认横排在轴顶，grid.top 预留
+    // 足够高度防裁切，nameTextStyle 限单行字号
+    grid: { left: 56, right: 24, top: 52, bottom: 40 },
     xAxis: {
       type: "category",
       data: props.labels,
@@ -78,8 +80,16 @@ function buildOption() {
     },
     yAxis: {
       type: "value",
-      name: props.unit,
-      nameTextStyle: { color: "#9c9ca3", fontSize: 11 },
+      name: `单位 ${props.unit}`,
+      nameTextStyle: {
+        color: "#9c9ca3",
+        fontSize: 11,
+        // E5：强制横向单行，禁止换行错位
+        align: "left",
+        verticalAlign: "middle",
+        padding: [0, 0, 24, 0],
+      },
+      nameGap: 14,
       splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
       axisLabel: {
         color: "#9c9ca3",

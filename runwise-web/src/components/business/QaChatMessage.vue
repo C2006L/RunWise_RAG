@@ -6,14 +6,18 @@
 //   · error：错误气泡 + 「重试」按钮（不允许静默失败）
 //   · safetyTip：气泡下方米色提示条（命中伤病关键词时）
 // - 反馈行仅在消息已绑定历史记录 id（recordId）时渲染
+// - 气泡微装饰（可读性优先）：1px 灰描边 #2A2A2E + 右上角 8px 白色四角星，
+//   气泡底色 / 排版 / RW 头像 / 来源标签一律不动
+import SparkleStar from "../common/SparkleStar.vue";
+
 defineProps({
   message: {
     type: Object,
     required: true,
   },
-})
+});
 
-const emit = defineEmits(['feedback', 'retry'])
+const emit = defineEmits(["feedback", "retry"]);
 </script>
 
 <template>
@@ -30,33 +34,43 @@ const emit = defineEmits(['feedback', 'retry'])
     <template v-else>
       <span class="avatar">RW</span>
       <div class="msg-main">
-        <div class="bubble" :class="{ 'bubble--error': message.error }">
-          <!-- loading：三点动画 -->
-          <div v-if="message.loading" class="loading">
-            <span></span><span></span><span></span>
-          </div>
-
-          <!-- 错误气泡 + 重试 -->
-          <template v-else-if="message.error">
-            <p class="error-text">回答生成失败，请稍后重试</p>
-            <button class="retry-btn" type="button" @click="emit('retry')">
-              重试
-            </button>
-          </template>
-
-          <!-- 正文 + 来源标签 -->
-          <template v-else>
-            <p class="answer">{{ message.text }}</p>
-            <div
-              v-if="message.sources && message.sources.length"
-              class="sources"
-            >
-              <span class="src-label">来源</span>
-              <span v-for="s in message.sources" :key="s" class="src-tag">
-                {{ s }}
-              </span>
+        <div class="bubble-wrap">
+          <!-- 右上角白色四角星（8px / 0.7，仅此一颗；气泡 clip-path 会裁切
+               绝对定位子元素，故挂在 wrap 上浮出切角） -->
+          <SparkleStar
+            class="bubble-star"
+            :size="8"
+            color="rgba(255, 255, 255, 0.7)"
+          />
+          <div class="bubble" :class="{ 'bubble--error': message.error }">
+            <!-- loading：三点动画 -->
+            <div v-if="message.loading" class="loading">
+              <span></span><span></span><span></span>
             </div>
-          </template>
+
+            <!-- 错误气泡 + 重试 -->
+            <template v-else-if="message.error">
+              <p class="error-text">回答生成失败，请稍后重试</p>
+              <button class="retry-btn" type="button" @click="emit('retry')">
+                重试
+              </button>
+            </template>
+
+            <!-- 正文 + 来源标签 -->
+            <template v-else>
+              <!-- ai-answer：全局排版规范类（思源黑体 15px / 1.8 行高） -->
+              <p class="answer ai-answer">{{ message.text }}</p>
+              <div
+                v-if="message.sources && message.sources.length"
+                class="sources"
+              >
+                <span class="src-label">来源</span>
+                <span v-for="s in message.sources" :key="s" class="src-tag">
+                  {{ s }}
+                </span>
+              </div>
+            </template>
+          </div>
         </div>
 
         <!-- 米色安全提示条（气泡下方） -->
@@ -142,16 +156,28 @@ const emit = defineEmits(['feedback', 'retry'])
 }
 
 /* ===== 气泡通用 ===== */
+.bubble-wrap {
+  position: relative; /* 承载右上角四角星（浮出气泡 clip-path 切角） */
+}
+
+/* 右上角白色四角星：紧贴切角，距文字区域 > 16px（可读性红线） */
+.bubble-star {
+  position: absolute;
+  top: -5px;
+  right: 2px;
+  z-index: 1;
+}
+
 .bubble {
   padding: var(--sp-3) var(--sp-4);
-  font-size: var(--fs-sub);
-  line-height: 1.75;
   word-break: break-word;
 }
 
-/* 用户：红底、右下切角 */
+/* 用户：红底、右下切角（字号留在用户气泡，助手正文由全局 .ai-answer 规定） */
 .bubble--user {
   max-width: 78%;
+  font-size: var(--fs-sub);
+  line-height: 1.7;
   color: var(--p5-white);
   background: var(--p5-red);
   clip-path: polygon(
@@ -163,11 +189,11 @@ const emit = defineEmits(['feedback', 'retry'])
   );
 }
 
-/* 助手：黑底双切角（呼应 p5-card 形态） */
+/* 助手：黑底双切角（呼应 p5-card 形态）；描边 1px 低调灰（规范固定值） */
 .msg--assistant .bubble {
   color: var(--p5-white);
   background: var(--p5-black);
-  border: 1px solid var(--p5-line);
+  border: 1px solid #2a2a2e;
   clip-path: polygon(
     0 0,
     calc(100% - 12px) 0,
@@ -271,12 +297,7 @@ const emit = defineEmits(['feedback', 'retry'])
   line-height: 1.6;
   color: var(--p5-ink);
   background: var(--p5-cream);
-  clip-path: polygon(
-    8px 0,
-    100% 0,
-    calc(100% - 8px) 100%,
-    0 100%
-  );
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 
 /* ===== 反馈行 ===== */

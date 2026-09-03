@@ -93,6 +93,9 @@ function handleClick(cell) {
       <span v-for="label in WEEKDAY_LABELS" :key="label">{{ label }}</span>
     </div>
 
+    <!-- B3：图例（日历卡右上区域，右对齐 11px 灰字） -->
+    <p class="cal-legend" aria-hidden="true"><i>◆</i> 已打卡 · <i>■</i> 今天</p>
+
     <div class="cal-grid">
       <span
         v-for="(cell, idx) in cells"
@@ -102,6 +105,7 @@ function handleClick(cell) {
           'cal-cell--empty': !cell,
           'is-future': cell && cell.isFuture,
           'is-today': cell && cell.isToday,
+          'has-record': cell && cell.hasRecord,
           'is-selected': cell && cell.key === store.selectedDate,
         }"
         @click="handleClick(cell)"
@@ -164,6 +168,20 @@ function handleClick(cell) {
   margin-bottom: var(--sp-2);
 }
 
+/* B3：图例——11px 灰字，标记符号红色点题 */
+.cal-legend {
+  margin: 0 0 var(--sp-2);
+  text-align: right;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--p5-text-dim);
+}
+
+.cal-legend i {
+  font-style: normal;
+  color: var(--p5-red);
+}
+
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -180,11 +198,21 @@ function handleClick(cell) {
   cursor: pointer;
   color: var(--p5-white);
   font-size: var(--fs-sub);
-  transition: background-color 0.15s;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.2s;
 }
 
+/* B2：hover 白色描边浮现（0.2s），暗示可点 */
 .cal-cell:hover:not(.cal-cell--empty):not(.is-future) {
   background: var(--p5-red-soft);
+  box-shadow: inset 0 0 0 1px var(--p5-white);
+}
+
+/* B2：有打卡的日期数字提亮（加粗白） */
+.has-record .cal-daynum {
+  font-weight: 700;
+  color: var(--p5-white);
 }
 
 .cal-cell--empty {

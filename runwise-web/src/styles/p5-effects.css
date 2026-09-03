@@ -1,5 +1,17 @@
 /* =====================================================================
-   P5 效果工具类（工程计划 3.2）
+   RunWise Web P5 效果工具类（工程计划 3.2）
+   =====================================================================
+   设计宪法（Phase G G3，全站 UI 唯一依据）：
+   C-1 颜色职能 —— 红 = 品牌（导航/LOGO/页头）+ 功能按钮 + 数据图表；
+       缀色 = 每页至多一种（伤病预防页 = 黄），只用于框、贴纸、编号，
+       永不进入内容文字区；内容文字区 = 黑底白字，
+       禁止任何彩色背景或彩色描边侵入
+   C-2 框体工艺标准 —— .panel-frame：白描边 2px + 右下斜切角 +
+       右下角标 + 错位实心影 6px 6px 0（实色、不透明、不模糊；
+       基准件 = 首页打卡卡）
+   C-3 星光纪律 —— 只出现在留白区，远离任何文字 40px 以上；
+       白色为主、红色 ≤2 颗、缀色 ≤1 颗
+   =====================================================================
    M1 仅收「切角卡片」一类；胶带贴纸 / 错位投影类随后续里程碑补入
    ===================================================================== */
 
@@ -24,7 +36,7 @@
 
 /* 右下红色三角角标：打样图四宫格的标志性收尾（P5Card accent 开关控制） */
 .p5-card::after {
-  content: '';
+  content: "";
   position: absolute;
   right: 0;
   bottom: 0;
@@ -37,6 +49,171 @@
 /* accent=false 时隐藏角标（P5Card 组件绑定） */
 .p5-card--plain::after {
   display: none;
+}
+
+/* =====================================================================
+   红框卡片（首页打卡卡同款工艺；AI 答疑页三卡启用，P5Card frame="red"）
+   白 2px 描边 + 左上/右下 12px 斜切 + 22px 红角标 + 6px 深红错位实心影
+   ===================================================================== */
+.p5-card--redframe {
+  border: 2px solid var(--p5-white);
+  /* 切角参数与首页 .checkin-card 完全一致（左上 + 右下各 12px） */
+  clip-path: polygon(
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%,
+    0 12px
+  );
+}
+
+/* 角标对齐打卡卡红三角规格（22px 实心三角） */
+.p5-card--redframe::after {
+  width: 22px;
+  height: 22px;
+}
+
+/* 错位实心影挂 wrap（clip-path 会裁掉本元素 box-shadow；
+   drop-shadow blur=0 即实色锐利投影，基于切角后形状） */
+.p5-wrap--redframe {
+  filter: drop-shadow(6px 6px 0 var(--p5-shadow-red));
+}
+
+.p5-wrap--redframe .p5-card {
+  filter: none; /* 去掉默认柔影，避免与实心错位影叠加 */
+}
+
+/* =====================================================================
+   黄框卡片（伤病预防页文章卡工艺，P5Card frame="yellow"，Phase F2）
+   白 2px 描边 + 左上/右下 12px 斜切 + 22px 角标 + 6px 深黄错位实心影；
+   宪法 C-1：角标恒红（红 = 品牌职能，不因本页缀色改黄），缀色只进影色
+   ===================================================================== */
+.p5-card--yellowframe {
+  border: 2px solid var(--p5-white);
+  clip-path: polygon(
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%,
+    0 12px
+  );
+}
+
+/* 角标保持红色恒定（同 redframe 规格 22px） */
+.p5-card--yellowframe::after {
+  width: 22px;
+  height: 22px;
+}
+
+.p5-wrap--yellowframe {
+  filter: drop-shadow(6px 6px 0 #8a6a1a); /* 深黄错位实心影 */
+}
+
+.p5-wrap--yellowframe .p5-card {
+  filter: none;
+}
+
+/* =====================================================================
+   .card-hover 全局卡片 hover 公共类（Phase F3）
+   背景 darkred 渐显 + 描边白→红；无位移、无缩放（宪法：动效克制）
+   - 用法：挂在卡片内容可点击层（铺满卡内），描边经 :has 联动到卡体；
+     兼容 1px 默认框（.p5-card）与 2px 工艺框（red/yellowframe 的 ::before）
+   ===================================================================== */
+.card-hover {
+  transition: background 0.25s;
+}
+
+.card-hover:hover {
+  background: linear-gradient(
+    100deg,
+    rgba(139, 0, 10, 0.38),
+    rgba(139, 0, 10, 0.08)
+  );
+}
+
+/* 描边白→红：默认框与工艺框（border 在 ::before）双覆盖 */
+.p5-card:has(.card-hover:hover) {
+  border-color: var(--p5-red);
+}
+
+.p5-card--redframe:has(.card-hover:hover)::before,
+.p5-card--yellowframe:has(.card-hover:hover)::before {
+  border-color: var(--p5-red);
+}
+
+/* 描边过渡（只在有 card-hover 的卡上启用，避免全局误伤） */
+.p5-card-wrap:has(.card-hover) .p5-card {
+  transition: border-color 0.25s;
+}
+
+.p5-card-wrap:has(.card-hover) .p5-card--redframe::before,
+.p5-card-wrap:has(.card-hover) .p5-card--yellowframe::before {
+  transition: border-color 0.25s;
+}
+
+/* =====================================================================
+   .panel-frame 全局框体工艺类（Phase G G1，设计宪法 C-2 标准件）
+   白描边 2px + 左上/右下 12px 斜切 + 右下角标 + 错位实心影 6px 6px 0
+   （实色、不透明、不模糊；基准件 = 首页打卡卡）
+   - 影色 / 角标色经 CSS 变量参数化，modifier 预置四色：
+     默认深灰 #2A2A2E / --red 深红 #5C1518 / --yellow 深黄 #8A6A1A /
+     --blue 深蓝 #1E5A8C
+   - 结构：卡体（黑底 + 白描边 + 切角）由 ::before 承载 —— clip-path 会
+     裁掉本元素 box-shadow，故影挂在父级 filter: drop-shadow(6px 6px 0)，
+     blur=0 即实色锐利影，且基于切角后形状投影（与 P5Card redframe 同解）
+   - 宪法 C-1：角标永远红色（红 = 品牌职能），缀色只进影色
+   ===================================================================== */
+.panel-frame {
+  position: relative;
+  --frame-shadow: #2a2a2e; /* 默认深灰影 */
+  --frame-accent: var(--p5-red); /* 角标色：恒红 */
+  filter: drop-shadow(6px 6px 0 var(--frame-shadow));
+}
+
+/* 卡体层：黑底白描边 + 与首页打卡卡同款切角（左上 / 右下各 12px）。
+   filter 使本元素成为 stacking context，::before 以 z-index:-1 垫在
+   内容之下（父背景透明，无遮挡），内容区保持黑底白字 */
+.panel-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--p5-black);
+  border: 2px solid var(--p5-white);
+  clip-path: polygon(
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%,
+    0 12px
+  );
+}
+
+/* 右下三角角标（22px，色随 --frame-accent，默认红） */
+.panel-frame::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  background: var(--frame-accent);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.panel-frame--red {
+  --frame-shadow: #5c1518;
+}
+
+.panel-frame--yellow {
+  --frame-shadow: #8a6a1a; /* 缀色只进影色，角标恒红（宪法 C-1） */
+}
+
+.panel-frame--blue {
+  --frame-shadow: #1e5a8c; /* 同上 */
 }
 
 /* =====================================================================
@@ -66,7 +243,7 @@
 
 /* 斜切竖条：-12° 与 NavBar 斜块角度语言统一 */
 .p5-page-header::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 6px;
@@ -82,6 +259,83 @@
   font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+}
+
+/* =====================================================================
+   Phase A 全局公共类（注册即全局可用）
+   ===================================================================== */
+
+/* A3：统计类大数字——Anton + 白色 + 等宽 */
+.p5-stat {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--p5-white);
+}
+
+/* A3：数字后单位小字——思源黑体 12px 灰 */
+.p5-unit {
+  font-family: var(--font-body);
+  font-size: var(--fs-caption);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: var(--p5-text-dim);
+}
+
+/* A2：卡片 hover 公共类——暗红渐变底 + 白→红边框过渡，无位移无缩放 */
+.card-hover {
+  border: 1px solid var(--p5-white);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.card-hover:hover {
+  background: linear-gradient(135deg, var(--p5-red-soft), var(--p5-red-dark));
+  border-color: var(--p5-red);
+}
+
+/* =====================================================================
+   Phase B 训练类型标签（配合 src/constants/trainingTypes.js 使用，
+   颜色只允许引用 token：间歇红实心 / 节奏白底黑字 / 长距离黄 / 轻松灰 / 休息无框）
+   ===================================================================== */
+.tt-tag {
+  display: inline-block;
+  padding: 3px 12px;
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.tt-interval {
+  color: var(--p5-white);
+  background: var(--p5-red);
+  border-color: var(--p5-red);
+  font-weight: 700;
+}
+
+.tt-tempo {
+  color: var(--p5-ink);
+  background: var(--p5-white);
+  border-color: var(--p5-white);
+  font-weight: 700;
+}
+
+.tt-long {
+  color: var(--accent-yellow);
+  border-color: var(--accent-yellow);
+}
+
+.tt-easy,
+.tt-default {
+  color: var(--p5-text-dim);
+  border-color: var(--p5-line);
+}
+
+.tt-rest {
+  color: var(--p5-text-dim);
+  border-color: transparent;
 }
 
 /* =====================================================================
@@ -144,7 +398,7 @@
 
 /* 主红条：左 38% 宽，两端 12° 斜切 */
 .p5-divider::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   bottom: 0;
@@ -156,7 +410,7 @@
 
 /* 副条：右侧错位的半透明红短块，与主条形成红黑交错节奏 */
 .p5-divider::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 4px;
   bottom: 4px;
@@ -167,3 +421,52 @@
   clip-path: polygon(0 100%, 12px 0, 100% 0, calc(100% - 12px) 100%);
 }
 
+/* =====================================================================
+   AI 回答排版（答疑页 · 全局规范类）：
+   所有 AI 回答内容必须挂 .ai-answer，排版规格唯一来源——
+   思源黑体 15px / 行高 1.8（禁 <1.6）/ 段距 12px /
+   强调文本白加粗 / 代码块黑底红描边等宽字体
+   ===================================================================== */
+.ai-answer {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.ai-answer p {
+  margin: 0 0 12px;
+}
+
+.ai-answer p:last-child {
+  margin-bottom: 0;
+}
+
+/* 强调文本：白色加粗（em 同步去斜，保持海报硬朗） */
+.ai-answer strong,
+.ai-answer b,
+.ai-answer em {
+  color: var(--p5-white);
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* 代码块：黑底 + 红描边，等宽字体 */
+.ai-answer pre {
+  margin: 12px 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  background: var(--p5-black);
+  border: 1px solid var(--p5-red);
+}
+
+.ai-answer code {
+  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 13px;
+}
+
+/* 行内 code：黑底灰字小红角（与代码块同族） */
+.ai-answer code:not(pre code) {
+  padding: 1px 6px;
+  background: var(--p5-black);
+  border: 1px solid var(--p5-red);
+}

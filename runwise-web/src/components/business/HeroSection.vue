@@ -95,11 +95,19 @@ const FOOTPRINTS = [
   { x: '80%', y: '14%', r: '-10deg', c: 'red', o: 0.4, s: 48 },
 ];
 
-// ===== 里程牌 ×3（右上区域散布，允许出血）=====
+// ===== 里程牌 ×3（右上区域散布，允许出血；42 号置于菜单②下方空档，不遮字母）=====
 const MILESTONES = [
   { km: '1', x: '58%', y: '8%', rot: '-6deg' },
   { km: '5', x: '72%', y: '20%', rot: '8deg' },
-  { km: '42', x: '88%', y: '34%', rot: '-4deg' },
+  { km: '42', x: '94%', y: '46%', rot: '-4deg' },
+];
+
+// ===== 散落小椭圆点 ×4（F4：漂浮 + 透明度呼吸，黑色区域空隙）=====
+const DOTS = [
+  { x: '18%', y: '30%', w: 10, h: 6, c: 'red', dur: '3.2s', delay: '0s' },
+  { x: '48%', y: '26%', w: 8, h: 5, c: 'white', dur: '3.8s', delay: '1.1s' },
+  { x: '70%', y: '74%', w: 12, h: 7, c: 'red', dur: '3.5s', delay: '0.6s' },
+  { x: '90%', y: '58%', w: 7, h: 5, c: 'gray', dur: '4.1s', delay: '1.8s' },
 ];
 
 // 菜单/大卡跳转均为路由直跳（锚点滚动方案已随卡片区移除）
@@ -142,17 +150,50 @@ function gotoCheckin() {
       </svg>
     </span>
 
-    <!-- 2. 心率线 ×1 + 快乐体「别停！」末端 -->
+    <!-- 2. 心率线 ×1（F5：波形横向循环滚动 + 红点沿波形跑动）+ 快乐体「别停！」末端 -->
     <span class="heartbeat" aria-hidden="true">
-      <svg viewBox="0 0 600 80" fill="none">
-        <polyline
-          points="0,40 80,40 100,40 115,10 130,64 145,34 160,40 260,40 280,18 295,58 310,40 420,40 440,12 455,62 470,40 600,40"
-          stroke="var(--p5-red)"
-          stroke-width="3"
-        />
+      <svg viewBox="0 0 1200 80" fill="none">
+        <g class="hb-scroll">
+          <path
+            id="hb-path"
+            d="M0,40 80,40 100,40 115,10 130,64 145,34 160,40 260,40 280,18 295,58 310,40 420,40 440,12 455,62 470,40 600,40"
+            stroke="var(--p5-red)"
+            stroke-width="3"
+          />
+          <!-- 三份拷贝铺满 0~1800：滚动 0~-600 全程屏内恒有波形，无缝循环 -->
+          <use href="#hb-path" x="600" />
+          <use href="#hb-path" x="1200" />
+          <!-- 红点在滚动组内：与波形同一 translateX 坐标系 + 同为 10s 周期，
+               屏幕上原地沿波形起伏骑行（修复点与波不同步） -->
+          <circle r="5" fill="var(--p5-red)">
+            <animateMotion
+              dur="10s"
+              repeatCount="indefinite"
+              rotate="0"
+              path="M600,40 680,40 700,40 715,10 730,64 745,34 760,40 860,40 880,18 895,58 910,40 1020,40 1040,12 1055,62 1070,40 1200,40"
+            />
+          </circle>
+        </g>
       </svg>
     </span>
     <span class="fun fun-stop">别停！</span>
+
+    <!-- 散落小椭圆点 ×4（F4 漂浮呼吸） -->
+    <span
+      v-for="(d, i) in DOTS"
+      :key="'dot' + i"
+      class="dot"
+      :class="d.c"
+      :style="{
+        left: d.x,
+        top: d.y,
+        width: d.w + 'px',
+        height: d.h + 'px',
+        animationDuration: d.dur,
+        animationDelay: d.delay,
+      }"
+      aria-hidden="true"
+    ></span>
 
     <!-- 3. 里程牌 ×3（黑底白描边小方牌，右下红角标） -->
     <span
@@ -195,12 +236,14 @@ function gotoCheckin() {
     <!-- ===== 第 4 部分 z2：人物（透明底，居中，与黑走廊融合） ===== -->
     <img class="runner" :src="heroRunnerUrl" alt="奔跑的跑者" draggable="false" />
 
-    <!-- ===== 第 9 部分 z2：底部飘带 ===== -->
+    <!-- ===== 第 9 部分 z2：底部飘带（C：4 份相同 seg，-25% 恰好一份宽，全程无缝） ===== -->
     <div class="ribbon" aria-hidden="true">
-      <span class="ribbon-track">
-        DAILY RUNNING · SMART COACH · KEEP RUNNING · DAILY RUNNING · SMART
-        COACH · KEEP RUNNING ·
-      </span>
+      <div class="ribbon-track">
+        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
+        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
+        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
+        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
+      </div>
     </div>
 
     <!-- ===== 第 5 部分 z3：左侧功能区 ===== -->
@@ -209,30 +252,33 @@ function gotoCheckin() {
       你的智能跑步训练中心 —— 打卡、答疑与数据统计，一站直达
     </p>
 
-    <!-- 5.2 今日打卡大卡（落在黑底上，禁止压红带） -->
-    <div class="checkin-card">
-      <span class="ck-tag">CHECK-IN</span>
-      <h2 class="ck-title">今日打卡</h2>
-      <p class="ck-today" :class="{ 'ck-today--done': todayRecord }">
-        {{ todayLine }}
-      </p>
-      <div class="ck-progress">
-        <div class="ck-progress-meta">
-          <span>本周目标进度</span>
-          <span class="p5-num">{{ weekPercent }}%</span>
+    <!-- 5.2 今日打卡大卡（A1：CHECK-IN 标签独立于卡外，骑压上边框不被 clip-path 裁切） -->
+    <div class="ck-wrap">
+      <div class="checkin-card">
+        <h2 class="ck-title">今日打卡</h2>
+        <p class="ck-today" :class="{ 'ck-today--done': todayRecord }">
+          {{ todayLine }}
+        </p>
+        <div class="ck-progress">
+          <div class="ck-progress-meta">
+            <span>本周目标进度</span>
+            <span class="p5-num">{{ weekPercent }}%</span>
+          </div>
+          <div class="ck-progress-track">
+            <div class="ck-progress-fill" :style="{ width: weekPercent + '%' }"></div>
+          </div>
         </div>
-        <div class="ck-progress-track">
-          <div class="ck-progress-fill" :style="{ width: weekPercent + '%' }"></div>
-        </div>
+        <button class="ck-btn" type="button" @click="gotoCheckin">去打卡 →</button>
+        <span class="ck-flag" aria-hidden="true"></span>
       </div>
-      <button class="ck-btn" type="button" @click="gotoCheckin">去打卡 →</button>
-      <span class="ck-flag" aria-hidden="true"></span>
+      <!-- 标签在卡片兄弟层级、z 更高：边框线不得穿过标签 -->
+      <span class="ck-tag">CHECK-IN</span>
     </div>
 
     <!-- 5.3 本周数据条（人物脚踩） + 快乐体「7 DAYS」上方 -->
     <span class="fun fun-days">7 DAYS</span>
     <button class="data-strip" type="button" @click="router.push('/stats')">
-      {{ dataLine }}
+      <span class="ds-text">{{ dataLine }}</span>
     </button>
 
     <!-- ===== 第 6 部分 z3：右侧纯文字菜单（无容器无框，点击路由直跳） ===== -->
@@ -300,7 +346,7 @@ function gotoCheckin() {
   transform: rotate(-12deg);
 }
 
-/* 红色带网点纹理：深红 #B00D24 圆点 d=5px 间距 10px opacity 0.5（复刻 halftone） */
+/* F1：红色带网点纹理缓慢向右上漂移（30s 一循环，background-position 不触发重排） */
 .band-red-a,
 .band-red-b,
 .band-red-c {
@@ -311,6 +357,16 @@ function gotoCheckin() {
     transparent 2.6px
   );
   background-size: 10px 10px;
+  animation: band-drift 30s linear infinite;
+}
+
+@keyframes band-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 300px -300px;
+  }
 }
 
 /* RED-A 左上大带：覆盖左上约 30%，副标题坐落其上 */
@@ -381,31 +437,107 @@ function gotoCheckin() {
   pointer-events: none;
 }
 
-/* 「RUN!」鞋印起点 */
+/* 「RUN!」鞋印起点（G2：上移避开数据条） */
 .fun-run {
   left: 26%;
-  top: 84%;
+  top: 80%;
   font-size: 18px;
   color: var(--p5-red);
   transform: rotate(-4deg);
 }
 
-/* 「别停！」心率线末端 */
+/* 「别停！」心率线末端（B2：换黄油体；F2：上下轻浮动） */
 .fun-stop {
   right: 16%;
   bottom: 24%;
+  font-family: var(--font-cn-display);
   font-size: 16px;
   color: var(--p5-white);
   transform: rotate(-6deg);
+  animation: float-y 4.4s ease-in-out infinite;
+  animation-delay: 1.3s;
 }
 
-/* 「7 DAYS」数据条上方 */
+/* 「7 DAYS」数据条上方（G1：改白色保证可读） */
 .fun-days {
   left: 4%;
   bottom: calc(8% + 64px);
   font-size: 16px;
-  color: var(--p5-red);
+  color: var(--p5-white);
   transform: rotate(-3deg);
+}
+
+/* 散落小椭圆点（F4：漂浮 ±5px + 透明度呼吸 0.6~1） */
+.dot {
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: dot-float 3.5s ease-in-out infinite;
+}
+
+.dot.red {
+  background: var(--p5-red);
+}
+
+.dot.white {
+  background: var(--p5-white);
+}
+
+.dot.gray {
+  background: var(--p5-gray);
+}
+
+@keyframes dot-float {
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0.6;
+  }
+  50% {
+    translate: 5px -5px;
+    opacity: 1;
+  }
+}
+
+/* F2：常驻轻浮动（translate 独立属性，不覆盖既有 transform 旋转）；幅度 ±5px */
+@keyframes float-y {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+/* F3：浮动 + 轻微摇摆；修复 5：加入小幅抖动步进（±1px），节奏更慢更轻 */
+@keyframes float-sway {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  18% {
+    translate: 1px -2px;
+    rotate: 1deg;
+  }
+  36% {
+    translate: -1px -3px;
+    rotate: 1.5deg;
+  }
+  54% {
+    translate: 1px -1px;
+    rotate: 0.5deg;
+  }
+  72% {
+    translate: -1px -2px;
+    rotate: -1deg;
+  }
+  86% {
+    translate: 0 -3px;
+    rotate: -1.5deg;
+  }
 }
 
 /* 鞋印 ×8 */
@@ -423,7 +555,8 @@ function gotoCheckin() {
   color: var(--p5-red);
 }
 
-/* 心率线：宽 55%，bottom 20%，rotate(-8°) 穿过走廊 */
+/* 心率线：宽 55%，bottom 20%，rotate(-8°) 穿过走廊
+   F5：波形横向循环滚动（10s 一屏）+ 红点 animateMotion 沿波形跑动 */
 .heartbeat {
   position: absolute;
   left: 24%;
@@ -434,7 +567,20 @@ function gotoCheckin() {
   pointer-events: none;
 }
 
-/* 里程牌 ×3：70×70 黑底白描边，Anton，右下红角标 */
+.hb-scroll {
+  animation: hb-scroll 10s linear infinite;
+}
+
+@keyframes hb-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-600px);
+  }
+}
+
+/* 里程牌 ×3：70×70 黑底白描边，Anton，右下红角标（修复 5：缓慢轻微抖动，节奏错开） */
 .milestone {
   position: absolute;
   z-index: 1;
@@ -447,6 +593,21 @@ function gotoCheckin() {
   background: var(--p5-black);
   border: 2px solid var(--p5-white);
   pointer-events: none;
+  animation: float-sway 6.5s ease-in-out infinite;
+}
+
+.milestone:nth-of-type(1) {
+  animation-delay: 0.5s;
+}
+
+.milestone:nth-of-type(2) {
+  animation-duration: 7.4s;
+  animation-delay: 1.6s;
+}
+
+.milestone:nth-of-type(3) {
+  animation-duration: 6.9s;
+  animation-delay: 2.7s;
 }
 
 .ms-km {
@@ -473,7 +634,7 @@ function gotoCheckin() {
   border-color: transparent transparent var(--p5-red) transparent;
 }
 
-/* 号码布 ×1：白底黑字 42，90×110，顶部两别针，rotate(-9°) 轻压卡顶 */
+/* 号码布 ×1：白底黑字 42，90×110，顶部两别针，rotate(-9°) 轻压卡顶（F3 浮动摇摆） */
 .bib {
   position: absolute;
   left: 330px;
@@ -487,6 +648,8 @@ function gotoCheckin() {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  animation: float-sway 5.4s ease-in-out infinite;
+  animation-delay: 0.9s;
 }
 
 .bib-pin {
@@ -568,14 +731,20 @@ function gotoCheckin() {
 }
 
 .ribbon-track {
-  display: inline-block;
+  display: flex;
+  width: max-content;
+  /* C2：4 份 seg，平移 -25% 恰好一份 seg 宽，任何时刻屏内都有 ≥1 份完整内容 */
+  animation: ribbon-scroll 25s linear infinite;
+}
+
+.ribbon-seg {
+  display: block;
   white-space: nowrap;
   line-height: 36px;
   font-family: var(--font-display);
   font-size: 14px;
   letter-spacing: 6px;
   color: var(--p5-black);
-  animation: ribbon-scroll 22s linear infinite;
 }
 
 @keyframes ribbon-scroll {
@@ -583,7 +752,7 @@ function gotoCheckin() {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(-25%);
   }
 }
 
@@ -607,13 +776,19 @@ function gotoCheckin() {
   white-space: nowrap; /* 横排一行（C3：禁止竖排折行） */
 }
 
-/* 5.2 今日打卡大卡：纯黑底 + 白 2px 描边 + 双角斜切 + 右下红三角，rotate(-2°) */
-.checkin-card {
+/* 5.2 今日打卡大卡（A1 重构）：ck-wrap 承接定位与旋转，标签为卡外兄弟元素 */
+.ck-wrap {
   position: absolute;
   left: 4%;
   top: 300px;
   z-index: 3;
   width: 380px;
+  transform: rotate(-2deg);
+}
+
+/* 卡片：纯黑底 + 白 2px 描边 + 双角斜切 + 右下红三角 */
+.checkin-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -628,32 +803,39 @@ function gotoCheckin() {
     0 100%,
     0 12px
   );
-  transform: rotate(-2deg);
 }
 
-/* CHECK-IN 红标签（C1：左缘与卡片内容区对齐，不被描边裁切） */
+/* CHECK-IN 红标签（A1：卡外层级，骑压上边框约一半在外，边框线不得穿过标签） */
 .ck-tag {
   position: absolute;
-  top: -12px;
+  top: -15px;
   left: 26px;
-  padding: 3px 10px;
+  z-index: 2; /* 高于卡片（含边框线） */
+  padding: 4px 12px;
   font-family: var(--font-display);
-  font-size: 11px;
-  letter-spacing: 0.2em;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
   color: var(--p5-white);
   background: var(--p5-red);
   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
 }
 
+/* A3：中文标题换站酷庆科黄油体 */
 .ck-title {
+  font-family: var(--font-cn-display);
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 400; /* 黄油体自带粗度，叠加 900 会假粗 */
   letter-spacing: 0.04em;
   color: var(--p5-white);
 }
 
 .ck-today {
-  font-size: 14px;
+  /* 字体统一为「去打卡」同款黄油体并增大字号（可读性优化） */
+  font-family: var(--font-cn-display);
+  font-size: 19px;
+  font-weight: 400; /* 黄油体自带粗度，叠加 700 会假粗 */
+  letter-spacing: 0.04em;
   color: var(--p5-text-dim);
 }
 
@@ -670,7 +852,10 @@ function gotoCheckin() {
 .ck-progress-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  align-items: baseline;
+  /* 修复 4：「本周…」文本与「去打卡」按钮统一黄油体 */
+  font-family: var(--font-cn-display);
+  font-size: 14px;
   letter-spacing: 0.06em;
   color: var(--p5-text-dim);
 }
@@ -693,13 +878,18 @@ function gotoCheckin() {
   transition: width 0.4s ease-out;
 }
 
-/* 「去打卡」全页唯一一级按钮：红底白字 56px 高 */
+/* 「去打卡」全页唯一一级按钮（修复 4：标准按钮字号 22px，黄油体字距 6px；
+   可读性优化：字号提升至 28px，高度同步 64px） */
 .ck-btn {
-  height: 56px;
+  position: relative;
+  z-index: 1; /* 高于红三角、错位影、斜切角等装饰 */
+  height: 64px;
   margin-top: 4px;
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.2em;
+  font-family: var(--font-cn-display);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 10px;
+  text-indent: 10px; /* 抵消末字符字距，保证视觉居中 */
   color: var(--p5-white);
   background: var(--p5-red);
   clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
@@ -722,19 +912,21 @@ function gotoCheckin() {
   border-color: transparent transparent var(--p5-red) transparent;
 }
 
-/* 5.3 数据条：红底白字白描边，两端斜切，rotate(-5°) */
+/* 5.3 数据条：红底白字白描边，两端斜切，rotate(-5°)
+   可读性优化：字体统一为「去打卡」同款黄油体，宽度 46% 防止增大后裁字 */
 .data-strip {
   position: absolute;
   left: 2%;
   bottom: 8%;
-  width: 40%;
+  width: 46%;
   height: 52px;
   z-index: 3;
   background: var(--p5-red);
   border: 2px solid var(--p5-white);
   color: var(--p5-white);
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--font-cn-display);
+  font-size: 20px;
+  font-weight: 400; /* 黄油体自带粗度，叠加 700 会假粗 */
   letter-spacing: 2px;
   text-align: center;
   white-space: nowrap;
@@ -742,10 +934,41 @@ function gotoCheckin() {
   transform: rotate(-5deg);
   cursor: pointer;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .data-strip:hover {
   background: var(--p5-red-dark);
+}
+
+/* D：文字组每 8s 重新切入一次（0~0.6s 左侧带 skew 斜切入场，之后静止；
+   底色红条静止，只有文字动；内容不变仅重播） */
+.ds-text {
+  display: inline-block;
+  /* padding 避开 clip-path 两端 3% 斜切区，修复「本」「次」被裁 */
+  padding: 0 26px;
+  font-size: 20px;
+  letter-spacing: 2px;
+  animation: ds-cut 8s cubic-bezier(0.2, 0.9, 0.3, 1) infinite;
+}
+
+@keyframes ds-cut {
+  0% {
+    transform: translateX(-48px) skewX(-16deg);
+    opacity: 0;
+  }
+  7.5% {
+    /* 0.6s / 8s = 7.5% */
+    transform: translateX(0) skewX(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) skewX(0deg);
+    opacity: 1;
+  }
 }
 
 /* =====================================================================
@@ -788,13 +1011,29 @@ function gotoCheckin() {
   margin-bottom: 2px;
 }
 
-/* 主字：Anton 基准字号（② 40px），字母拼贴 */
+/* 主字：Anton 基准字号（② 40px），字母拼贴（F2：上下轻浮动，周期错开） */
 .m-word {
   display: flex;
   align-items: baseline;
   font-family: var(--font-display);
   font-size: var(--m-base);
   line-height: 1.05;
+  animation: float-y 3.6s ease-in-out infinite;
+}
+
+.m-1 .m-word {
+  animation-duration: 3.6s;
+  animation-delay: 0.2s;
+}
+
+.m-2 .m-word {
+  animation-duration: 4.5s;
+  animation-delay: 1.4s;
+}
+
+.m-3 .m-word {
+  animation-duration: 3.9s;
+  animation-delay: 2.6s;
 }
 
 .m-gap {
@@ -826,16 +1065,17 @@ function gotoCheckin() {
   text-shadow: 3px 3px 0 var(--p5-black);
 }
 
-/* 中文小注：主字左下 8px */
+/* 中文小注（B2：站酷黄油体）：主字左下 8px，不参与浮动（F7 功能文字静止） */
 .m-note {
   margin-top: 8px;
+  font-family: var(--font-cn-display);
   font-size: 12px;
   font-weight: 400;
   letter-spacing: 0.1em;
   color: rgba(255, 255, 255, 0.7);
 }
 
-/* hover 红斜杠下划线 */
+/* hover 红斜杠下划线（F6：0.25s 快速划出，悬停期间保持） */
 .m-underline {
   margin-top: 6px;
   width: 100%;
@@ -843,7 +1083,7 @@ function gotoCheckin() {
   background: var(--p5-red);
   transform: rotate(-3deg) scaleX(0);
   transform-origin: left center;
-  transition: transform 0.2s ease-out;
+  transition: transform 0.25s ease-out;
 }
 
 .menu-item:hover .m-underline {
@@ -898,6 +1138,8 @@ function gotoCheckin() {
   font-size: clamp(64px, 9vw, 110px);
   line-height: 1;
   width: max-content;
+  animation: float-y 4.8s ease-in-out infinite;
+  animation-delay: 0.8s; /* 与菜单错拍（F9） */
 }
 
 .sign-sub {
@@ -987,12 +1229,15 @@ function gotoCheckin() {
     margin: 0 4% 24px;
   }
 
-  /* 大卡 92% 居中 */
-  .checkin-card {
+  /* 大卡 92% 居中（ck-wrap 承接定位） */
+  .ck-wrap {
     position: static;
     width: 92%;
     margin: 0 auto 28px;
-    transform: rotate(-2deg);
+  }
+
+  .checkin-card {
+    width: 100%;
   }
 
   /* 数据条 95% */
@@ -1006,7 +1251,7 @@ function gotoCheckin() {
     position: static;
     width: 95%;
     margin: 0 auto 32px;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 1px;
     height: 44px;
   }

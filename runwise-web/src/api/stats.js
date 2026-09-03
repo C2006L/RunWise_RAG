@@ -7,11 +7,16 @@ import { instance, withAuthRetry } from './request'
 // 字段口径不同），axios 分支按前端契约（工程计划 5.1）预留路径，联调期与后端对齐
 
 // 周报 → WeeklyStats { weekDates, distances, totalKm, checkinCount, streakDays }
-export function getWeeklyStats() {
+// offsetWeeks: Phase E1 时间翻页（0=本周 7 天窗口，1=上个窗口……只许向过去翻）
+export function getWeeklyStats(offsetWeeks = 0) {
   if (USE_MOCK) {
-    return withAuthRetry(() => mockStats.getWeeklyStats(useUserStore().accessToken))
+    return withAuthRetry(() =>
+      mockStats.getWeeklyStats(useUserStore().accessToken, offsetWeeks)
+    )
   }
-  return instance.get('/stats/weekly').then((res) => res.data.data)
+  return instance
+    .get('/stats/weekly', { params: offsetWeeks ? { offset: offsetWeeks } : {} })
+    .then((res) => res.data.data)
 }
 
 // 月报 → MonthlyStats { monthDates, distances, totalKm, checkinCount }

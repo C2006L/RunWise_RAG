@@ -16,23 +16,26 @@ function addDays(base, delta) {
   return d
 }
 
-// 周报：近 7 天滚动窗口（今天−6 至今天）里程 + 打卡数 + 连续天数
+// 周报：近 7 天滚动窗口（窗口末日 = 今天 − 7×offsetWeeks）里程 + 打卡数 + 连续天数
 // UI 精修 P1-6：图表与汇总卡共用同一数组计算（卡片数字 = 柱高之和），
 // 任意一天访问 7 根柱齐，消除「自然周图表 × 滚动口径卡片」的逻辑打架
-export async function getWeeklyStats(token) {
+// Phase E1/E4：offsetWeeks 时间翻页（0=本周窗口；1=上个 7 天窗口……），
+// 仅平移日期窗口来源，算法（求和 / 连续计数）与工程计划 5.4 完全一致
+export async function getWeeklyStats(token, offsetWeeks = 0) {
   const records = getRawRecords(token)
   await sleep(200)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const windowEnd = addDays(today, -7 * Math.max(0, offsetWeeks))
 
-  // 图表与汇总共用：近 7 天逐日里程（今天−6 至今天，时间正序）
+  // 图表与汇总共用：窗口 7 天逐日里程（窗口末−6 至窗口末，时间正序）
   // 先逐日取整再求和，保证 totalKm 严格等于柱高之和
   const weekDates = []
   const distances = []
   let checkinCount = 0
   for (let i = 6; i >= 0; i--) {
-    const key = formatDate(addDays(today, -i))
+    const key = formatDate(addDays(windowEnd, -i))
     const record = records.get(key)
     weekDates.push(key)
     distances.push(record ? Math.round(record.distanceKm * 10) / 10 : 0)
@@ -40,10 +43,10 @@ export async function getWeeklyStats(token) {
   }
   const totalKm = Math.round(distances.reduce((s, v) => s + v, 0) * 10) / 10
 
-  // streakDays：以今天为终点向前数连续打卡天数
+  // streakDays：以窗口末为终点向前数连续打卡天数（与本周窗口同一算法）
   let streakDays = 0
   for (let i = 0; ; i++) {
-    if (records.has(formatDate(addDays(today, -i)))) streakDays++
+    if (records.has(formatDate(addDays(windowEnd, -i)))) streakDays++
     else break
   }
 

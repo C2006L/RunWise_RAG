@@ -13,3 +13,26 @@ export function getPlanList() {
   }
   return instance.get('/plan/list').then((res) => res.data.data)
 }
+
+// ===== Phase B3：计划项增删改（组件经 planService 调用，禁止直连本层以外） =====
+// payload { weekNo, weekdayIndex, type, targetKm, note }
+export function addPlanItem(payload) {
+  if (USE_MOCK) {
+    return withAuthRetry(() => mockPlan.addPlanDay(payload, useUserStore().accessToken))
+  }
+  return instance.post('/plan/item', payload).then((res) => res.data.data)
+}
+
+export function updatePlanItem(id, payload) {
+  if (USE_MOCK) {
+    return withAuthRetry(() => mockPlan.updatePlanDay(id, payload, useUserStore().accessToken))
+  }
+  return instance.put(`/plan/item/${id}`, payload).then((res) => res.data.data)
+}
+
+export function removePlanItem(id) {
+  if (USE_MOCK) {
+    return withAuthRetry(() => mockPlan.removePlanDay(id, useUserStore().accessToken))
+  }
+  return instance.delete(`/plan/item/${id}`).then((res) => res.data.data)
+}

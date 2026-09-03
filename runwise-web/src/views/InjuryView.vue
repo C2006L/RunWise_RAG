@@ -5,6 +5,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import P5Card from '../components/common/P5Card.vue'
+import Stars from '../components/common/Stars.vue'
 import * as injuryApi from '../api/injury'
 
 const route = useRoute()
@@ -111,6 +112,19 @@ const categoryLabel = computed(
       <p class="page-desc">膝 / 踝 / 髋 / 足 —— 跑者常见伤病知识库，科学防护，健康奔跑。</p>
     </header>
 
+    <!-- F5：页头右侧空白区撒星（白2黄1，缀色 = 本页唯一黄星；宪法 C-3 远离文字 40px+） -->
+    <div class="page-stars" aria-hidden="true">
+      <Stars
+        :count="3"
+        accent-color="var(--accent-yellow)"
+        :positions="[
+          { left: '88%', top: '38px', size: 10, color: 'rgba(255,255,255,0.5)', bright: true, dur: 5 },
+          { left: '75%', top: '118px', size: 6, color: 'rgba(255,255,255,0.42)', bright: true, dur: 6.2 },
+          { left: '92%', top: '156px', size: 9, color: 'var(--accent-yellow)', bright: true, dur: 4.4 },
+        ]"
+      />
+    </div>
+
     <div class="p5-divider" aria-hidden="true"></div>
 
     <!-- 列表态 -->
@@ -145,10 +159,12 @@ const categoryLabel = computed(
           :tag="a.categoryLabel + '部'"
           :tag-rotate="i % 2 === 0 ? '-4deg' : '3deg'"
           :tag-top="i % 2 === 0 ? '-15px' : '-18px'"
-          :tag-right="i % 2 === 0 ? '48px' : ''"
-          :tag-left="i % 2 === 0 ? '' : '42px'"
+          :tag-left="i % 2 === 0 ? '48px' : ''"
+          :tag-right="i % 2 === 0 ? '' : '42px'"
+          frame="yellow"
         >
-          <button class="article-card" type="button" @click="openDetail(a.id)">
+          <!-- F3：hover 走全局 .card-hover（暗红渐显 + 描边白→红），页内私有样式已删 -->
+          <button class="article-card card-hover" type="button" @click="openDetail(a.id)">
             <span class="article-title">{{ a.title }}</span>
             <span class="article-summary">{{ a.summary }}</span>
             <span class="article-meta">
@@ -192,6 +208,19 @@ const categoryLabel = computed(
 </template>
 
 <style scoped>
+/* F5：页面为星层定位父级；星层只覆盖页头右侧空白带（180px 高），远离卡片区 */
+.injury-page {
+  position: relative;
+}
+
+.page-stars {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 180px;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .page-kicker {
   font-size: var(--fs-caption);
   letter-spacing: 0.1em;
@@ -261,11 +290,8 @@ const categoryLabel = computed(
   width: 100%;
   padding: var(--sp-5) var(--sp-6) var(--sp-5);
   text-align: left;
-  transition: background 0.2s;
-}
-
-.article-card:hover {
-  background: var(--p5-red-soft);
+  /* F3：hover 效果全部由全局 .card-hover 提供（暗红渐显 + 描边白→红），
+     此处不再写页内私有 hover（删原 background: var(--p5-red-soft)） */
 }
 
 .article-title {
