@@ -6,9 +6,18 @@
 //   z2 人物 + 飘带 → z3 左侧功能区 + 右侧纯文字菜单 → z4 RuN wIsE 签名位
 // 删除清单（V3 第 1 部分）：「开始跑步」按钮 / 01 名牌 / 三块名牌盒子 /
 //   SlashShape ×2 —— 全部不再出现
+// 【定稿锁 2026-09-08】主页主标题（.sk-title）为 Z-0 特许位①拼贴特权位，样式已定稿，
+//   后续修改需产品确认，今后任何任务不得再动此组件（含 import/模板/CSS）：
+//   联盟起艺卢帅正锐黑体(LMQY ZRHT) / 白字黑边 4.5px / paint-order: stroke fill /
+//   逐字 ±2°（RansomNote seed=7，红垫块 1 处）；整行 rotate(-3deg) 作用于父容器
+//   .sub-kicker（Z-1），副标题随父旋转且自身 0°、无描边
+// 【2026-09-08 晚 用户裁定】英文菜单（SmArT Q&A/TrAiN PlAn/InJuRy CaRe）+ RUN WISE 巨字
+//   恢复 ransom 拼贴观感（三分法贴片+字母微倾+菜单整项倾斜），Z-2 纯 Anton 直立规范
+//   对本页英文作废；上方中文主标题定稿锁不受影响
 import { onMounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import JaggedStar from "../../assets/shapes/JaggedStar.vue";
+import RansomNote from "../common/RansomNote.vue";
 import * as statsApi from "../../api/stats";
 import * as checkinApi from "../../api/checkin";
 import { formatDate } from "../../composables/useFormatDate";
@@ -49,8 +58,8 @@ const weekPercent = computed(() => {
   );
 });
 
-// ===== ransom-note 字母生成（菜单与主标题共用）=====
-// R-1 回滚：英文/数字一律走 Anton 原样渲染 + 三分法拼贴，禁用 RansomNote（其仅限中文）
+// ===== ransom-note 字母生成（菜单与 RUN WISE 共用）=====
+// 【2026-09-08 晚 用户裁定】英文菜单 + RUN WISE 恢复 ransom 拼贴观感，Z-2 纯 Anton 直立规范对主页英文作废
 // 三分法轮转：invert 反白贴片（黑底白字+白描边）/ white-red 白字红影 / red-black 红字黑影
 const ROTS = ["-5deg", "4deg", "-3deg", "5deg", "-4deg", "3deg"];
 const SIZES = [1.1, 0.95, 1.05, 0.9, 1.0, 0.92];
@@ -313,7 +322,7 @@ function gotoCheckin() {
     <!-- ===== 第 5 部分 z3：左侧功能区 ===== -->
     <!-- 5.1 副标题（页面最顶部，坐落 RED-A 上） -->
     <p class="sub-kicker">
-      <span class="sk-title">你的智能跑步训练中心</span>
+      <RansomNote class="sk-title" text="你的智能跑步训练中心" :seed="7" />
       <span class="sk-desc">—— 打卡、答疑与数据统计，一站直达</span>
     </p>
 
@@ -847,7 +856,9 @@ function gotoCheckin() {
   max-width: 420px;
   padding-left: 14px;
   border-left: 4px solid var(--p5-white);
-  transform: rotate(-2deg);
+  /* Z-1：rotate(-3deg) 作用于标题的父容器（本元素）——主标题+副标题整体联动，
+     形成一条完整斜线无断层；禁止再倾斜单个文字/单行 span。Z-0 特许位① */
+  transform: rotate(-3deg);
 }
 
 .sk-title {
@@ -858,9 +869,11 @@ function gotoCheckin() {
   line-height: 1.15;
   letter-spacing: 2px;
   color: var(--p5-white);
-  -webkit-text-stroke: 3px #000;
+  /* Z-1：本元素不再单独 rotate（-3° 已上移 .sub-kicker 父容器），
+     仅保留白字黑边 4.5px + paint-order + 逐字 ±2° 内部微动（RansomNote seed=7） */
+  -webkit-text-stroke: 4.5px #000;
   paint-order: stroke fill;
-  white-space: nowrap; /* 横排一行（C3：禁止竖排折行） */
+  white-space: nowrap; /* 横排一行 */
 }
 
 .sk-desc {
@@ -920,21 +933,22 @@ function gotoCheckin() {
   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
 }
 
-/* 拼贴收缩定稿（H-2，永久标准见 RansomNote.vue 组件头注释）：
-   卡内「今日打卡」恢复黄油体白字——横平竖直，无描边、无错落 */
+/* 字体统一（20260909 用户裁定）：卡内三行汉字与主页主标题同用「联盟起艺卢帅正锐黑体」
+   （--font-cn-title，子集 woff2 已扩充覆盖本卡用字）；数字/单位走 Anton；
+   字重回 400（该字体自带厚重笔画，叠 800 会假粗），0°直立、无斜无飘、无描边 */
 .ck-title {
-  font-family: var(--font-cn-display);
+  font-family: var(--font-cn-title);
   font-size: 28px;
-  font-weight: 400; /* 黄油体自带粗度，叠加 700/900 会假粗 */
+  font-weight: 400;
   letter-spacing: 0.04em;
   color: var(--p5-white);
 }
 
 .ck-today {
-  /* 字体统一为「去打卡」同款黄油体并增大字号（可读性优化） */
-  font-family: var(--font-cn-display);
+  /* 数字/单位 Anton 前置 → 中文按字形落入 LMQY 子集 → 兜底 Noto Sans SC */
+  font-family: var(--font-display), var(--font-cn-title), var(--font-body);
   font-size: 19px;
-  font-weight: 400; /* 黄油体自带粗度，叠加 700 会假粗 */
+  font-weight: 400;
   letter-spacing: 0.04em;
   color: var(--p5-text-dim);
 }
@@ -953,9 +967,10 @@ function gotoCheckin() {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  /* 修复 4：「本周…」文本与「去打卡」按钮统一黄油体 */
-  font-family: var(--font-cn-display);
+  /* 中文与主标题同字体；百分比由 .p5-num 走 Anton */
+  font-family: var(--font-cn-title);
   font-size: 14px;
+  font-weight: 400;
   letter-spacing: 0.06em;
   color: var(--p5-text-dim);
 }
@@ -1149,8 +1164,7 @@ function gotoCheckin() {
   width: 0.35em;
 }
 
-/* F-3：字母拼贴统一白字（禁止逐字换色），样式收敛在 RansomNote 组件内
-   R-1 回滚：.mlt 三分法样式恢复（英文/数字走 Anton 原样渲染，禁用 RansomNote） */
+/* 字母拼贴三分法（2026-09-08 晚恢复）：invert 反白贴片 / wr 白字红影 / rb 红字黑影 */
 .mlt {
   display: inline-block;
 }
