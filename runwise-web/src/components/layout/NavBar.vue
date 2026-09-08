@@ -105,15 +105,20 @@ async function handleLogout() {
 }
 
 /* 斜切链接底块：hover 红蒙层，激活态主红实底
-   拼贴收缩定稿（H-1，永久标准见 RansomNote.vue 组件头注释）：
-   导航中文标签 = 普通文字：标准正文字体 + 常规字重 + 白/灰颜色，
-   禁止描边与错落（描边/错落仅限 主页大标题 + 五内页大标题） */
+   拼贴收缩定稿修订（2026-09-08 用户二次确认）：导航中文标签保留白字黑描边，
+   字体与主页大标题「你的智能跑步训练中心」同款（联盟起艺卢帅正锐黑体）；
+   无错落排版。14px < 18px，属 RansomNote.vue 头注释标准的明示豁免项③ */
 .nav-link {
   display: inline-block;
   padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-cn-title);
+  font-weight: 400; /* 子集仅 400 字重，激活态同样 400 防伪粗 */
   font-size: var(--fs-sub);
   letter-spacing: 0.08em;
   color: var(--p5-text-dim);
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
+  white-space: nowrap; /* 联盟起艺较宽，防标签折行（如「打卡/记录」变两行） */
   clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   transition:
     color 0.2s,
@@ -129,6 +134,7 @@ async function handleLogout() {
 .nav-link.router-link-active {
   color: var(--p5-white);
   background: var(--p5-red);
+  font-weight: 400;
   clip-path: polygon(
     10px 0,
     calc(100% - var(--cut)) 0,
@@ -168,5 +174,18 @@ async function handleLogout() {
 .nav-logout:hover {
   color: var(--p5-red);
   border-color: var(--p5-red);
+}
+
+/* 窄屏收缩：联盟起艺 + nowrap 令导航总宽增加，<960px 时收紧内边距/间距
+   防右侧用户区溢出视口（桌面 ≥960px 视觉不变） */
+@media (max-width: 960px) {
+  .nav-link {
+    padding-left: var(--sp-2);
+    padding-right: var(--sp-2);
+  }
+
+  .nav-links {
+    gap: var(--sp-2);
+  }
 }
 </style>
