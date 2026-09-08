@@ -220,11 +220,17 @@
    页头与标题工具类（UI 精修 v2.0 · P1-1 / P1-2 / P1-3 / P3-1）
    ===================================================================== */
 
-/* 大标题：白色主体 + 纯色实心红色错位层（禁用半透明残影与 blur，保证边缘锐利） */
+/* 大标题：白色主体 + 纯色实心红色错位层（禁用半透明残影与 blur，保证边缘锐利）
+   F-2：中文大标题换联盟起艺卢帅正锐黑体（子集仅 400 字重，改 400 避免合成伪粗）
+   R-2 定稿：白字面 + 黑描边（仅 ≥24px 大标题可用；paint-order 保证描边在笔画底层，
+   否则锐利黑体的尖角会被啃秃） */
 .p5-page-title {
-  font-weight: 900;
+  font-family: var(--font-cn-title);
+  font-weight: 400;
   letter-spacing: 0.02em;
   color: var(--p5-white);
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
   text-shadow: 5px 5px 0 var(--p5-red);
   animation: p5-title-in 0.25s ease-out 0.08s both;
 }
@@ -297,7 +303,9 @@
 
 /* =====================================================================
    Phase B 训练类型标签（配合 src/constants/trainingTypes.js 使用，
-   颜色只允许引用 token：间歇红实心 / 节奏白底黑字 / 长距离黄 / 轻松灰 / 休息无框）
+   颜色只允许引用 token：间歇红实心 / 节奏白底黑字 / 长距离红描边 /
+   轻松灰 / 休息无框。S4 定色：黄 = 功能黄，仅限伤病预防页部位警示，
+   其他页面禁止出现黄色，长距离标签由黄改红描边）
    ===================================================================== */
 .tt-tag {
   display: inline-block;
@@ -322,9 +330,14 @@
   font-weight: 700;
 }
 
+/* 长距离：红底白字切角（X-6 周日长距离标签 = 与其他训练类型同款红底白字，
+   加切角语言与全站红按钮统一；原红描边方案废除） */
 .tt-long {
-  color: var(--accent-yellow);
-  border-color: var(--accent-yellow);
+  color: var(--p5-white);
+  background: var(--p5-red);
+  border-color: var(--p5-red);
+  font-weight: 700;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 
 .tt-easy,

@@ -27,13 +27,14 @@ const routes = [
     path: "/checkin",
     name: "checkin",
     component: () => import("../views/CheckinView.vue"),
-    meta: { requiresAuth: true, title: "打卡记录" },
+    // marquee：底部跑马灯（S2，五内页统一；AI 答疑页高度锁死不挂）
+    meta: { requiresAuth: true, title: "打卡记录", marquee: true },
   },
   {
     path: "/plan",
     name: "plan",
     component: () => import("../views/PlanView.vue"),
-    meta: { requiresAuth: true, title: "训练计划" },
+    meta: { requiresAuth: true, title: "训练计划", marquee: true },
   },
   {
     path: "/qa",
@@ -45,19 +46,19 @@ const routes = [
     path: "/injury",
     name: "injury",
     component: () => import("../views/InjuryView.vue"),
-    meta: { requiresAuth: true, title: "伤病预防" },
+    meta: { requiresAuth: true, title: "伤病预防", marquee: true },
   },
   {
     path: "/profile",
     name: "profile",
     component: () => import("../views/ProfileView.vue"),
-    meta: { requiresAuth: true, title: "个人中心" },
+    meta: { requiresAuth: true, title: "个人中心", marquee: true },
   },
   {
     path: "/stats",
     name: "stats",
     component: () => import("../views/StatsView.vue"),
-    meta: { requiresAuth: true, title: "数据统计" },
+    meta: { requiresAuth: true, title: "数据统计", marquee: true },
   },
   {
     path: "/shapes-preview",

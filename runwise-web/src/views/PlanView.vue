@@ -1,13 +1,17 @@
 <script setup>
 // 训练计划页（工程计划 4.7；Phase B 功能态）：
 // - B1 类型标签引用 constants/trainingTypes.js（组件零硬编码颜色）
-// - B2 「今天在哪」：按系统星期定位本表行（红左边框 + TODAY/REST 贴纸，全表唯一）
+// - B2「今天在哪」：按系统星期定位本表行（红左边框 + TODAY/REST 贴纸，全表唯一）
 // - B3 计划管理：+ 添加训练 / 行内编辑删除，数据经 services/planService 收口
 // - B4 行 hover 背景 #16161A；B5 距离数字 Anton 16px 白 + 灰色小单位
 // - 课表表格保持零倾斜（3.4.3 硬规则）
+// - 内页装饰系统 2.0：星 6 + 网点 1 + 斜杠 1 + 水印菱形 1
 import { computed, onMounted, ref } from 'vue'
 import P5Card from '../components/common/P5Card.vue'
+import NumberBib from '../components/common/NumberBib.vue'
+import RansomNote from '../components/common/RansomNote.vue'
 import PlanEditModal from '../components/business/PlanEditModal.vue'
+import PlanDecor from '../components/decor/PlanDecor.vue'
 import * as planService from '../services/planService'
 import { resolveTrainingType, WEEKDAY_OPTIONS } from '../constants/trainingTypes'
 
@@ -106,23 +110,39 @@ async function onModalSubmit(payload) {
 
 <template>
   <div class="plan-page">
+    <!-- 内页装饰系统 2.0：页面级装饰层（z-index:0，卡片 z-index:1） -->
+    <PlanDecor />
+
     <header class="page-head p5-page-header">
       <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title p5-page-title">训练计划</h1>
+      <h1 class="page-title p5-page-title" aria-label="训练计划">
+        <RansomNote text="训练计划" :seed="22" />
+      </h1>
       <p class="page-desc">4 周课表安排 —— 轻松跑、节奏跑、间歇与长距离的科学配比。</p>
     </header>
 
     <div class="p5-divider" aria-hidden="true"></div>
 
-    <!-- 红框工艺（frame="red"）= AI 答疑页三卡同款：白 2px 描边 + 左上/右下
-         12px 斜切 + 22px 红角标 + 6px 深红错位实心影 + 红底白字贴纸 -->
-    <P5Card
-      tag="WEEKLY PLAN"
-      tag-rotate="-4deg"
-      tag-top="-16px"
-      tag-left="28px"
-      frame="red"
-    >
+    <!-- zone 承载号码布贴纸（骑卡右上角，避开左上胶带与卡内内容） -->
+    <div class="plan-card-zone">
+      <!-- S1 号码布：本周合计里程（与 tfoot 合计条同源联动，切周/增删改实时更新）；
+           X-5 角标 1st 缩小上浮，主数字独占一行 -->
+      <NumberBib
+        unit="KM"
+        :value="weekSummary.totalKm"
+        badge="1st"
+        rotate="-3deg"
+        style="top: -30px; right: 20px"
+      />
+      <!-- 红框工艺（frame="red"）= AI 答疑页三卡同款：白 2px 描边 + 左上/右下
+           12px 斜切 + 22px 红角标 + 6px 深红错位实心影 + 红底白字贴纸 -->
+      <P5Card
+        tag="WEEKLY PLAN"
+        tag-rotate="-4deg"
+        tag-top="-16px"
+        tag-left="28px"
+        frame="red"
+      >
       <div class="plan-body">
         <!-- 周切换 + 添加训练 -->
         <div class="plan-toolbar">
@@ -187,17 +207,18 @@ async function onModalSubmit(payload) {
               </td>
               <td class="cell-pace">{{ d.paceRange || '—' }}</td>
               <td class="cell-status">
-                <span
-                  class="status-dot"
-                  :class="{
-                    'dot--rest': d.type === 'rest',
-                    'dot--live': isToday(d) && d.type !== 'rest',
-                  }"
-                ></span>
-                <!-- C5：今天的训练行状态升级「进行中」（今天的休息行仍为 REST/休息日，不冲突） -->
-                <span>{{
-                  d.type === 'rest' ? '休息日' : isToday(d) ? '进行中' : '待执行'
-                }}</span>
+                <!-- 休息日：灰点 + 灰字（维持灰斜体弱化，B-3 不改） -->
+                <template v-if="d.type === 'rest'">
+                  <span class="status-dot dot--rest"></span>
+                  <span class="status-rest">休息日</span>
+                </template>
+                <!-- B-3 进行中：红色切角小标签（白字），替代原红点呼吸 -->
+                <span v-else-if="isToday(d)" class="live-tag">进行中</span>
+                <!-- 待执行：红点 + 灰字（维持） -->
+                <template v-else>
+                  <span class="status-dot"></span>
+                  <span>待执行</span>
+                </template>
               </td>
               <!-- B3.3：行 hover 显示编辑/删除 -->
               <td class="cell-actions">
@@ -231,7 +252,8 @@ async function onModalSubmit(payload) {
           </tfoot>
         </table>
       </div>
-    </P5Card>
+      </P5Card>
+    </div>
 
     <!-- B3.2：编辑弹窗（add / edit / 删除二次确认三态） -->
     <PlanEditModal
@@ -247,6 +269,7 @@ async function onModalSubmit(payload) {
 
 <style scoped>
 .plan-page {
+  position: relative; /* 承载 PlanDecor 装饰层 */
   display: flex;
   flex-direction: column;
 }
@@ -272,6 +295,22 @@ async function onModalSubmit(payload) {
 
 .plan-body {
   padding: var(--sp-5) var(--sp-6) var(--sp-6);
+}
+
+/* 0-2 装饰层级：装饰层 z-index:0，页头与卡片 z-index:1（装饰永远在卡后面、点不到） */
+.page-head {
+  position: relative;
+  z-index: 1;
+}
+
+:deep(.p5-card-wrap) {
+  z-index: 1;
+}
+
+/* S1 号码布锚定区：卡片外层定位上下文（贴纸骑卡右上角，不进 clip-path 裁切域） */
+.plan-card-zone {
+  position: relative;
+  z-index: 1; /* 0-2 装饰层级：卡片永远在装饰层（z-index:0）之上 */
 }
 
 /* ===== 工具行：周切换 + 添加 ===== */
@@ -533,25 +572,22 @@ tr.row--today td:first-child {
   border-radius: 50%;
 }
 
-/* C5：今日训练行「进行中」——红点呼吸（仅透明度，避开菱形 rotate 冲突） */
-.status-dot.dot--live {
-  animation: dot-breath 1.6s ease-in-out infinite;
+/* B-3 进行中：红色切角小标签（白字）——与全站按钮/当天贴纸的切角语言统一 */
+.live-tag {
+  display: inline-block;
+  padding: 3px 12px;
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  color: var(--p5-white);
+  background: var(--p5-red);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 
-@keyframes dot-breath {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .status-dot.dot--live {
-    animation: none;
-  }
+/* 休息日状态文字：灰字 + 斜体弱化 */
+.status-rest {
+  color: var(--p5-text-dim);
+  font-style: italic;
 }
 
 /* ===== C3：周合计页脚行（数字 Anton 20px 白，标签灰） ===== */

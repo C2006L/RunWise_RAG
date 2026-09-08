@@ -58,6 +58,8 @@
     "ZCOOL KuaiLe", "Noto Sans SC", sans-serif; /* 趣味点缀，全站 ≤3 处 */
   --font-cn-display:
     "ZCOOL QingKe HuangYou", "Noto Sans SC", sans-serif; /* 中文展示：粗犷游戏感，与 Anton 搭配 */
+  --font-cn-title:
+    "LMQY ZRHT", "Noto Sans SC", sans-serif; /* 中文大标题：联盟起艺卢帅正锐黑体（F-1 子集 woff2，仅内页大标题/导航中文/主页标语用） */
 
   /* ===== 层级 ===== */
   --z-nav: 100;

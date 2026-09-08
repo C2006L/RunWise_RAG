@@ -2,7 +2,9 @@
 import { nextTick, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import P5Card from "../components/common/P5Card.vue";
-import Stars from "../components/common/Stars.vue";
+import RansomNote from "../components/common/RansomNote.vue";
+import StarField from "../components/common/StarField.vue";
+import QaDecor from "../components/decor/QaDecor.vue";
 import QaChatMessage from "../components/business/QaChatMessage.vue";
 import * as qaApi from "../api/qa";
 import * as statsApi from "../api/stats";
@@ -79,67 +81,7 @@ let msgSeq = 0;
 
 const route = useRoute();
 
-// ===== 背景点缀星（Phase G 重构）：改用全局 <Stars> 组件精确布点 =====
-// 7 颗 = 4 白（暗档 0.2~0.55 呼吸）+ 2 红 + 1 蓝（--accent-blue 全页唯一）；
-// 位置/尺寸/周期与原手工实现逐一对应，视觉不变；分布避开卡片文字区
-const QA_STAR_POSITIONS = [
-  {
-    left: "62%",
-    top: "26px",
-    size: 10,
-    color: "rgba(255,255,255,0.45)",
-    dim: true,
-    dur: 5.2,
-  },
-  {
-    left: "80%",
-    top: "64px",
-    size: 6,
-    color: "rgba(255,255,255,0.35)",
-    dim: true,
-    dur: 6.4,
-  },
-  {
-    left: "92%",
-    top: "118px",
-    size: 9,
-    color: "var(--p5-red)",
-    dim: false,
-    dur: 4.6,
-  },
-  {
-    left: "71%",
-    top: "152px",
-    size: 7,
-    color: "rgba(255,255,255,0.4)",
-    dim: true,
-    dur: 7,
-  },
-  {
-    left: "74%",
-    bottom: "16%",
-    size: 9,
-    color: "var(--p5-red)",
-    dim: false,
-    dur: 5.8,
-  },
-  {
-    left: "90%",
-    bottom: "7%",
-    size: 12,
-    color: "rgba(255,255,255,0.45)",
-    dim: true,
-    dur: 4.2,
-  },
-  {
-    left: "65%",
-    bottom: "5%",
-    size: 6,
-    color: "var(--accent-blue)",
-    dim: false,
-    dur: 6.8,
-  },
-];
+// 背景点缀星已移至 QaDecor 组件（内页装饰系统 2.0）
 
 // ===== 工具 =====
 function shortTime(time) {
@@ -353,7 +295,9 @@ function loadHistoryIntoChat(record) {
   <div class="qa-page">
     <header class="page-head p5-page-header">
       <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title p5-page-title">AI 答疑</h1>
+      <h1 class="page-title p5-page-title" aria-label="AI 答疑">
+        <RansomNote text="AI 答疑" :seed="33" />
+      </h1>
       <p class="page-desc">
         训练计划、装备选择、伤痛预防 —— 有疑问，随时问 RunWise 助手。
       </p>
@@ -361,8 +305,8 @@ function loadHistoryIntoChat(record) {
 
     <div class="p5-divider" aria-hidden="true"></div>
 
-    <!-- 背景点缀星：全局 <Stars> 组件精确布点（卡片 DOM 在后，越界星被卡片自然盖住） -->
-    <Stars :positions="QA_STAR_POSITIONS" />
+    <!-- 内页装饰系统 2.0：页面级装饰层（z-index:0，卡片 z-index:1） -->
+    <QaDecor />
 
     <div class="qa-layout">
       <!-- 主区：聊天流（红框工艺 = 首页打卡卡同款；F-2 三段式等高） -->
@@ -398,7 +342,9 @@ function loadHistoryIntoChat(record) {
                 </svg>
               </span>
               <span class="welcome-text">
-                <span class="empty-title">你好，我是 RunWise 智能训练助手</span>
+                <span class="empty-title">
+                  你好，我是 <span class="et-en">RunWise</span> 智能训练助手
+                </span>
                 <span class="empty-desc">
                   训练计划、装备选择、伤痛预防、跑步技术方面的疑问都可以直接问我
                 </span>
@@ -406,6 +352,10 @@ function loadHistoryIntoChat(record) {
                   <span class="empty-hint">点击此处，从第一个问题开始 →</span>
                   <span class="empty-note">（填入草稿，可编辑后发送）</span>
                 </span>
+              </span>
+              <!-- W-2：卡片右下角红色炸星（StarField S 档 22px，色覆盖为红） -->
+              <span class="welcome-star" aria-hidden="true">
+                <StarField :items="[{ tier: 'S', color: '#E8323E' }]" />
               </span>
             </button>
 
@@ -584,8 +534,8 @@ function loadHistoryIntoChat(record) {
 
 /* ===== 布局：主聊天区 + 侧栏 ===== */
 .qa-page {
-  position: relative; /* 承载 <Stars> 背景点缀星（组件样式/动画内聚于 Stars.vue） */
-  /* A-1：页面高度锁死 = 100vh - 导航(64) - app-main 上下内边距(32+32)，
+  position: relative; /* 承载 QaDecor 装饰层 */
+  /* A-1：页面高度锁死 = 100vh - 导航 (64) - app-main 上下内边距 (32+32)，
      页面级滚动被根除——滚动只允许发生在卡片内部 */
   height: calc(100vh - var(--nav-h) - var(--sp-6) * 2);
   display: flex;
@@ -654,12 +604,6 @@ function loadHistoryIntoChat(record) {
 
   .qa-chat {
     height: clamp(460px, calc(100vh - 340px), 640px);
-  }
-
-  /* 单列布局下背景星会压到卡片文字，可读性优先：窄屏整体隐藏
-     （.stars 为 <Stars> 组件根元素，父 scoped 样式可命中） */
-  .stars {
-    display: none;
   }
 
   /* 欢迎横幅窄屏纵向堆叠 */
@@ -800,16 +744,31 @@ function loadHistoryIntoChat(record) {
   min-width: 0;
 }
 
+/* 拼贴收缩定稿（H-5，永久标准见 RansomNote.vue 组件头注释）：
+   标题中文部分恢复黄油体白字——无描边、无错落；
+   RunWise 四字母恒为 Anton（英文/数字禁用拼贴效果与描边） */
 .empty-title {
+  font-family: var(--font-cn-display);
+  font-weight: 400; /* 黄油体自带粗度，叠加 700 会假粗 */
   font-size: var(--fs-h3);
-  font-weight: 700;
   color: var(--p5-white);
+}
+
+.empty-title .et-en {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
 }
 
 .empty-desc {
   max-width: 480px;
+  /* W-2：说明行灰色单行小字，行高 ≥1.6（此处 1.7），删叠字红字 */
   font-size: var(--fs-sub);
   line-height: 1.7;
+  color: var(--p5-text-dim);
+  /* B-4 加固：长文本任何宽度下都断行，绝不横向溢出/截断 */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .welcome-meta {
@@ -818,18 +777,49 @@ function loadHistoryIntoChat(record) {
   align-items: baseline;
   gap: var(--sp-3);
   margin-top: var(--sp-1);
+  min-width: 0; /* B-4 加固：允许收缩到列宽内，触发换行而非溢出/重叠 */
 }
 
+/* B-4 加固：灰两段各保持完整成块，空间不足时整体换行而非彼此挤压重叠 */
+.empty-hint,
+.empty-note {
+  white-space: nowrap;
+}
+
+/* W-2：强调改用「红菱形 bullet + 白字」，删除原红色小字叠字 */
 .empty-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--fs-caption);
-  letter-spacing: 0.12em;
-  color: var(--p5-red);
+  letter-spacing: 0.08em;
+  color: var(--p5-white);
+}
+
+.empty-hint::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--p5-red);
+  transform: rotate(45deg); /* 红菱形 */
 }
 
 .empty-note {
   font-size: var(--fs-caption);
   color: var(--p5-text-dim);
   opacity: 0.7;
+}
+
+/* W-2：右下角红色炸星（S 档 22px 红）——置于卡内、红三角角标稍内上方，不遮文字 */
+.welcome-star {
+  position: absolute;
+  right: 34px;
+  bottom: 14px;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  pointer-events: none;
 }
 
 .chat-foot {
@@ -958,8 +948,19 @@ function loadHistoryIntoChat(record) {
   font-family: var(--font-body);
   color: var(--p5-white);
   background: var(--p5-black);
-  border: 1px solid var(--p5-line);
+  /* B-2 合规补丁：去圆角（无 border-radius）、黑底白描边、
+     左上/右下切角（同全站卡片 clip-path），聚焦描边变红 */
+  border: 2px solid var(--p5-white);
+  border-radius: 0;
   outline: none;
+  clip-path: polygon(
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%,
+    0 10px
+  );
   transition: border-color 0.2s;
 }
 
@@ -967,9 +968,9 @@ function loadHistoryIntoChat(record) {
   color: var(--p5-text-dim);
 }
 
-/* 聚焦蓝描边（答疑页唯一的蓝色交互元素，主视觉仍为红黑） */
+/* B-2：聚焦描边变红（原电光蓝 → 红，回归红黑主视觉） */
 .chat-input:focus {
-  border-color: var(--accent-blue);
+  border-color: var(--p5-red);
 }
 
 .send-btn {
@@ -1082,8 +1083,16 @@ function loadHistoryIntoChat(record) {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   line-height: 1;
-  /* 电光蓝编号（答疑页蓝色点缀）：01-05 */
-  color: var(--accent-blue);
+  /* B-1 合规补丁：热门问题 01-05 序号主题色红 #E8323E + Anton + -6° 斜切，
+     hover 变白（原电光蓝 → 红，回归红黑主视觉） */
+  color: #e8323e;
+  transform: skewX(-6deg);
+  transition: color 0.2s;
+}
+
+/* B-1：条目 hover 时序号反白（配合整条目暗红底） */
+.side-item:hover .hot-idx {
+  color: var(--p5-white);
 }
 
 .side-text {

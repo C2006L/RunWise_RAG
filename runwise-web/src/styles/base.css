@@ -1,6 +1,16 @@
 /* =====================================================================
    全局基座：modern reset + 全局字体 + 深色底 + 滚动条与选中文本（工程计划 2.2）
    ===================================================================== */
+
+/* 联盟起艺卢帅正锐黑体（免费商用 OFL 1.1，F-1 子集化）：仅标题用字打包，woff2 7.4KB */
+@font-face {
+  font-family: "LMQY ZRHT";
+  src: url("../assets/fonts/lmqy-zrht.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {

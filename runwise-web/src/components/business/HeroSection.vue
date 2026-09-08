@@ -6,13 +6,13 @@
 //   z2 人物 + 飘带 → z3 左侧功能区 + 右侧纯文字菜单 → z4 RuN wIsE 签名位
 // 删除清单（V3 第 1 部分）：「开始跑步」按钮 / 01 名牌 / 三块名牌盒子 /
 //   SlashShape ×2 —— 全部不再出现
-import { onMounted, ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import JaggedStar from '../../assets/shapes/JaggedStar.vue';
-import * as statsApi from '../../api/stats';
-import * as checkinApi from '../../api/checkin';
-import { formatDate } from '../../composables/useFormatDate';
-import heroRunnerUrl from '../../assets/images/hero-runner.png';
+import { onMounted, ref, computed } from "vue";
+import { useRouter } from "vue-router";
+import JaggedStar from "../../assets/shapes/JaggedStar.vue";
+import * as statsApi from "../../api/stats";
+import * as checkinApi from "../../api/checkin";
+import { formatDate } from "../../composables/useFormatDate";
+import heroRunnerUrl from "../../assets/images/hero-runner.png";
 
 const router = useRouter();
 const weekly = ref(null);
@@ -34,37 +34,35 @@ onMounted(() => {
     .catch(() => {});
 });
 
-const dataLine = computed(() =>
-  weekly.value
-    ? `本周 ${weekly.value.totalKm} / ${WEEK_TARGET_KM} KM ── 配速 7'07"/km ── 已打卡 ${weekly.value.checkinCount} 次`
-    : `本周 -- / ${WEEK_TARGET_KM} KM ── 配速 --'--"/km ── 已打卡 -- 次`,
-);
-
 const todayLine = computed(() => {
   const r = todayRecord.value;
-  if (!r) return '今日还未打卡 —— 去完成第一次奔跑';
+  if (!r) return "今日还未打卡 —— 去完成第一次奔跑";
   // r.pace 来自 formatPace，已含 /km 单位，禁止再拼接
   return `今日已打卡 ${r.distanceKm}km · ${r.durationMin}min · ${r.pace}`;
 });
 
 const weekPercent = computed(() => {
   if (!weekly.value) return 0;
-  return Math.min(100, Math.round((weekly.value.totalKm / WEEK_TARGET_KM) * 100));
+  return Math.min(
+    100,
+    Math.round((weekly.value.totalKm / WEEK_TARGET_KM) * 100),
+  );
 });
 
 // ===== ransom-note 字母生成（菜单与主标题共用）=====
+// R-1 回滚：英文/数字一律走 Anton 原样渲染 + 三分法拼贴，禁用 RansomNote（其仅限中文）
 // 三分法轮转：invert 反白贴片（黑底白字+白描边）/ white-red 白字红影 / red-black 红字黑影
-const ROTS = ['-5deg', '4deg', '-3deg', '5deg', '-4deg', '3deg'];
+const ROTS = ["-5deg", "4deg", "-3deg", "5deg", "-4deg", "3deg"];
 const SIZES = [1.1, 0.95, 1.05, 0.9, 1.0, 0.92];
 
 function ransomLetters(word, seed = 0) {
-  return word.split('').map((ch, i) => {
-    if (ch === ' ') return { ch, gap: true };
+  return word.split("").map((ch, i) => {
+    if (ch === " ") return { ch, gap: true };
     const k = (i + seed) % 3;
     return {
       ch,
       gap: false,
-      kind: k === 0 ? 'invert' : k === 1 ? 'wr' : 'rb',
+      kind: k === 0 ? "invert" : k === 1 ? "wr" : "rb",
       rot: ROTS[(i + seed) % 6],
       size: SIZES[(i + seed) % 6],
     };
@@ -73,46 +71,73 @@ function ransomLetters(word, seed = 0) {
 
 // ===== 右侧纯文字菜单（第 6 部分）：无容器无边框，字母即图形 =====
 const MENU = [
-  { key: 'qa', word: 'SmArT Q&A', note: '智能问答', no: '02', to: '/qa', cls: 'm-1', base: '34px', rot: '-7deg' },
-  { key: 'plan', word: 'TrAiN PlAn', note: '训练计划', no: '03', to: '/plan', cls: 'm-2', base: '40px', rot: '-11deg' },
-  { key: 'injury', word: 'InJuRy CaRe', note: '伤病预防', no: '04', to: '/injury', cls: 'm-3', base: '34px', rot: '-6deg' },
+  {
+    key: "qa",
+    word: "SmArT Q&A",
+    note: "智能问答",
+    no: "02",
+    to: "/qa",
+    cls: "m-1",
+    base: "34px",
+    rot: "-7deg",
+  },
+  {
+    key: "plan",
+    word: "TrAiN PlAn",
+    note: "训练计划",
+    no: "03",
+    to: "/plan",
+    cls: "m-2",
+    base: "40px",
+    rot: "-11deg",
+  },
+  {
+    key: "injury",
+    word: "InJuRy CaRe",
+    note: "伤病预防",
+    no: "04",
+    to: "/injury",
+    cls: "m-3",
+    base: "34px",
+    rot: "-6deg",
+  },
 ].map((m, idx) => ({ ...m, letters: ransomLetters(m.word, idx * 2) }));
 
 // 主标题 RuN wIsE（第 7 部分）
-const TITLE = ransomLetters('RuNwIsE', 1).filter((l) => !l.gap);
+const TITLE = ransomLetters("RuNwIsE", 1).filter((l) => !l.gap);
 // 在 RUN 与 WISE 间插入间隙（原词无空格，手动分组）
 const TITLE_GAP_INDEX = 3;
 
 // ===== 鞋印 ×8：沿中央走廊左下 → 右上，间距渐大 =====
 const FOOTPRINTS = [
-  { x: '30%', y: '78%', r: '12deg', c: 'white', o: 0.75, s: 34 },
-  { x: '36%', y: '71%', r: '-10deg', c: 'red', o: 0.7, s: 36 },
-  { x: '43%', y: '63%', r: '14deg', c: 'white', o: 0.65, s: 38 },
-  { x: '51%', y: '55%', r: '-12deg', c: 'red', o: 0.6, s: 40 },
-  { x: '59%', y: '46%', r: '10deg', c: 'white', o: 0.55, s: 42 },
-  { x: '67%', y: '36%', r: '-14deg', c: 'red', o: 0.5, s: 44 },
-  { x: '74%', y: '25%', r: '12deg', c: 'white', o: 0.45, s: 46 },
-  { x: '80%', y: '14%', r: '-10deg', c: 'red', o: 0.4, s: 48 },
+  { x: "30%", y: "78%", r: "12deg", c: "white", o: 0.75, s: 34 },
+  { x: "36%", y: "71%", r: "-10deg", c: "red", o: 0.7, s: 36 },
+  { x: "43%", y: "63%", r: "14deg", c: "white", o: 0.65, s: 38 },
+  { x: "51%", y: "55%", r: "-12deg", c: "red", o: 0.6, s: 40 },
+  { x: "59%", y: "46%", r: "10deg", c: "white", o: 0.55, s: 42 },
+  { x: "67%", y: "36%", r: "-14deg", c: "red", o: 0.5, s: 44 },
+  { x: "74%", y: "25%", r: "12deg", c: "white", o: 0.45, s: 46 },
+  { x: "80%", y: "14%", r: "-10deg", c: "red", o: 0.4, s: 48 },
 ];
 
 // ===== 里程牌 ×3（右上区域散布，允许出血；42 号置于菜单②下方空档，不遮字母）=====
 const MILESTONES = [
-  { km: '1', x: '58%', y: '8%', rot: '-6deg' },
-  { km: '5', x: '72%', y: '20%', rot: '8deg' },
-  { km: '42', x: '94%', y: '46%', rot: '-4deg' },
+  { km: "1", x: "58%", y: "8%", rot: "-6deg" },
+  { km: "5", x: "72%", y: "20%", rot: "8deg" },
+  { km: "42", x: "94%", y: "46%", rot: "-4deg" },
 ];
 
 // ===== 散落小椭圆点 ×4（F4：漂浮 + 透明度呼吸，黑色区域空隙）=====
 const DOTS = [
-  { x: '18%', y: '30%', w: 10, h: 6, c: 'red', dur: '3.2s', delay: '0s' },
-  { x: '48%', y: '26%', w: 8, h: 5, c: 'white', dur: '3.8s', delay: '1.1s' },
-  { x: '70%', y: '74%', w: 12, h: 7, c: 'red', dur: '3.5s', delay: '0.6s' },
-  { x: '90%', y: '58%', w: 7, h: 5, c: 'gray', dur: '4.1s', delay: '1.8s' },
+  { x: "18%", y: "30%", w: 10, h: 6, c: "red", dur: "3.2s", delay: "0s" },
+  { x: "48%", y: "26%", w: 8, h: 5, c: "white", dur: "3.8s", delay: "1.1s" },
+  { x: "70%", y: "74%", w: 12, h: 7, c: "red", dur: "3.5s", delay: "0.6s" },
+  { x: "90%", y: "58%", w: 7, h: 5, c: "gray", dur: "4.1s", delay: "1.8s" },
 ];
 
 // 菜单/大卡跳转均为路由直跳（锚点滚动方案已随卡片区移除）
 function gotoCheckin() {
-  router.push('/checkin');
+  router.push("/checkin");
 }
 </script>
 
@@ -145,7 +170,9 @@ function gotoCheckin() {
       aria-hidden="true"
     >
       <svg viewBox="0 0 40 72" fill="currentColor">
-        <path d="M20 4 C12 4 9 11 9 19 C9 27 12 33 20 35 C28 33 31 27 31 19 C31 11 28 4 20 4 Z" />
+        <path
+          d="M20 4 C12 4 9 11 9 19 C9 27 12 33 20 35 C28 33 31 27 31 19 C31 11 28 4 20 4 Z"
+        />
         <ellipse cx="20" cy="53" rx="8" ry="13" />
       </svg>
     </span>
@@ -219,9 +246,29 @@ function gotoCheckin() {
     <span class="stopwatch" aria-hidden="true">
       <svg viewBox="0 0 80 92" fill="none">
         <rect x="33" y="2" width="14" height="10" fill="var(--p5-red)" />
-        <circle cx="40" cy="52" r="28" stroke="var(--p5-red)" stroke-width="4" />
-        <line x1="40" y1="52" x2="40" y2="30" stroke="var(--p5-red)" stroke-width="4" />
-        <line x1="40" y1="52" x2="58" y2="60" stroke="var(--p5-red)" stroke-width="3" />
+        <circle
+          cx="40"
+          cy="52"
+          r="28"
+          stroke="var(--p5-red)"
+          stroke-width="4"
+        />
+        <line
+          x1="40"
+          y1="52"
+          x2="40"
+          y2="30"
+          stroke="var(--p5-red)"
+          stroke-width="4"
+        />
+        <line
+          x1="40"
+          y1="52"
+          x2="58"
+          y2="60"
+          stroke="var(--p5-red)"
+          stroke-width="3"
+        />
       </svg>
     </span>
 
@@ -234,22 +281,40 @@ function gotoCheckin() {
     </span>
 
     <!-- ===== 第 4 部分 z2：人物（透明底，居中，与黑走廊融合） ===== -->
-    <img class="runner" :src="heroRunnerUrl" alt="奔跑的跑者" draggable="false" />
+    <img
+      class="runner"
+      :src="heroRunnerUrl"
+      alt="奔跑的跑者"
+      draggable="false"
+    />
 
     <!-- ===== 第 9 部分 z2：底部飘带（C：4 份相同 seg，-25% 恰好一份宽，全程无缝） ===== -->
     <div class="ribbon" aria-hidden="true">
       <div class="ribbon-track">
-        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
-        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
-        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
-        <span class="ribbon-seg">KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE ·&nbsp;</span>
+        <span class="ribbon-seg"
+          >KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE
+          ·&nbsp;</span
+        >
+        <span class="ribbon-seg"
+          >KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE
+          ·&nbsp;</span
+        >
+        <span class="ribbon-seg"
+          >KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE
+          ·&nbsp;</span
+        >
+        <span class="ribbon-seg"
+          >KEEP RUNNING · DON'T STOP · EVERY STEP COUNTS · RUN WISE
+          ·&nbsp;</span
+        >
       </div>
     </div>
 
     <!-- ===== 第 5 部分 z3：左侧功能区 ===== -->
     <!-- 5.1 副标题（页面最顶部，坐落 RED-A 上） -->
     <p class="sub-kicker">
-      你的智能跑步训练中心 —— 打卡、答疑与数据统计，一站直达
+      <span class="sk-title">你的智能跑步训练中心</span>
+      <span class="sk-desc">—— 打卡、答疑与数据统计，一站直达</span>
     </p>
 
     <!-- 5.2 今日打卡大卡（A1：CHECK-IN 标签独立于卡外，骑压上边框不被 clip-path 裁切） -->
@@ -265,10 +330,15 @@ function gotoCheckin() {
             <span class="p5-num">{{ weekPercent }}%</span>
           </div>
           <div class="ck-progress-track">
-            <div class="ck-progress-fill" :style="{ width: weekPercent + '%' }"></div>
+            <div
+              class="ck-progress-fill"
+              :style="{ width: weekPercent + '%' }"
+            ></div>
           </div>
         </div>
-        <button class="ck-btn" type="button" @click="gotoCheckin">去打卡 →</button>
+        <button class="ck-btn" type="button" @click="gotoCheckin">
+          去打卡 →
+        </button>
         <span class="ck-flag" aria-hidden="true"></span>
       </div>
       <!-- 标签在卡片兄弟层级、z 更高：边框线不得穿过标签 -->
@@ -278,7 +348,13 @@ function gotoCheckin() {
     <!-- 5.3 本周数据条（人物脚踩） + 快乐体「7 DAYS」上方 -->
     <span class="fun fun-days">7 DAYS</span>
     <button class="data-strip" type="button" @click="router.push('/stats')">
-      <span class="ds-text">{{ dataLine }}</span>
+      <span class="ds-text">
+        <span class="cjk">本周</span> {{ weekly ? weekly.totalKm : "--" }} /
+        {{ WEEK_TARGET_KM }} KM ── <span class="cjk">配速</span>
+        {{ weekly ? "7'07\"/km" : "--'--\"/km" }} ──
+        <span class="cjk">已打卡</span>
+        {{ weekly ? weekly.checkinCount : "--" }} <span class="cjk">次</span>
+      </span>
     </button>
 
     <!-- ===== 第 6 部分 z3：右侧纯文字菜单（无容器无框，点击路由直跳） ===== -->
@@ -760,7 +836,9 @@ function gotoCheckin() {
    第 5 部分 z3：左侧功能区
    ===================================================================== */
 
-/* 5.1 副标题：导航栏下方 32px（Hero 全出血自页面顶开始，需避让 fixed 导航） */
+/* 5.1 副标题：导航栏下方 32px（Hero 全出血自页面顶开始，需避让 fixed 导航）
+   R-2 定稿：主页主标语拆两行——sk-title 26px 白字黑描边（联盟起艺卢帅正锐黑体，
+   与 p5-page-title 同规格）；sk-desc 小字副行不描边（小字加描边禁止） */
 .sub-kicker {
   position: absolute;
   left: 4%;
@@ -769,11 +847,32 @@ function gotoCheckin() {
   max-width: 420px;
   padding-left: 14px;
   border-left: 4px solid var(--p5-white);
-  font-size: 13px;
+  transform: rotate(-2deg);
+}
+
+.sk-title {
+  display: block;
+  font-family: var(--font-cn-title);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.15;
   letter-spacing: 2px;
   color: var(--p5-white);
-  transform: rotate(-2deg);
+  -webkit-text-stroke: 3px #000;
+  paint-order: stroke fill;
   white-space: nowrap; /* 横排一行（C3：禁止竖排折行） */
+}
+
+.sk-desc {
+  display: block;
+  margin-top: 6px;
+  /* W-1：只换中文标题字体、保持灰色；14px 小字禁止加描边（会糊） */
+  font-family: var(--font-cn-title);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* 5.2 今日打卡大卡（A1 重构）：ck-wrap 承接定位与旋转，标签为卡外兄弟元素 */
@@ -821,11 +920,12 @@ function gotoCheckin() {
   clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
 }
 
-/* A3：中文标题换站酷庆科黄油体 */
+/* 拼贴收缩定稿（H-2，永久标准见 RansomNote.vue 组件头注释）：
+   卡内「今日打卡」恢复黄油体白字——横平竖直，无描边、无错落 */
 .ck-title {
   font-family: var(--font-cn-display);
   font-size: 28px;
-  font-weight: 400; /* 黄油体自带粗度，叠加 900 会假粗 */
+  font-weight: 400; /* 黄油体自带粗度，叠加 700/900 会假粗 */
   letter-spacing: 0.04em;
   color: var(--p5-white);
 }
@@ -878,8 +978,8 @@ function gotoCheckin() {
   transition: width 0.4s ease-out;
 }
 
-/* 「去打卡」全页唯一一级按钮（修复 4：标准按钮字号 22px，黄油体字距 6px；
-   可读性优化：字号提升至 28px，高度同步 64px） */
+/* 「去打卡」全页唯一一级按钮。拼贴收缩定稿（H-3）：
+   文字恢复黄油体普通样式（无描边、无错落）；红色切角造型保持不变 */
 .ck-btn {
   position: relative;
   z-index: 1; /* 高于红三角、错位影、斜切角等装饰 */
@@ -913,7 +1013,8 @@ function gotoCheckin() {
 }
 
 /* 5.3 数据条：红底白字白描边，两端斜切，rotate(-5°)
-   可读性优化：字体统一为「去打卡」同款黄油体，宽度 46% 防止增大后裁字 */
+   拼贴收缩定稿（H-4）：字体栈 Anton 在前——数字/单位（39.1/40/KM/km 等）
+   走 Anton，中文自动回退黄油体；整行无描边、无错落 */
 .data-strip {
   position: absolute;
   left: 2%;
@@ -924,7 +1025,7 @@ function gotoCheckin() {
   background: var(--p5-red);
   border: 2px solid var(--p5-white);
   color: var(--p5-white);
-  font-family: var(--font-cn-display);
+  font-family: var(--font-display), var(--font-cn-display);
   font-size: 20px;
   font-weight: 400; /* 黄油体自带粗度，叠加 700 会假粗 */
   letter-spacing: 2px;
@@ -953,6 +1054,14 @@ function gotoCheckin() {
   font-size: 20px;
   letter-spacing: 2px;
   animation: ds-cut 8s cubic-bezier(0.2, 0.9, 0.3, 1) infinite;
+}
+
+/* 拼贴收缩定稿（H-4）：底部红条中文（本周/配速/已打卡/次）恢复黄油体普通样式，
+   取消描边与错落；数字/单位由 .data-strip 字体栈走 Anton */
+.ds-text .cjk {
+  font-family: var(--font-cn-display);
+  font-weight: 400;
+  color: var(--p5-white);
 }
 
 @keyframes ds-cut {
@@ -1040,11 +1149,12 @@ function gotoCheckin() {
   width: 0.35em;
 }
 
+/* F-3：字母拼贴统一白字（禁止逐字换色），样式收敛在 RansomNote 组件内
+   R-1 回滚：.mlt 三分法样式恢复（英文/数字走 Anton 原样渲染，禁用 RansomNote） */
 .mlt {
   display: inline-block;
 }
 
-/* 三分法字母样式 */
 /* 1/3 反白贴片：黑底白字小块（撕纸贴片，白描边保证黑底上可见） */
 .mlt--invert {
   padding: 0 0.06em;

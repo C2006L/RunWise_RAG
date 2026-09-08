@@ -104,7 +104,10 @@ async function handleLogout() {
   gap: var(--sp-3);
 }
 
-/* 斜切链接底块：hover 红蒙层，激活态主红实底 */
+/* 斜切链接底块：hover 红蒙层，激活态主红实底
+   拼贴收缩定稿（H-1，永久标准见 RansomNote.vue 组件头注释）：
+   导航中文标签 = 普通文字：标准正文字体 + 常规字重 + 白/灰颜色，
+   禁止描边与错落（描边/错落仅限 主页大标题 + 五内页大标题） */
 .nav-link {
   display: inline-block;
   padding: var(--sp-2) var(--sp-4);
@@ -126,7 +129,6 @@ async function handleLogout() {
 .nav-link.router-link-active {
   color: var(--p5-white);
   background: var(--p5-red);
-  font-weight: 700;
   clip-path: polygon(
     10px 0,
     calc(100% - var(--cut)) 0,

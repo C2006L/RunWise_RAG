@@ -11,7 +11,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // 5173/5174/5175 被其他项目占用（Vite 端口被占时会 +1 自动顺延，
+    // 多项目并存会形成级联抢占）——本项目固定用 5273，远离默认端口级联区
+    port: 5273,
     open: false,
   },
 })

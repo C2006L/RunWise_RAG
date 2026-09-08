@@ -6,6 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import P5Card from '../components/common/P5Card.vue'
 import Stars from '../components/common/Stars.vue'
+import RansomNote from '../components/common/RansomNote.vue'
 import * as injuryApi from '../api/injury'
 
 const route = useRoute()
@@ -108,11 +109,13 @@ const categoryLabel = computed(
   <div class="injury-page">
     <header class="page-head p5-page-header">
       <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title p5-page-title">伤病预防</h1>
+      <h1 class="page-title p5-page-title" aria-label="伤病预防">
+        <RansomNote text="伤病预防" :seed="44" />
+      </h1>
       <p class="page-desc">膝 / 踝 / 髋 / 足 —— 跑者常见伤病知识库，科学防护，健康奔跑。</p>
     </header>
 
-    <!-- F5：页头右侧空白区撒星（白2黄1，缀色 = 本页唯一黄星；宪法 C-3 远离文字 40px+） -->
+    <!-- F5：页头右侧空白区撒星（白3，X-4 黄仅限左上部位标签，星不再用黄） -->
     <div class="page-stars" aria-hidden="true">
       <Stars
         :count="3"
@@ -120,7 +123,7 @@ const categoryLabel = computed(
         :positions="[
           { left: '88%', top: '38px', size: 10, color: 'rgba(255,255,255,0.5)', bright: true, dur: 5 },
           { left: '75%', top: '118px', size: 6, color: 'rgba(255,255,255,0.42)', bright: true, dur: 6.2 },
-          { left: '92%', top: '156px', size: 9, color: 'var(--accent-yellow)', bright: true, dur: 4.4 },
+          { left: '92%', top: '156px', size: 9, color: 'rgba(255,255,255,0.55)', bright: true, dur: 4.4 },
         ]"
       />
     </div>
@@ -156,15 +159,23 @@ const categoryLabel = computed(
         <P5Card
           v-for="(a, i) in articles"
           :key="a.id"
+          class="article-card-wrap"
           :tag="a.categoryLabel + '部'"
           :tag-rotate="i % 2 === 0 ? '-4deg' : '3deg'"
           :tag-top="i % 2 === 0 ? '-15px' : '-18px'"
           :tag-left="i % 2 === 0 ? '48px' : ''"
           :tag-right="i % 2 === 0 ? '' : '42px'"
-          frame="yellow"
+          frame="red"
+          tag-variant="yellow"
         >
-          <!-- F3：hover 走全局 .card-hover（暗红渐显 + 描边白→红），页内私有样式已删 -->
-          <button class="article-card card-hover" type="button" @click="openDetail(a.id)">
+          <!-- S4 第三卡强调态：不做整卡红底反白，与其他卡同款黑底白描边，
+               仅标题前红菱形 + 标签行红底，保持列表节奏一致 -->
+          <button
+            class="article-card"
+            :class="{ 'article-card--hot': i === 2 }"
+            type="button"
+            @click="openDetail(a.id)"
+          >
             <span class="article-title">{{ a.title }}</span>
             <span class="article-summary">{{ a.summary }}</span>
             <span class="article-meta">
@@ -281,17 +292,96 @@ const categoryLabel = computed(
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+  /* X-1a：列表容器不设 overflow 裁切（本页本就没有），改用 padding 为
+     整卡旋转留出空间——旋转出来的角不许被裁切 */
+  padding: var(--sp-3);
 }
 
+/* ===== X-1b / X-2：卡单位 = P5Card wrap（框体/切角/贴纸/内容一体） =====
+   旋转与提层挂 wrap 而非内容层，根因修复：
+   - 卡体 .p5-card 带 clip-path，内容层旋转戳出的直角会被父框裁掉（"角被吞"）；
+     改旋 wrap 后整卡（含切角形状）一起转，父容器 .article-list 无裁切，
+     角永远完整
+   - z-index 基础 1，hover/选中 10 → 旋转角盖住邻卡；红三角旗在 wrap 上，
+     随卡同步提升、任何状态不被裁切 */
+.article-card-wrap {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.12s;
+}
+
+.article-card-wrap:hover,
+.article-card-wrap.selected {
+  transform: rotate(-2deg); /* X-2 整卡倾斜 2°（0.12s 干脆，漫画式） */
+  z-index: 10;
+}
+
+/* 框体描边过渡（hover 外圈红描边用，仅伤病页列表卡启用） */
+.article-card-wrap :deep(.p5-card) {
+  transition: border-color 0.12s;
+}
+
+/* X-2 外圈 2px 红描边：卡体白描边 hover 变红，卡内文字保持原色（无整卡重涂） */
+.article-card-wrap:hover :deep(.p5-card),
+.article-card-wrap.selected :deep(.p5-card) {
+  border-color: var(--p5-red);
+}
+
+/* A-4 左缘红色小三角旗（主页 CHECK-IN 旗样式）：挂 wrap 上，
+   不被框体 clip-path 裁切（任何状态下完整显示），随卡旋转同步提升 */
+.article-card-wrap::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 14px;
+  width: 0;
+  height: 0;
+  z-index: 1;
+  border-style: solid;
+  border-width: 0 0 16px 16px;
+  border-color: transparent transparent var(--p5-red) transparent;
+  pointer-events: none;
+}
+
+/* X-2 左缘红条：hover/选中时沿左缘竖条（顶部斜切与卡体 12px 切角同向，
+   不超出切角内侧；贴纸/角标层之上） */
+.article-card-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 1;
+  background: var(--p5-red);
+  clip-path: polygon(0 12px, 4px 8px, 4px 100%, 0 100%);
+  opacity: 0;
+  transition: opacity 0.12s;
+  pointer-events: none;
+}
+
+.article-card-wrap:hover::after,
+.article-card-wrap.selected::after {
+  opacity: 1;
+}
+
+/* 内容点击层：切角与父框联动（直角不戳出），自身不再承担任何 hover 变换 */
 .article-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
   width: 100%;
   padding: var(--sp-5) var(--sp-6) var(--sp-5);
   text-align: left;
-  /* F3：hover 效果全部由全局 .card-hover 提供（暗红渐显 + 描边白→红），
-     此处不再写页内私有 hover（删原 background: var(--p5-red-soft)） */
+  clip-path: polygon(
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%,
+    0 12px
+  );
 }
 
 .article-title {
@@ -322,12 +412,51 @@ const categoryLabel = computed(
   border: 1px dashed var(--p5-line);
 }
 
+/* X-3 阅读全文 →：红色切角小按钮（红底白字 12px）；
+   卡内 padding 右/下 24px+，按钮距卡边 ≥16px（黑底红小字方案废除） */
 .article-cta {
   margin-left: auto;
-  font-size: var(--fs-caption);
-  letter-spacing: 0.1em;
-  color: var(--p5-red);
+  padding: 5px 14px;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  color: var(--p5-white);
+  background: var(--p5-red);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
   white-space: nowrap;
+}
+
+/* ===== S4 第三卡强调态（过审决议，整卡红底反白方案的替代） =====
+   卡体与其他卡同款黑底白描边（frame="red" 不变），仅两处红色强调：
+   标题前红色菱形 + 标签行红底反白，保持列表节奏一致 */
+.article-card--hot .article-title::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 10px;
+  background: var(--p5-red);
+  transform: rotate(45deg);
+  vertical-align: 2px;
+}
+
+/* 标签行红底：红条内标签白字描白边、CTA 反白（红底上不再用红按钮，
+   改白描边透明钮，保证可读） */
+.article-card--hot .article-meta {
+  margin-top: var(--sp-3);
+  padding: 7px 12px;
+  background: var(--p5-red);
+}
+
+.article-card--hot .article-tag {
+  color: var(--p5-white);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.article-card--hot .article-cta {
+  color: var(--p5-white);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.65);
 }
 
 .list-status {

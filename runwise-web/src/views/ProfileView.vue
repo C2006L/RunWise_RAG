@@ -6,7 +6,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import P5Card from '../components/common/P5Card.vue'
+import NumberBib from '../components/common/NumberBib.vue'
 import Stars from '../components/common/Stars.vue'
+import RansomNote from '../components/common/RansomNote.vue'
 import { useAuth } from '../composables/useAuth'
 import * as statsApi from '../api/stats'
 
@@ -63,7 +65,9 @@ async function handleLogout() {
   <div class="profile-page">
     <header class="page-head p5-page-header">
       <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title p5-page-title">个人中心</h1>
+      <h1 class="page-title p5-page-title" aria-label="个人中心">
+        <RansomNote text="个人中心" :seed="55" />
+      </h1>
       <p class="page-desc">你的跑步档案 —— 坚持的每一天都在这里留下印记。</p>
     </header>
 
@@ -111,7 +115,16 @@ async function handleLogout() {
         ]"
       />
     </div>
-    <P5Card tag="BADGES" tag-rotate="3deg" tag-top="-14px" tag-right="36px" frame="red">
+    <!-- zone 承载号码布贴纸（避开右上 BADGES 胶带与出血星） -->
+    <div class="badge-card-zone">
+      <!-- S1 号码布：已得徽章数/总徽章数 -->
+      <NumberBib
+        unit="BADGES"
+        :value="`${earnedCount}/${badges.length}`"
+        rotate="-2deg"
+        style="top: -22px; right: 140px"
+      />
+      <P5Card tag="BADGES" tag-rotate="3deg" tag-top="-14px" tag-right="36px" frame="red">
       <div class="section-body">
         <div class="section-head">
           <h3 class="section-title">成就徽章</h3>
@@ -136,6 +149,7 @@ async function handleLogout() {
         </div>
       </div>
     </P5Card>
+    </div>
 
     <!-- 本周数据摘要（D5：同款红框工艺） -->
     <P5Card tag="THIS WEEK" tag-rotate="-3deg" tag-top="-18px" tag-left="48px" frame="red">

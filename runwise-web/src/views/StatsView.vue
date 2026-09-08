@@ -7,6 +7,7 @@
 // - Phase E3：年月一律 new Date() 实时计算，无硬编码年月字符串
 import { computed, onMounted, ref } from "vue";
 import P5Card from "../components/common/P5Card.vue";
+import RansomNote from "../components/common/RansomNote.vue";
 import StatsChart from "../components/business/StatsChart.vue";
 import * as statsApi from "../api/stats";
 import { WEEKDAY_LABELS } from "../composables/useFormatDate";
@@ -135,7 +136,9 @@ onMounted(loadAll);
   <div class="stats-page">
     <header class="page-head p5-page-header">
       <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title p5-page-title">数据统计</h1>
+      <h1 class="page-title p5-page-title" aria-label="数据统计">
+        <RansomNote text="数据统计" :seed="66" />
+      </h1>
       <p class="page-desc">周里程与月度趋势一目了然，用图表见证你的成长。</p>
     </header>
 
