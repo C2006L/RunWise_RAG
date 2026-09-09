@@ -188,4 +188,50 @@ async function handleLogout() {
     gap: var(--sp-2);
   }
 }
+
+/* R-3 手机适配（<760px）：六个 nowrap 链接 + 品牌字在 375px 级视口必然溢出
+   （截图实测「AI 答…」被裁）——链接区转横向滑动（隐藏滚动条），昵称隐藏
+   仅留退出按钮，品牌字缩号。桌面/平板视觉不变 */
+@media (max-width: 760px) {
+  .nav-inner {
+    padding: 0 var(--sp-3);
+  }
+
+  .nav-brand {
+    font-size: 20px;
+    text-shadow: 2px 2px 0 var(--p5-red);
+  }
+
+  .nav-brand em {
+    text-shadow: 2px 2px 0 var(--p5-shadow);
+  }
+
+  .nav-right {
+    flex: 1;
+    min-width: 0; /* flex 子项可收缩，链接区才能滚动 */
+    justify-content: flex-end;
+    gap: var(--sp-3);
+  }
+
+  .nav-links {
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-link {
+    flex: none; /* nowrap 防止链接自身被压缩折行 */
+    font-size: 13px;
+    padding: var(--sp-2);
+  }
+
+  .nav-nickname {
+    display: none;
+  }
+}
 </style>

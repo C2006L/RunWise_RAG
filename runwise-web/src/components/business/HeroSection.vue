@@ -359,8 +359,12 @@ function gotoCheckin() {
     <button class="data-strip" type="button" @click="router.push('/stats')">
       <span class="ds-text">
         <span class="cjk">本周</span> {{ weekly ? weekly.totalKm : "--" }} /
-        {{ WEEK_TARGET_KM }} KM ── <span class="cjk">配速</span>
-        {{ weekly ? "7'07\"/km" : "--'--\"/km" }} ──
+        {{ WEEK_TARGET_KM }} KM ──
+        <!-- R-9：极窄视口（<480px）整段隐藏配速，保里程与打卡次数可读 -->
+        <span class="ds-pace"
+          ><span class="cjk">配速</span>
+          {{ weekly ? "7'07\"/km" : "--'--\"/km" }} ──</span
+        >
         <span class="cjk">已打卡</span>
         {{ weekly ? weekly.checkinCount : "--" }} <span class="cjk">次</span>
       </span>
@@ -1276,6 +1280,84 @@ function gotoCheckin() {
 }
 
 /* ===== 响应式 <768px（第 11 部分） ===== */
+/* ===== R-7 平板断点（<960px）：桌面 absolute 布局在 768-960 区间崩坏
+   （数据条 46% nowrap 截断 / 右侧菜单与 RUN WISE 签名重叠 / 副标题被色带吞），
+   提前转纵向文档流；<768 块在其后叠加极窄缩小规则（级联覆盖） ===== */
+@media (max-width: 960px) {
+  .hero {
+    height: auto;
+    min-height: 640px;
+    display: flex;
+    flex-direction: column;
+    padding-top: 72px;
+  }
+
+  .sub-kicker {
+    position: static;
+    margin: 0 4% 24px;
+  }
+
+  .ck-wrap {
+    position: static;
+    width: 92%;
+    margin: 0 auto 28px;
+  }
+
+  .checkin-card {
+    width: 100%;
+  }
+
+  /* 数据条转文档流：95% 宽 + 16px，截断根除（<768 再缩 13px） */
+  .data-strip {
+    position: static;
+    width: 95%;
+    margin: 0 auto 32px;
+    height: 44px;
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+
+  /* 转纵向后菜单堆叠，桌面字号保持（平板宽度容得下） */
+  .menu-item {
+    position: static;
+    margin: 0 5% 26px;
+  }
+
+  .hero-sign {
+    position: static;
+    margin: 4% 5% 72px auto;
+    width: max-content;
+  }
+
+  /* 人物缩小靠右，装饰做减法（同 <768 现行方案） */
+  .runner {
+    height: 55%;
+    left: 55%;
+    transform: none;
+  }
+
+  .fp--tail,
+  .stopwatch,
+  .bib,
+  .milestone,
+  .fun-stop,
+  .band-ht-black {
+    display: none;
+  }
+
+  .fun-run {
+    left: 20%;
+    top: auto;
+    bottom: 34%;
+  }
+
+  .heartbeat {
+    left: 10%;
+    width: 70%;
+    bottom: 30%;
+  }
+}
+
 @media (max-width: 768px) {
   .hero {
     height: auto;
@@ -1375,9 +1457,10 @@ function gotoCheckin() {
     position: static;
     width: 95%;
     margin: 0 auto 32px;
-    font-size: 15px;
-    letter-spacing: 1px;
-    height: 44px;
+    /* R-4：内容 nowrap，13px/零字距防 375px 级视口截断（15px 时实测尾部被切） */
+    font-size: 13px;
+    letter-spacing: 0;
+    height: 40px;
   }
 
   /* 菜单纵向堆叠人物下方，字号 24px */
@@ -1406,6 +1489,20 @@ function gotoCheckin() {
     line-height: 28px;
     font-size: 11px;
     letter-spacing: 4px;
+  }
+}
+
+/* ===== R-9 极窄断点（<480px） =====
+   配速段放不下（实测 13px 全内容宽 537px > 375 视口容器 356px），
+   隐藏保「本周里程 + 打卡次数」完整可读；剩余内容 358px 仍贴边，
+   word-spacing -2px 压空格至 342px（实测）留出余量 */
+@media (max-width: 480px) {
+  .ds-pace {
+    display: none;
+  }
+
+  .ds-text {
+    word-spacing: -2px;
   }
 }
 </style>

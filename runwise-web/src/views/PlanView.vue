@@ -649,5 +649,15 @@ tr.row--today td:first-child {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  /* R-8 表格窄屏安全网：隐藏配速列后五列在 375px 级视口仍会挤压，
+     给最小宽度 + 卡体横向滚动（贴纸/号码布在外层 wrap 不受影响） */
+  :deep(.p5-card) {
+    overflow-x: auto;
+  }
+
+  .plan-table {
+    min-width: 520px;
+  }
 }
 </style>

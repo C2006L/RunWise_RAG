@@ -31,9 +31,9 @@ onMounted(() => {
     .catch(() => {})
   loadArticles('')
 
-  // 初始 query 携带 article 时直接进详情
+  // 初始 query 携带 article 时直接进详情（刷新直链定位）
   if (route.query.article) {
-    openDetail(String(route.query.article))
+    loadDetail(String(route.query.article))
   }
 })
 
@@ -65,6 +65,29 @@ function backToList() {
   router.replace({ query: { ...route.query, article: undefined } })
 }
 
+// 详情加载（watch 与 onMounted 刷新定位共用）：
+// 优先从列表缓存取，避免闪烁；无缓存再拉详情
+function loadDetail(id) {
+  const cached = articles.value.find((a) => a.id === id)
+  if (cached) {
+    detail.value = cached
+    return
+  }
+  detailLoading.value = true
+  injuryApi
+    .getArticleDetail(String(id))
+    .then((article) => {
+      detail.value = article
+    })
+    .catch(() => {
+      detail.value = null
+      backToList()
+    })
+    .finally(() => {
+      detailLoading.value = false
+    })
+}
+
 // query 变化 → 详情态切换（前进 / 后退键同样生效）
 watch(
   () => route.query.article,
@@ -73,25 +96,7 @@ watch(
       detail.value = null
       return
     }
-    // 优先从列表缓存取，避免闪烁；无缓存再拉详情
-    const cached = articles.value.find((a) => a.id === id)
-    if (cached) {
-      detail.value = cached
-      return
-    }
-    detailLoading.value = true
-    injuryApi
-      .getArticleDetail(String(id))
-      .then((article) => {
-        detail.value = article
-      })
-      .catch(() => {
-        detail.value = null
-        backToList()
-      })
-      .finally(() => {
-        detailLoading.value = false
-      })
+    loadDetail(id)
   },
 )
 
@@ -472,15 +477,21 @@ const categoryLabel = computed(
 }
 
 .back-btn {
-  padding: 0;
-  font-size: var(--fs-caption);
+  /* R-1 加大：12px 纯文字 → 红底白字切角按钮（同「阅读全文」「问 AI 助手」
+     按钮语言），命中区随 padding 扩大一倍余 */
+  padding: 10px 28px;
+  font-size: var(--fs-sub);
+  font-weight: 700;
   letter-spacing: 0.1em;
-  color: var(--p5-red);
+  color: var(--p5-white);
+  background: var(--p5-red);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
   margin-bottom: var(--sp-4);
+  transition: background 0.2s;
 }
 
 .back-btn:hover {
-  text-decoration: underline;
+  background: var(--p5-red-dark);
 }
 
 .detail-title {
@@ -522,5 +533,32 @@ const categoryLabel = computed(
 
 .ask-btn:hover {
   background: var(--p5-red-dark);
+}
+
+/* R-2 移动端适配（本页此前无断点）：<760px 标题/详情内边距收敛，
+   分类 chips 横向滚动防折行挤压 */
+@media (max-width: 760px) {
+  .page-title {
+    font-size: 32px;
+  }
+
+  .detail-body {
+    padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  }
+
+  .cat-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .cat-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cat-chip {
+    flex: none;
+  }
 }
 </style>

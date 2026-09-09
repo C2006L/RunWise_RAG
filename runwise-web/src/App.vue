@@ -51,4 +51,13 @@ const showMarquee = computed(() => Boolean(route.meta.marquee))
 .app-main--marquee {
   padding-bottom: 60px;
 }
+
+/* R-6 手机适配（<600px）：容器左右内边距 24px → 16px，
+   给表格 / 卡片让出内容宽度，缓解窄屏截断 */
+@media (max-width: 600px) {
+  .app-main {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}
 </style>

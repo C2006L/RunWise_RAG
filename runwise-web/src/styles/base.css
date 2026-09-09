@@ -114,3 +114,13 @@ body::after {
   /* 内联 SVG 噪点：fractalNoise 去色后平铺，无额外图片请求 */
   background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='160'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='160'%20height='160'%20filter='url(%23n)'/%3E%3C/svg%3E");
 }
+
+/* ===== R-5 移动端统一收敛（<760px） =====
+   六个内页的 .page-title 均为 scoped 样式（编译后带属性选择器，特异性
+   高于全局单类），故此处用 !important 做跨组件统一覆盖：48px 手机上
+   过宽导致换行挤压，统一收敛到 32px；桌面 / 平板视觉不变 */
+@media (max-width: 760px) {
+  .page-title {
+    font-size: 32px !important;
+  }
+}
