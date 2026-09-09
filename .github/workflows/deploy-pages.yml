@@ -39,6 +39,10 @@ jobs:
 
       - name: Build (base=/RunWise_RAG/)
         working-directory: runwise-web
+        env:
+          # Pages 演示站无后端：强制 mock 模式（env 优先级高于 .env.production 的 false）。
+          # 将来接真实后端部署时，删除此 env 即恢复 .env.production 配置
+          VITE_USE_MOCK: 'true'
         run: |
           npm run build -- --base=/RunWise_RAG/
           # history 路由刷新兜底：GitHub 对未命中的路径返回 404.html（内容同 index.html），
