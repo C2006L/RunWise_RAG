@@ -69,7 +69,8 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  // BASE_URL 跟随 Vite base（GitHub Pages 项目站点为 /RunWise_RAG/，本地 dev 为 /）
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 }),
 });

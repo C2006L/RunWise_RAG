@@ -1,0 +1,55 @@
+# GitHub Pages 部署（runwise-web 静态演示站）
+# - 项目站点 base 为 /RunWise_RAG/，构建时经 --base 注入（router 已按 BASE_URL 感知）
+# - mock 缺省开启（VITE_USE_MOCK !== 'false'），无后端环境可完整演示：任意非空账密即可登录
+# - 首页启用前提：仓库 Settings → Pages → Source 需选「GitHub Actions」
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: runwise-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: runwise-web
+        run: npm ci
+
+      - name: Build (base=/RunWise_RAG/)
+        working-directory: runwise-web
+        run: |
+          npm run build -- --base=/RunWise_RAG/
+          # history 路由刷新兜底：GitHub 对未命中的路径返回 404.html（内容同 index.html），
+          # SPA 启动后由 vue-router 按 location.pathname 接管
+          cp dist/index.html dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: runwise-web/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
