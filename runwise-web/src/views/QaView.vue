@@ -630,6 +630,16 @@ function loadHistoryIntoChat(record) {
   inset: 0; /* A-4 后免责声明已入卡，卡体占满整格 */
 }
 
+/* S-1 滚动链修复：卡体是 wrap（P5Card 内部为 flex 列容器）的 flex 项，
+   默认 min-height:auto 取内容最小高度 → 实测长对话时卡体被内容撑到 1608px、
+   撤破 455px 的 wrap（.chat-body scrollHeight==clientHeight 永久无内滚，
+   溢出内容被 .qa-page overflow:hidden 裁切）。归零后卡体锁回 wrap 高，
+   .qa-chat height:100% → .chat-body flex:1 内滚链路恢复。
+   与下方 .qa-side 历史卡的既有 :deep(.p5-card) min-height:0 同款修法 */
+.chat-col > .p5-card-wrap :deep(.p5-card) {
+  min-height: 0;
+}
+
 /* ===== 聊天区 ===== */
 /* A-2：三段式——欢迎横幅（固定）→ 消息区 flex:1 内滚 → 输入区贴底；
    卡片总高由视口锁高决定，不再由内容或视口 clamp 硬凑 */
