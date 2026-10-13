@@ -3,12 +3,17 @@ import { useUserStore } from '../stores/user'
 import { instance, withAuthRetry } from './request'
 
 // 伤病预防接口层（工程计划 6.3 签名 / 6.2 分流，M9 新增）
-// 后端暂无对应接口，axios 分支按前端契约预留路径，联调期与后端对齐
+// 后端契约已对齐：GET /injury/articles、/injury/articles/{id}、/injury/categories
+// 支持 VITE_INJURY_USE_MOCK 独立开关（便于单独联调本模块），缺省跟随全局 VITE_USE_MOCK
+const useMock =
+  import.meta.env.VITE_INJURY_USE_MOCK !== undefined
+    ? import.meta.env.VITE_INJURY_USE_MOCK !== 'false'
+    : USE_MOCK
 
 // 文章列表 → InjuryArticle[]（含 categoryLabel）
-// category: 'knee' | 'ankle' | 'hip' | 'foot'，缺省全部
+// category: 'knee' | 'ankle' | 'shin'，缺省全部
 export function getArticles(category) {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() =>
       mockInjury.getArticles(category, useUserStore().accessToken)
     )
@@ -18,9 +23,9 @@ export function getArticles(category) {
     .then((res) => res.data.data)
 }
 
-// 文章详情 → InjuryArticle（含 contentParagraphs）
+// 文章详情 → InjuryArticle（含 sections[{ heading, body }]）
 export function getArticleDetail(id) {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() =>
       mockInjury.getArticleDetail(id, useUserStore().accessToken)
     )
@@ -30,7 +35,7 @@ export function getArticleDetail(id) {
 
 // 分类列表 → { key, label }[]
 export function getCategories() {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() => mockInjury.getCategories(useUserStore().accessToken))
   }
   return instance.get('/injury/categories').then((res) => res.data.data)

@@ -61,6 +61,7 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+.tmp-font/
 
 # Node / Vue (runwise-web)
 node_modules/

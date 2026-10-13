@@ -1,27 +1,19 @@
 <template>
   <view class="qa-page">
-    <!-- 背景图片层 -->
-    <image class="page-bg" src="/static/blurry-gradient-haikei.png" mode="aspectFill"></image>
+    <!-- 背景网点纹理（P5 语言，纯 CSS 零体积） -->
+    <view class="qa-page__dots"></view>
 
-    <!-- 二级导航 -->
+    <!-- 二级导航：问答 / 历史 / 伤病预防（红切角选中块 + 1px 地基线） -->
     <view class="sub-nav">
       <view
-        class="nav-item"
-        :class="{ 'nav-item--active': currentTab === 0 }"
-        @tap="switchTab(0)"
+        v-for="(tab, idx) in tabs"
+        :key="idx"
+        class="sub-nav__item"
+        :class="{ 'is-active': currentTab === idx }"
+        @click="switchTab(idx)"
       >
-        <text class="nav-text">问答</text>
+        <text class="sub-nav__text">{{ tab }}</text>
       </view>
-      <!-- 历史Tab暂时隐藏，功能完成后恢复 -->
-      <!--
-      <view
-        class="nav-item"
-        :class="{ 'nav-item--active': currentTab === 1 }"
-        @tap="switchTab(1)"
-      >
-        <text class="nav-text">历史</text>
-      </view>
-      -->
     </view>
 
     <!-- 可滚动内容 -->
@@ -33,23 +25,29 @@
     >
       <!-- 问答视图 -->
       <view v-show="currentTab === 0" class="qa-view">
-        <!-- 分类入口（毛玻璃网格卡片 v5.0） -->
+        <!-- 分类入口 V4（终版·锁死）：运动品牌控制面板件 -->
         <view class="category-grid">
           <view
             class="category-card"
-            :class="{ 'category-card--active': activeCategory === item.name }"
-            v-for="(item, index) in categories"
+            v-for="(item, idx) in categories"
             :key="item.name"
+            :class="{ 'category-card--active': isCategoryHot(item.name) }"
+            @touchstart="onCategoryPressStart(item.name)"
+            @touchend="onCategoryPressEnd"
+            @touchcancel="onCategoryPressEnd"
             @tap="onCategoryTap(item)"
           >
-            <view class="category-icon-wrap" :style="{ background: catIconBgs[index] }">
-              <uni-icons :type="item.icon" size="22" color="#ffffff"></uni-icons>
-            </view>
+            <text class="category-card__num">0{{ idx + 1 }}</text>
+            <uni-icons
+              :type="item.icon"
+              size="28"
+              :color="isCategoryHot(item.name) ? '#E8442E' : '#FFFFFF'"
+            ></uni-icons>
             <text class="category-name">{{ item.name }}</text>
           </view>
         </view>
 
-        <!-- 热门问题（跑道气泡卡片：横向滑动，与首页新手常问风格统一） -->
+        <!-- 热门问题（横向滑动：红切角胶带块，交错斜排 + 按压抖动） -->
         <view class="hot-section">
           <view class="section-header">
             <view class="section-icon-wrap">
@@ -58,77 +56,58 @@
             <text class="section-title">热门问题</text>
           </view>
 
-          <view class="cloud-scroll-wrap">
+          <scroll-view class="hot-scroll" scroll-x :show-scrollbar="false">
             <view
-              class="cloud-bubble"
               v-for="(q, idx) in hotQuestions"
               :key="idx"
-              hover-class="cloud-bubble-hover"
+              class="hot-item"
+              :class="idx % 2 === 0 ? 'hot-item--odd' : 'hot-item--even'"
+              hover-class="hot-item--pressed"
+              :hover-stay-time="150"
               @tap="onHotQuestionTap(q)"
             >
-              <view class="cloud-bubble-inner">
-                <view class="cloud-bubble-text">
-                  <text class="bubble-line1">{{ splitQuestion(q).line1 }}</text>
-                  <text class="bubble-line2">{{ splitQuestion(q).line2 }}</text>
+              <text class="hot-item__num">0{{ idx + 1 }}</text>
+              <text class="hot-item__word">{{ q.word }}</text>
+              <text class="hot-item__q">{{ q.question }}</text>
+              <view class="hot-item__hint"></view>
+            </view>
+          </scroll-view>
+        </view>
+
+        <!-- AI 欢迎卡（黑底白描边切角 + 红撕贴标签 + 红菱形要点） -->
+        <view class="welcome-zone" v-if="!messages.length">
+          <rw-card tag="RUNWISE 助手" tag-rotate="-5deg" tag-variant="red" frame="red">
+            <view class="welcome">
+              <text class="welcome__title"
+                >你好，我是 <text class="welcome__title-en">RunWise</text> 智能训练助手</text
+              >
+              <text class="welcome__desc"
+                >跑量、配速、伤痛、装备，任何跑步问题都可以直接问我。</text
+              >
+              <view class="welcome__list">
+                <view class="welcome__item" v-for="(tip, i) in welcomeTips" :key="i">
+                  <view class="welcome__bullet"></view>
+                  <text class="welcome__item-text">{{ tip }}</text>
                 </view>
               </view>
             </view>
-          </view>
-        </view>
-
-        <!-- 最新回答（暂未开发，注释保留） -->
-        <!--
-        <view class="latest-section" v-if="!messages.length">
-          <view class="section-header">
-            <view class="section-icon-wrap latest-icon">
-              <uni-icons type="chat" size="16" color="#ffffff"></uni-icons>
-            </view>
-            <text class="section-title">最新回答</text>
-          </view>
-          <view class="latest-list">
-            <view
-              class="latest-item"
-              v-for="(item, idx) in latestAnswers"
-              :key="idx"
-              @tap="onHotQuestionTap(item.question)"
-            >
-              <view class="latest-q">Q: {{ item.question }}</view>
-              <view class="latest-a">A: {{ item.answer }}</view>
-              <view class="latest-meta">
-                <text>👍 {{ item.likes }}</text>
-                <text class="latest-time">{{ item.time }}</text>
-              </view>
-            </view>
-          </view>
-        </view>
-        -->
-
-        <!-- AI教练引导文案 -->
-        <view class="coach-greeting" v-if="!messages.length">
-          <view class="coach-avatar">
-            <uni-icons type="chatboxes-filled" size="20" color="#ffffff"></uni-icons>
-          </view>
-          <text class="coach-text">你好，我是你的AI跑步教练 🏃</text>
-        </view>
-
-        <!-- Loading 提示 -->
-        <view class="loading-tip" v-if="loading">
-          <text class="loading-text">AI 正在思考中，请稍候...</text>
+          </rw-card>
         </view>
 
         <!-- 对话区域 -->
         <view class="chat-area" v-if="messages.length">
           <view class="msg-wrap" v-for="(msg, idx) in messages" :key="idx">
-            <!-- 用户气泡 -->
+            <!-- 用户气泡（红底白字切角） -->
             <view v-if="msg.role === 'user'" class="msg msg--user">
               <view class="bubble bubble--user">
                 <text class="bubble-text">{{ msg.content }}</text>
               </view>
             </view>
 
-            <!-- AI 气泡 -->
+            <!-- AI 气泡（黑底白字 + 灰描边 + 右上角白色四角星） -->
             <view v-else class="msg msg--assistant">
               <view class="ai-cloud-bubble">
+                <view class="ai-sparkle"></view>
                 <text class="ai-cloud-text">{{ msg.content }}</text>
               </view>
               <!-- 参考来源 -->
@@ -145,23 +124,16 @@
               <view class="safety-tip" v-if="msg.safetyTip">
                 <text class="safety-text">{{ msg.safetyTip }}</text>
               </view>
-              <!-- 反馈按钮 -->
-              <view class="feedback">
-                <view
-                  class="feedback-btn"
-                  :class="{ 'feedback-btn--useful': msg.feedback === 1 }"
-                  @tap="onFeedback(msg, 1)"
-                >
-                  <text class="feedback-text">有用</text>
-                </view>
-                <view
-                  class="feedback-btn"
-                  :class="{ 'feedback-btn--useless': msg.feedback === -1 }"
-                  @tap="onFeedback(msg, -1)"
-                >
-                  <text class="feedback-text">无用</text>
-                </view>
+            </view>
+          </view>
+
+          <!-- AI 思考中：打字指示器气泡（紧贴最后一条消息） -->
+          <view class="msg msg--assistant" v-if="loading">
+            <view class="ai-cloud-bubble typing-bubble">
+              <view class="typing-dots">
+                <view class="typing-dot" v-for="n in 3" :key="n"></view>
               </view>
+              <text class="typing-text">AI 正在思考中</text>
             </view>
           </view>
         </view>
@@ -184,33 +156,81 @@
           <view class="card history-card">
             <view
               class="history-item"
+              hover-class="history-item--pressed"
+              :hover-stay-time="120"
               v-for="(item, idx) in group.items"
               :key="idx"
+              @tap="onHistoryTap(item)"
             >
               <text class="history-question">{{ item.question }}</text>
               <text class="history-summary">{{ item.summary }}</text>
               <view class="history-meta">
-                <text class="history-feedback">{{
-                  feedbackText(item.feedback)
-                }}</text>
+                <text class="history-time">{{ item.time || item.date }}</text>
+                <text class="history-reask">点击重新提问 →</text>
               </view>
             </view>
           </view>
         </view>
         <view id="anchor-bottom" class="anchor-bottom"></view>
       </view>
+
+      <!-- 伤病预防视图：分类筛选 + 科普文章列表（数据来自 /api/injury/articles） -->
+      <view v-show="currentTab === 2" class="injury-view">
+        <!-- 分类筛选 chips（全部 / 膝部 / 足踝 / 小腿，key 传参、label 展示） -->
+        <view class="injury-filter">
+          <view
+            v-for="cat in injuryCategories"
+            :key="cat.key"
+            class="injury-filter__chip"
+            :class="{ 'injury-filter__chip--active': injuryCategory === cat.key }"
+            hover-class="injury-filter__chip--pressed"
+            :hover-stay-time="80"
+            @tap="switchInjuryCategory(cat.key)"
+          >
+            <text class="injury-filter__text">{{ cat.label }}</text>
+          </view>
+        </view>
+
+        <!-- 文章列表 -->
+        <view class="injury-list" v-if="injuryArticles.length">
+          <view
+            class="injury-card"
+            v-for="article in injuryArticles"
+            :key="article.id"
+            hover-class="injury-card--pressed"
+            :hover-stay-time="120"
+            @tap="onInjuryTap(article)"
+          >
+            <view class="injury-card__tag">
+              <text class="injury-card__tag-text">{{ article.categoryLabel }}</text>
+            </view>
+            <text class="injury-card__title">{{ article.title }}</text>
+            <text class="injury-card__summary">{{ article.summary }}</text>
+            <view class="injury-card__meta">
+              <text class="injury-card__read">{{ article.readMinutes }} 分钟阅读</text>
+              <text class="injury-card__more">阅读全文 →</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 空态（加载完成后才显示，避免闪烁） -->
+        <rw-empty v-else-if="injuryLoaded" text="这个分类下暂时没有文章" />
+      </view>
     </scroll-view>
 
-    <!-- 底部输入区 -->
+    <!-- 底部输入区（textarea 支持多行换行，发送统一走右侧按钮） -->
     <view class="input-bar" v-if="currentTab === 0">
-      <input
+      <textarea
         class="input-field"
+        :class="{ 'input-field--focus': shouldFocusInput }"
         v-model="inputText"
         :focus="shouldFocusInput"
-        placeholder="输入你的跑步问题..."
+        auto-height
+        :show-confirm-bar="false"
+        :disable-default-padding="true"
+        :maxlength="500"
+        placeholder="输入你的跑步问题...（可换行）"
         placeholder-class="input-placeholder"
-        confirm-type="send"
-        @confirm="onSend"
         @blur="shouldFocusInput = false"
       />
       <view
@@ -227,6 +247,9 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { setTabBarIndex } from "@/utils/tabbar";
+// API 基础地址统一取自 utils/request.ts，禁止在页面内重复硬编码
+import { BASE_URL } from "@/utils/request";
 
 
 // 接口定义
@@ -236,16 +259,24 @@ interface ChatMessage {
   content: string;
   sources?: string[];
   safetyTip?: string;
-  feedback: number;
 }
 
 interface HistoryItem {
   id?: number;
   date: string;
+  time?: string;
   question: string;
   summary: string;
-  feedback: number;
 }
+
+// 二级导航（伤病预防视图 P2 接入后端文章数据）
+const tabs = ["问答", "历史", "伤病预防"];
+
+// AI 欢迎卡要点
+const welcomeTips = [
+  "结合你的打卡记录给出跑量与配速建议",
+  "伤病问题会附上警示提示，必要时请就医",
+];
 
 // 状态管理
 const currentTab = ref(0);
@@ -255,23 +286,31 @@ const loading = ref(false);
 const apiError = ref<string | null>(null);
 const shouldFocusInput = ref(false);
 
-// 分类图标背景色（低饱和度柔和色）
-const catIconBgs = [
-  "linear-gradient(135deg, #93c5fd, #60a5fa)",
-  "linear-gradient(135deg, #fdba74, #fb923c)",
-  "linear-gradient(135deg, #86efac, #4ade80)",
-  "linear-gradient(135deg, #c4b5fd, #a78bfa)",
-];
 const activeCategory = ref("");
+
+// 分类名 → uni-icons 线性图标（后端返回 emoji，不可用；PRD 禁 emoji）
+const CATEGORY_ICONS: Record<string, string> = {
+  训练计划: "compose",
+  装备选择: "cart",
+  伤痛预防: "heart",
+  跑步技术: "gear",
+};
 
 // 数据列表（初始为空，从后端加载）
 const categories = ref<any[]>([]);
-const hotQuestions = ref<string[]>([]);
+const hotQuestions = ref<{ question: string; word: string }[]>([]);
 const messages = ref<ChatMessage[]>([]);
 const history = ref<HistoryItem[]>([]);
 
-// API 基础地址配置（注意：微信开发者工具中 localhost 不可用，必须使用局域网 IP）
-const API_BASE_URL = "http://192.168.0.103:8080/api";
+// 分类 key → 首页 RUN! 同款大字母（Anton 展示字体、白字红影）
+const HOT_WORD_MAP: Record<string, string> = {
+  beginner: "START!",
+  injury: "KNEE!",
+  equipment: "SHOES!",
+  training: "PACE!",
+  nutrition: "FUEL!",
+  recovery: "RESET!",
+};
 
 // 获取 Token（暂时为空，后续实现登录后填充）
 const getToken = () => uni.getStorageSync("token") || "";
@@ -292,7 +331,7 @@ const request = async (options: {
   try {
     const res = await new Promise<any>((resolve, reject) => {
       uni.request({
-        url: `${API_BASE_URL}${url}`,
+        url: `${BASE_URL}/api${url}`,
         method,
         data,
         header: {
@@ -332,28 +371,42 @@ onMounted(async () => {
     ]);
 
     // 使用后端数据，如果失败则使用默认值
-    categories.value =
+    // 注意：后端 /qa/categories 返回的是 emoji 图标，uni-icons 无法渲染，
+    // 且 PRD 明确禁用 emoji 图标，因此这里按分类名本地映射线性图标。
+    const source =
       categoriesData?.length > 0
         ? categoriesData
         : [
-            { name: "训练计划", icon: "compose" },
-            { name: "装备选择", icon: "cart" },
-            { name: "伤痛预防", icon: "heart" },
-            { name: "跑步技术", icon: "gear" },
+            { name: "训练计划" },
+            { name: "装备选择" },
+            { name: "伤痛预防" },
+            { name: "跑步技术" },
           ];
+
+    categories.value = source.map((item: any) => ({
+      name: item.name,
+      icon: CATEGORY_ICONS[item.name] || "compose",
+    }));
 
     hotQuestions.value =
       hotQuestionsData?.length > 0
-        ? hotQuestionsData.map((item: any) => item.question || item)
+        ? hotQuestionsData.map((item: any) => ({
+            question: item.question || String(item),
+            word:
+              HOT_WORD_MAP[item.category] || "RUN!",
+          }))
         : [
-            "第一次跑步该跑多远？",
-            "跑完膝盖疼怎么办？",
-            "新手怎么选跑鞋？",
-            "跑步时心率多少合适？",
-            "晨跑好还是夜跑好？",
-            "跑步前要热身多久？",
-            "如何提高跑步配速？",
-          ];
+            { question: "第一次跑步该跑多远？", category: "beginner" },
+            { question: "跑完膝盖疼怎么办？", category: "injury" },
+            { question: "新手怎么选跑鞋？", category: "equipment" },
+            { question: "跑步时心率多少合适？", category: "training" },
+            { question: "晨跑好还是夜跑好？", category: "training" },
+            { question: "跑步前要热身多久？", category: "recovery" },
+            { question: "如何提高跑步配速？", category: "training" },
+          ].map((item) => ({
+            question: item.question,
+            word: HOT_WORD_MAP[item.category] || "RUN!",
+          }));
   } catch (error) {
     console.error("初始化数据加载失败");
   }
@@ -361,6 +414,7 @@ onMounted(async () => {
 
 // 页面显示时检查是否需要自动聚焦输入框（来自首页"问问题"按钮）
 onShow(() => {
+  setTabBarIndex(2);
   const app = getApp();
   if (app.globalData?.qaAutoFocus) {
     currentTab.value = 0;
@@ -391,19 +445,20 @@ const loadHistory = async () => {
 
   try {
     loading.value = true;
+    // 后端契约：GET /api/qa/history?pageNum&pageSize，返回 PageResult{ list, total, ... }
     const historyData = await request({
       url: "/qa/history",
-      method: "POST",
-      data: { page: 1, size: 20 },
+      method: "GET",
+      data: { pageNum: 1, pageSize: 20 },
     });
 
-    history.value = (historyData?.records || []).map((item: any) => ({
+    history.value = (historyData?.list || []).map((item: any) => ({
       id: item.id,
       date:
-        item.createdAt?.split("T")[0] || new Date().toISOString().split("T")[0],
+        item.createTime?.split("T")[0] || item.createTime?.split(" ")[0] || "",
+      time: (item.createTime || "").split("T")[1]?.substring(0, 5) || "",
       question: item.question,
       summary: item.answer?.substring(0, 50) + "..." || "",
-      feedback: item.feedback || 0,
     }));
   } catch (error) {
     console.error("加载历史记录失败");
@@ -411,6 +466,52 @@ const loadHistory = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+// ==================== 伤病预防 ====================
+// 分类与后端 category key 对齐（key 传参、label 展示）：knee=膝部 / ankle=足踝 / shin=小腿
+const injuryCategories = [
+  { key: "", label: "全部" },
+  { key: "knee", label: "膝部" },
+  { key: "ankle", label: "足踝" },
+  { key: "shin", label: "小腿" },
+];
+const injuryCategory = ref("");
+const injuryArticles = ref<any[]>([]);
+const injuryLoaded = ref(false);
+
+// 加载文章列表（"全部"时 key 为空，不传 category，后端返回全部）
+const loadInjuryArticles = async () => {
+  injuryLoaded.value = false;
+  try {
+    const params: any = {};
+    if (injuryCategory.value) {
+      params.category = injuryCategory.value;
+    }
+    const data = await request({
+      url: "/injury/articles",
+      method: "GET",
+      data: params,
+    });
+    injuryArticles.value = data || [];
+  } catch (error) {
+    console.error("加载伤病预防文章失败:", error);
+    injuryArticles.value = [];
+  } finally {
+    injuryLoaded.value = true;
+  }
+};
+
+// 切换分类
+const switchInjuryCategory = (cat: string) => {
+  if (injuryCategory.value === cat) return;
+  injuryCategory.value = cat;
+  loadInjuryArticles();
+};
+
+// 打开文章详情页
+const onInjuryTap = (article: { id: number }) => {
+  uni.navigateTo({ url: `/pages/qa/injury-detail?id=${article.id}` });
 };
 
 // 计算属性：按日期分组历史记录
@@ -423,19 +524,16 @@ const historyGroups = computed(() => {
   return Array.from(map.entries()).map(([date, items]) => ({ date, items }));
 });
 
-// 反馈文字
-const feedbackText = (f: number) => {
-  if (f === 1) return "已反馈：有用";
-  if (f === -1) return "已反馈：无用";
-  return "未反馈";
-};
-
 // 切换 Tab
 const switchTab = async (i: number) => {
   currentTab.value = i;
-  // 切换到历史Tab且没有数据时自动加载
-  if (i === 1 && history.value.length === 0) {
+  // 每次切到历史Tab都重新拉取，保证数据最新
+  if (i === 1) {
     await loadHistory();
+  }
+  // 伤病预防：每次进入同样拉取（按当前选中分类）
+  if (i === 2) {
+    await loadInjuryArticles();
   }
 };
 
@@ -455,13 +553,15 @@ const sendMessage = async (text: string) => {
   if (!content) return;
 
   // 立即显示用户消息
-  messages.value.push({ role: "user", content, feedback: 0 });
+  messages.value.push({ role: "user", content });
   inputText.value = "";
   scrollToBottom();
 
   try {
     loading.value = true;
     apiError.value = null;
+    // 打字指示器气泡出现后滚到底部
+    scrollToBottom();
 
     // 调用 Spring Boot 后端 → 后端调用 Ollama 大模型
     const response = await request({
@@ -476,7 +576,6 @@ const sendMessage = async (text: string) => {
       content: response.answer || "抱歉，未能获取有效回答。",
       sources: response.sources || [],
       safetyTip: response.safetyTip,
-      feedback: 0,
     });
 
     scrollToBottom();
@@ -490,7 +589,6 @@ const sendMessage = async (text: string) => {
     messages.value.push({
       role: "assistant",
       content: `请求失败：${errorMsg}\n\n请查看控制台获取详细信息`,
-      feedback: 0,
     });
 
     // 同时弹出Toast提示
@@ -513,13 +611,13 @@ const onSend = () => {
 };
 
 // 点击热门问题
-const onHotQuestionTap = (q: string) => {
-  sendMessage(q);
+const onHotQuestionTap = (q: { question: string; word: string }) => {
+  sendMessage(q.question);
 };
 
 const onMoreQuestions = () => {
   if (hotQuestions.value.length > 3) {
-    const rest = hotQuestions.value.slice(3);
+    const rest = hotQuestions.value.slice(3).map((q) => q.question);
     uni.showActionSheet({
       itemList: rest,
       success: (res) => {
@@ -529,12 +627,6 @@ const onMoreQuestions = () => {
   } else {
     uni.showToast({ title: '暂无更多问题', icon: 'none' });
   }
-};
-
-const splitQuestion = (text: string) => {
-  const len = text.length;
-  const mid = Math.ceil(len / 2);
-  return { line1: text.slice(0, mid), line2: text.slice(mid) };
 };
 
 const latestAnswers = ref([
@@ -558,28 +650,27 @@ const latestAnswers = ref([
   },
 ]);
 
+// 分类卡点击/按压态（唯一反馈：红条拉长 + 图标变红）
+const pressedCategory = ref("");
+const isCategoryHot = (name: string) =>
+  activeCategory.value === name || pressedCategory.value === name;
+const onCategoryPressStart = (name: string) => {
+  pressedCategory.value = name;
+};
+const onCategoryPressEnd = () => {
+  pressedCategory.value = "";
+};
+
 // 点击分类
 const onCategoryTap = (item: any) => {
   activeCategory.value = item.name;
   sendMessage(`请介绍一下${item.name}方面的建议`);
 };
 
-// 反馈按钮
-const onFeedback = async (msg: ChatMessage, value: number) => {
-  msg.feedback = msg.feedback === value ? 0 : value;
-
-  // 如果有recordId，提交到后端
-  if (msg.id && msg.feedback !== 0) {
-    try {
-      await request({
-        url: "/qa/feedback",
-        method: "POST",
-        data: { messageId: msg.id, feedback: msg.feedback },
-      });
-    } catch (error) {
-      console.error("提交反馈失败");
-    }
-  }
+// 点击历史卡片：重新提问该问题
+const onHistoryTap = (item: HistoryItem) => {
+  currentTab.value = 0;
+  sendMessage(item.question);
 };
 </script>
 
@@ -589,61 +680,59 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   overflow: hidden;
+  background: $rw-black;
 }
 
-.page-bg {
+/* 背景网点纹理（装饰层 z-index 0，不拦截手势） */
+.qa-page__dots {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  filter: brightness(1.15) saturate(1.3);
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 2rpx, transparent 2rpx);
+  background-size: 28rpx 28rpx;
 }
 
-/* ========== 二级导航 ========== */
+/* ========== 二级导航：红切角选中块（总高 44px + 1px 贯穿地基线） ========== */
 .sub-nav {
+  position: relative;
+  z-index: 20;
   flex-shrink: 0;
   display: flex;
-  height: 80rpx;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+  gap: 16rpx;
+  padding: 0 $rw-sp-4;
+  background: $rw-black;
+  border-bottom: 1rpx solid #2a2a2a;
 }
 
-.nav-item {
+.sub-nav__item {
   flex: 1;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  clip-path: polygon(16rpx 0, 100% 0, calc(100% - 16rpx) 100%, 0 100%);
+  transition: $rw-transition;
+
+  &.is-active {
+    background: $rw-red;
+  }
 }
 
-.nav-text {
+.sub-nav__text {
   font-size: 28rpx;
-  font-weight: 400;
-  color: $rw-text-placeholder;
+  color: #9a9a9a;
+  letter-spacing: 2rpx;
 }
 
-.nav-item--active .nav-text {
-  font-weight: 500;
-  color: $rw-primary;
-}
-
-.nav-item--active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 48rpx;
-  height: 4rpx;
-  background-color: $rw-primary;
-  border-radius: 2rpx;
+.sub-nav__item.is-active .sub-nav__text {
+  color: $rw-white;
+  font-weight: 700;
 }
 
 /* ========== 滚动内容 ========== */
@@ -664,51 +753,70 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   padding-bottom: 24rpx;
 }
 
-/* ========== 分类入口（毛玻璃网格卡片 v5.0） ========== */
+/* ==================================================================
+   分类入口 V4（终版 · 锁死，不再迭代）
+   定位：运动品牌控制面板件 —— 安静的功能键
+   卡体：#141414 实底 / 左上+右下各切 12px / 固定高 92px
+         （切角复用欢迎卡 rw-card 的 24rpx 六点式，方向尺寸全站一致）
+   三要素：18px Anton 编号 #E8442E（绝对定位左上 8px/8px）
+           + 28px 白线条图标（水平垂直居中）
+           + 13px #FFFFFF 粗体标签（与图标间距 8px）
+   交互：按下/选中 → 背景 #1F1F1F + 图标 #E8442E
+         仅过渡 background-color 0.15s linear，无缩放/旋转/上浮/发光
+   禁止：边框 / 阴影 / 渐变 / 额外红色 / 任何倾斜
+   ================================================================== */
 .category-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16rpx;
-  padding: 24rpx;
+  gap: 20rpx;
+  padding: 32rpx 24rpx;
 }
 
 .category-card {
-  @include rw-glass-item(24rpx);
+  position: relative;
+  height: 184rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24rpx 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:active {
-    transform: scale(0.95);
-  }
+  justify-content: center;
+  background: #141414;
+  clip-path: polygon(
+    24rpx 0,
+    100% 0,
+    100% calc(100% - 24rpx),
+    calc(100% - 24rpx) 100%,
+    0 100%,
+    0 24rpx
+  );
+  transition: background-color 0.15s linear;
 }
 
 .category-card--active {
-  box-shadow: $rw-shadow-primary;
-  transform: scale(1.03);
+  background: #1f1f1f;
 }
 
-.category-icon-wrap {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+/* ① 编号：Anton 18px #E8442E，绝对定位于卡左上角（8px/8px），不与图标文字重叠 */
+.category-card__num {
+  position: absolute;
+  top: 16rpx;
+  left: 16rpx;
+  font-family: $rw-font-display;
+  font-size: 36rpx;
+  line-height: 1;
+  color: #e8442e;
 }
 
+/* ③ 标签：13px #FFFFFF，600，与图标间距 8px */
 .category-name {
-  font-size: 24rpx;
-  color: $rw-text-primary;
-  font-weight: 500;
+  margin-top: 16rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 /* ================================================================
-   热门问题 — 跑道气泡卡片：横向滚动，与首页新手常问风格统一
+   热门问题 — 字母海报式（首页 RUN! 同款：Anton 大字母 + 白字红影）
+   无底板块，纯排版；奇偶上下交错，横向滑动
    ================================================================ */
 
 .hot-section {
@@ -726,167 +834,205 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 .section-icon-wrap {
   width: 44rpx;
   height: 44rpx;
-  border-radius: 14rpx;
-  background: linear-gradient(135deg, #FFAB91, #FF8A65);
+  background: $rw-red;
+  clip-path: polygon(12rpx 0, 100% 0, calc(100% - 12rpx) 100%, 0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 12rpx;
-  box-shadow: 0 3rpx 10rpx rgba(255, 138, 101, 0.25);
 }
 
 .section-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: $rw-text-primary;
+  color: $rw-white;
   letter-spacing: 1rpx;
 }
 
-.cloud-scroll-wrap {
-  @include rw-glass-card;
+/* 横滑轨道：每项 = 红编号 + 大字母 + 问题 + 灰短线 */
+/* 微信 scroll-view 横滚内容撑不起父级高度，必须显式给高（条目~235rpx + 交错36rpx + padding） */
+.hot-scroll {
   width: 100%;
+  height: 320rpx;
+  white-space: nowrap;
+  padding: 8rpx 24rpx 24rpx;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  overflow-x: auto;
-  overflow-y: visible;
-  padding: 28rpx 24rpx;
-  margin: 0 0 16rpx;
-  gap: 0;
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
-.cloud-bubble {
-  flex-shrink: 0;
+.hot-item {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: top;
+  width: 256rpx;
+  margin-right: 48rpx;
+}
+
+.hot-item:last-child {
+  margin-right: 24rpx;
+}
+
+/* 偶数项下沉错位（海报交错节奏） */
+.hot-item--even {
+  margin-top: 36rpx;
+}
+
+.hot-item__num {
+  font-family: $rw-font-display;
+  font-size: 26rpx;
+  font-style: italic;
+  color: $rw-red;
+  line-height: 1;
+}
+
+/* 大字母：首页 RUN! 同款白字红影 + 微旋转 */
+.hot-item__word {
+  margin-top: 6rpx;
+  font-family: $rw-font-display;
+  font-size: 60rpx;
+  line-height: 1.05;
+  color: $rw-white;
+  text-shadow: 6rpx 6rpx 0 $rw-red;
+  transform: rotate(-4deg);
+  width: fit-content;
+  transition: $rw-transition;
+}
+
+.hot-item--even .hot-item__word {
+  transform: rotate(3deg);
+}
+
+.hot-item__q {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: $rw-white;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+/* 底部灰短线：按压变红伸长 */
+.hot-item__hint {
+  margin-top: 10rpx;
+  width: 52rpx;
+  height: 4rpx;
+  background: rgba(255, 255, 255, 0.25);
+  transition: $rw-transition;
+}
+
+.hot-item--pressed .hot-item__word {
+  color: #ffd6d9;
+}
+
+.hot-item--pressed .hot-item__hint {
+  background: $rw-red;
+  width: 84rpx;
+}
+
+/* ========== AI 欢迎卡 ========== */
+.welcome-zone {
   position: relative;
-  width: 260rpx;
-  height: 220rpx;
-  margin-right: 44rpx;
-  border-radius: 28rpx;
-  overflow: hidden;
-  transition: all 0.3s;
-
-  &:last-of-type {
-    margin-right: 24rpx;
-  }
-
-  &:nth-child(1) { margin-top: 0; }
-  &:nth-child(2) { margin-top: 10px; }
-  &:nth-child(3) { margin-top: -10px; }
-
-  &:active {
-    transform: scale(0.95);
-  }
+  margin: 24rpx;
 }
 
-.cloud-bubble-inner {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background-image: url('/static/track-field.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: 0.65;
-}
-
-.cloud-bubble-text {
-  position: absolute;
-  z-index: 2;
+.welcome {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  border-radius: 12rpx;
-  padding: 12rpx 20rpx;
 }
 
-.bubble-line1,
-.bubble-line2 {
-  font-size: 28rpx;
-  color: #000000;
-  font-weight: 700;
-  line-height: 1.5;
-  white-space: nowrap;
-  text-shadow: 0 1rpx 3rpx rgba(255, 255, 255, 0.9);
+.welcome__title {
+  font-family: $rw-font-cn-title;
+  font-size: 40rpx;
+  font-weight: 400;
+  color: $rw-white;
+  line-height: 1.4;
+  -webkit-text-stroke: 2rpx #000000;
+  paint-order: stroke fill;
 }
 
-.bubble-line2 {
-  margin-left: 20rpx;
+.welcome__title-en {
+  font-family: $rw-font-display;
 }
 
-.cloud-bubble-hover {
-  transform: scale(0.96);
-  opacity: 0.85;
+.welcome__desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $rw-gray;
+  line-height: 1.7;
 }
 
-.cloud-bubble-more {
+.welcome__list {
+  margin-top: 20rpx;
+}
+
+.welcome__item {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 12rpx;
+}
+
+.welcome__bullet {
+  width: 16rpx;
+  height: 16rpx;
+  background: $rw-red;
+  transform: rotate(45deg);
+  margin: 8rpx 16rpx 0 0;
   flex-shrink: 0;
-  width: 120rpx;
-  height: 220rpx;
+}
+
+.welcome__item-text {
+  font-size: 26rpx;
+  color: $rw-white;
+  line-height: 1.6;
+}
+
+/* ========== AI 思考中：打字指示器 ========== */
+.typing-bubble {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.5);
-  border: 2rpx dashed rgba(255, 140, 66, 0.4);
+  padding: 24rpx 30rpx;
+}
 
-  &:active {
-    transform: scale(0.95);
+.typing-dots {
+  display: flex;
+  align-items: center;
+  margin-right: 16rpx;
+}
+
+.typing-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: $rw-red;
+  margin-right: 10rpx;
+  animation: typing-blink 1s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  margin-right: 0;
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-6rpx);
   }
 }
 
-.more-text-inner {
-  font-size: 28rpx;
-  color: $rw-primary;
-  font-weight: 600;
-}
-
-/* AI教练引导文案 */
-.coach-greeting {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40rpx 24rpx 16rpx;
-  gap: 12rpx;
-}
-
-.coach-avatar {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, $rw-primary, $rw-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.25);
-}
-
-.coach-text {
-  font-size: 28rpx;
-  color: $rw-text-primary;
-  font-weight: 500;
-}
-
-/* ========== Loading 提示 ========== */
-.loading-tip {
-  @include rw-glass-item(16rpx);
-  margin: 24rpx;
-  padding: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.loading-text {
-  font-size: 28rpx;
-  color: $rw-text-secondary;
+.typing-text {
+  font-size: 26rpx;
+  color: $rw-gray;
+  letter-spacing: 1rpx;
 }
 
 /* ========== 对话区域 ========== */
@@ -914,55 +1060,57 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 
 .bubble {
   padding: 20rpx 24rpx;
-  border-radius: 24rpx;
   max-width: 80%;
 }
 
+/* 用户气泡切角与 AI 气泡镜像：尾巴侧（右上）切角 */
 .bubble--user {
-  background: rgba(240, 242, 245, 0.9);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-top-left-radius: 4rpx;
+  background: $rw-red;
+  clip-path: polygon(0 0, calc(100% - 24rpx) 0, 100% 24rpx, 100% 100%, 0 100%);
 }
 
 .bubble-text {
   font-size: 28rpx;
-  color: #ffffff;
+  color: $rw-white;
   line-height: 1.6;
 }
 
-.bubble--user .bubble-text {
-  color: $rw-text-primary;
-}
-
-/* AI 云朵气泡 - 三层立体朦胧感 v5.2 */
+/* AI 气泡：黑底白字 + 1px 灰边框 + 右上角白色四角星 */
 .ai-cloud-bubble {
+  position: relative;
   max-width: 82%;
   padding: 26rpx 36rpx;
-  background: linear-gradient(
-    145deg,
-    rgba(59, 130, 246, 0.92) 0%,
-    rgba(37, 99, 235, 0.88) 100%
+  background: $rw-panel;
+  border: 2rpx solid #2a2a2e;
+  clip-path: polygon(24rpx 0, 100% 0, 100% 100%, 0 100%, 0 24rpx);
+}
+
+/* 四角星：8px，落在右侧 padding 内，不侵入文字 16px 安全区 */
+.ai-sparkle {
+  position: absolute;
+  top: 16rpx;
+  right: 16rpx;
+  width: 16rpx;
+  height: 16rpx;
+  background: $rw-white;
+  opacity: 0.7;
+  clip-path: polygon(
+    50% 0%,
+    60% 40%,
+    100% 50%,
+    60% 60%,
+    50% 100%,
+    40% 60%,
+    0% 50%,
+    40% 40%
   );
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border-radius: 40rpx;
-  border-top-left-radius: 12rpx;
-  border: 1rpx solid rgba(147, 197, 253, 0.4);
-  /* 三层阴影：底层深蓝扩散 + 中层蓝色光晕 + 顶层高光 */
-  box-shadow:
-    0 12rpx 40rpx rgba(37, 99, 235, 0.25),
-    0 4rpx 16rpx rgba(59, 130, 246, 0.18),
-    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.25),
-    inset 0 -1rpx 3rpx rgba(30, 64, 175, 0.15);
-  position: relative;
+  pointer-events: none;
 }
 
 .ai-cloud-text {
   font-size: 28rpx;
-  color: #ffffff;
+  color: $rw-white;
   line-height: 1.65;
-  text-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.08);
 }
 
 /* 参考来源 */
@@ -973,119 +1121,83 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 }
 
 .sources-label {
-  color: $rw-text-secondary;
+  color: $rw-gray;
 }
 
 .source-item {
-  color: $rw-secondary;
+  color: $rw-gray;
 }
 
-/* 安全提示 */
+/* 安全提示（红左边框 + 红字） */
 .safety-tip {
   margin-top: 16rpx;
   padding: 20rpx 24rpx;
-  background: rgba(245, 158, 11, 0.06);
-  border-left: 6rpx solid $rw-warning;
-  border-radius: 12rpx;
+  background: rgba(230, 0, 18, 0.08);
+  border-left: 6rpx solid $rw-red;
 }
 
 .safety-text {
   font-size: 28rpx;
-  color: #d97706;
+  color: $rw-red;
   line-height: 1.6;
 }
 
-/* 反馈按钮 */
-.feedback {
-  display: flex;
-  margin-top: 16rpx;
-}
-
-.feedback-btn {
-  padding: 10rpx 24rpx;
-  margin-right: 16rpx;
-  border-radius: 24rpx;
-  background: rgba(0, 0, 0, 0.04);
-  transition: $rw-transition-smooth;
-}
-
-.feedback-text {
-  font-size: 24rpx;
-  color: $rw-text-secondary;
-}
-
-.feedback-btn--useful .feedback-text {
-  color: $rw-primary;
-}
-
-.feedback-btn--useless .feedback-text {
-  color: $rw-error;
-}
-
-/* ========== 底部输入区（毛玻璃 v5.6 加高+分隔） ========== */
+/* ========== 底部输入区（页面流内 flex 收尾，底部让位 custom-tab-bar 110rpx） ========== */
 .input-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   padding: 24rpx 28rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border-top: 1px solid rgba(0, 0, 0, 0.02);
-  z-index: 10;
+  padding-bottom: calc(24rpx + 110rpx + env(safe-area-inset-bottom));
+  background: $rw-black;
+  border-top: 2rpx solid $rw-line;
 }
 
+/* textarea 自增高：min-height 起步，随内容换行向上生长 */
 .input-field {
   flex: 1;
-  height: 80rpx;
-  padding: 0 36rpx;
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: none;
-  border-radius: 64rpx;
+  min-height: 88rpx;
+  height: auto;
+  padding: 22rpx 28rpx;
+  background: $rw-panel;
+  border: 2rpx solid $rw-white;
+  clip-path: polygon(20rpx 0, 100% 0, calc(100% - 20rpx) 100%, 0 100%);
   font-size: 28rpx;
-  color: $rw-text-primary;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  color: $rw-white;
+  line-height: 1.5;
+  box-sizing: border-box;
+  width: auto;
+  transition: $rw-transition;
+}
+
+.input-field--focus {
+  border-color: $rw-red;
 }
 
 .input-placeholder {
-  color: $rw-text-placeholder;
+  color: $rw-gray;
   font-size: 28rpx;
 }
 
 .send-btn {
   margin-left: 20rpx;
+  flex-shrink: 0;
   width: 88rpx;
   height: 88rpx;
-  border-radius: 56rpx;
-  background: rgba(255, 140, 66, 0.3);
+  background: $rw-panel;
+  border: 2rpx solid $rw-white;
+  clip-path: polygon(20rpx 0, 100% 0, calc(100% - 20rpx) 100%, 0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border: none;
-  box-shadow:
-    0 6rpx 20rpx rgba(0, 0, 0, 0.06),
-    0 2rpx 8rpx rgba(0, 0, 0, 0.04),
-    inset 0 1rpx 3rpx rgba(255, 255, 255, 0.7);
+  transition: $rw-transition;
 }
 
 .send-btn--active {
-  background: $rw-primary;
-  box-shadow:
-    0 10rpx 28rpx rgba(255, 140, 66, 0.3),
-    0 4rpx 12rpx rgba(255, 140, 66, 0.18),
-    inset 0 1rpx 3rpx rgba(255, 255, 255, 0.5);
-
-  &:active {
-    transform: scale(0.92) translateY(2rpx);
-    background: linear-gradient(135deg, #FFAB91, #FFCCBC);
-  }
+  background: $rw-red;
+  border-color: $rw-red;
 }
 
 /* ========== 历史视图 ========== */
@@ -1100,7 +1212,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 .history-date {
   display: block;
   font-size: 28rpx;
-  color: $rw-text-secondary;
+  color: $rw-gray;
   margin: 0 24rpx 12rpx;
 }
 
@@ -1110,7 +1222,7 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 
 .history-item {
   padding: 24rpx 0;
-  border-bottom: 1rpx solid rgba(0, 0, 0, 0.04);
+  border-bottom: 2rpx solid $rw-line;
 }
 
 .history-item:last-child {
@@ -1120,25 +1232,147 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
 .history-question {
   display: block;
   font-size: 28rpx;
-  color: $rw-text-primary;
+  color: $rw-white;
   margin-bottom: 8rpx;
 }
 
 .history-summary {
   display: block;
   font-size: 24rpx;
-  color: $rw-text-secondary;
+  color: $rw-gray;
   line-height: 1.5;
   margin-bottom: 8rpx;
 }
 
 .history-meta {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.history-feedback {
+.history-time {
   font-size: 24rpx;
-  color: $rw-text-placeholder;
+  color: $rw-gray;
+  font-feature-settings: "tnum";
+}
+
+.history-reask {
+  font-size: 22rpx;
+  color: $rw-red;
+  letter-spacing: 1rpx;
+}
+
+.history-item--pressed {
+  opacity: 0.7;
+}
+
+/* ========== 伤病预防视图：分类筛选 + 文章卡片列表 ========== */
+.injury-view {
+  padding-bottom: 24rpx;
+}
+
+/* 分类筛选 chips：未选=灰描边灰字，选中=红底白字（斜切语言同二级导航） */
+.injury-filter {
+  display: flex;
+  gap: 16rpx;
+  padding: 28rpx 24rpx 4rpx;
+}
+
+.injury-filter__chip {
+  padding: 14rpx 26rpx;
+  background: $rw-panel;
+  border: 2rpx solid rgba(255, 255, 255, 0.25);
+  clip-path: polygon(14rpx 0, 100% 0, calc(100% - 14rpx) 100%, 0 100%);
+  transition: $rw-transition;
+}
+
+.injury-filter__chip--active {
+  background: $rw-red;
+  border-color: $rw-red;
+}
+
+.injury-filter__chip--pressed {
+  opacity: 0.75;
+}
+
+.injury-filter__text {
+  font-size: 24rpx;
+  color: $rw-gray;
+  letter-spacing: 1rpx;
+}
+
+.injury-filter__chip--active .injury-filter__text {
+  color: $rw-white;
+  font-weight: 600;
+}
+
+/* 文章卡片：安静知识卡（灰描边 + 六点式切角） */
+.injury-list {
+  padding: 12rpx 24rpx 0;
+}
+
+.injury-card {
+  margin-top: 24rpx;
+  padding: 28rpx;
+  background: $rw-panel;
+  border: 2rpx solid #2a2a2e;
+  @include rw-card-clip;
+  transition: $rw-transition;
+}
+
+.injury-card--pressed {
+  opacity: 0.7;
+}
+
+/* 分类小标签：红切角块白字 */
+.injury-card__tag {
+  display: flex;
+  width: fit-content;
+  padding: 6rpx 18rpx;
+  background: $rw-red;
+  clip-path: polygon(10rpx 0, 100% 0, calc(100% - 10rpx) 100%, 0 100%);
+}
+
+.injury-card__tag-text {
+  font-size: 20rpx;
+  color: $rw-white;
+  letter-spacing: 1rpx;
+}
+
+.injury-card__title {
+  display: block;
+  margin-top: 18rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $rw-white;
+  line-height: 1.5;
+}
+
+.injury-card__summary {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: $rw-gray;
+  line-height: 1.6;
+}
+
+.injury-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18rpx;
+}
+
+.injury-card__read {
+  font-size: 22rpx;
+  color: $rw-gray;
+  font-feature-settings: "tnum";
+}
+
+.injury-card__more {
+  font-size: 22rpx;
+  color: $rw-red;
+  letter-spacing: 1rpx;
 }
 
 /* ========== 滚动锚点 ========== */
@@ -1147,7 +1381,8 @@ const onFeedback = async (msg: ChatMessage, value: number) => {
   width: 100%;
 }
 
+/* 输入栏已不再悬浮压住消息区，锚点只留常规收尾间距 */
 .anchor-bottom--input {
-  height: 200rpx;
+  height: 32rpx;
 }
 </style>

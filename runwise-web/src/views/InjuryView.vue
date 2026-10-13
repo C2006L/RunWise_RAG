@@ -1,5 +1,5 @@
 <script setup>
-// 伤病预防页（工程计划 4.8 / M9 骨架态）：四分类文章列表 + 内嵌详情
+// 伤病预防页（工程计划 4.8 / M9 骨架态）：三分类（膝部/足踝/小腿）文章列表 + 内嵌详情
 // - 路由 query ?article=id 定位文章详情，刷新可定位；返回列表保留数据
 // - 文章底部「问 AI 助手」携带上下文跳 /qa（工程计划 4.8 联动预留，M9 简化为标题草稿）
 import { computed, onMounted, ref, watch } from 'vue'
@@ -66,10 +66,11 @@ function backToList() {
 }
 
 // 详情加载（watch 与 onMounted 刷新定位共用）：
-// 优先从列表缓存取，避免闪烁；无缓存再拉详情
+// 优先从列表缓存取，避免闪烁；缓存需含完整分节（mock 全量返回，
+// 真实接口列表不含 sections，回退请求详情接口）
 function loadDetail(id) {
-  const cached = articles.value.find((a) => a.id === id)
-  if (cached) {
+  const cached = articles.value.find((a) => String(a.id) === String(id))
+  if (cached && cached.sections && cached.sections.length) {
     detail.value = cached
     return
   }
@@ -117,7 +118,7 @@ const categoryLabel = computed(
       <h1 class="page-title p5-page-title" aria-label="伤病预防">
         <RansomNote text="伤病预防" :seed="44" />
       </h1>
-      <p class="page-desc">膝 / 踝 / 髋 / 足 —— 跑者常见伤病知识库，科学防护，健康奔跑。</p>
+      <p class="page-desc">膝 / 踝 / 小腿 —— 跑者常见伤病知识库，科学防护，健康奔跑。</p>
     </header>
 
     <!-- F5：页头右侧空白区撒星（白3，X-4 黄仅限左上部位标签，星不再用黄） -->
@@ -154,7 +155,7 @@ const categoryLabel = computed(
           :class="{ 'cat-chip--active': currentCategory === c.key }"
           @click="selectCategory(c.key)"
         >
-          {{ c.label }}部
+          {{ c.label }}
         </button>
       </div>
 
@@ -165,7 +166,7 @@ const categoryLabel = computed(
           v-for="(a, i) in articles"
           :key="a.id"
           class="article-card-wrap"
-          :tag="a.categoryLabel + '部'"
+          :tag="a.categoryLabel"
           :tag-rotate="i % 2 === 0 ? '-4deg' : '3deg'"
           :tag-top="i % 2 === 0 ? '-15px' : '-18px'"
           :tag-left="i % 2 === 0 ? '48px' : ''"
@@ -198,7 +199,7 @@ const categoryLabel = computed(
     </template>
 
     <!-- 详情态（内嵌展开） -->
-    <P5Card v-else :tag="categoryLabel + '部'" tag-rotate="-4deg">
+    <P5Card v-else :tag="categoryLabel" tag-rotate="-4deg">
       <div class="detail-body">
         <div v-if="detailLoading" class="list-status">文章加载中…</div>
         <template v-else-if="detail">
@@ -210,7 +211,10 @@ const categoryLabel = computed(
             <span v-for="t in detail.tags" :key="t" class="article-tag">{{ t }}</span>
           </div>
           <div class="detail-content">
-            <p v-for="(p, i) in detail.contentParagraphs" :key="i">{{ p }}</p>
+            <section v-for="(sec, i) in detail.sections || []" :key="i" class="detail-section">
+              <h3 class="detail-section-title">{{ sec.heading }}</h3>
+              <p class="detail-section-body">{{ sec.body }}</p>
+            </section>
           </div>
           <div class="detail-foot">
             <button class="ask-btn" type="button" @click="askAi(detail)">
@@ -508,11 +512,34 @@ const categoryLabel = computed(
   margin-bottom: var(--sp-5);
 }
 
-.detail-content p {
+.detail-section + .detail-section {
+  margin-top: var(--sp-5);
+}
+
+.detail-section-title {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--p5-white);
+  margin-bottom: var(--sp-2);
+}
+
+/* 小节标题前红菱形（与列表卡强调态同款语言） */
+.detail-section-title::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 10px;
+  background: var(--p5-red);
+  transform: rotate(45deg);
+  vertical-align: 2px;
+}
+
+.detail-section-body {
   font-size: var(--fs-body);
   line-height: 2;
   color: var(--p5-cream);
-  margin-bottom: var(--sp-4);
 }
 
 .detail-foot {

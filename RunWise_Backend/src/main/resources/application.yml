@@ -57,18 +57,13 @@ runwise:
     appid: your_appid
     secret: your_secret
 
-  # LLM 大模型配置
+  # LLM 大模型配置（本地 Ollama，免费离线；换模型改 model 并先执行 ollama pull）
   llm:
-    provider: dashscope        # 当前使用：dashscope / ollama
-    dashscope:
-      base-url: https://xplt.sdu.edu.cn:4000
-      api-key: sk-J2K3aLZul2bUzf_rq_XaHA
-      model: Ali-dashscope/Qwen3.5-Flash
-      max-tokens: 500
-      temperature: 0.7
     ollama:
       base-url: http://127.0.0.1:11434
       model: qwen2.5:3b
+      temperature: 0.7        # 越低越稳定保守，越高越发散随机（0~2）
+      num-predict: 500        # 最大生成 token 数（约 300~400 汉字），防止跑题说个没完
 
   # RAG Python 微服务地址（后续正式环境使用）
   rag:

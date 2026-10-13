@@ -1,0 +1,16 @@
+<view class="tab-bar">
+  <view
+    wx:for="{{tabList}}"
+    wx:key="pagePath"
+    class="tab-item {{current === index ? 'tab-item--active' : ''}}"
+    hover-class="tab-item--hover"
+    hover-stay-time="80"
+    data-path="{{item.pagePath}}"
+    data-index="{{index}}"
+    bindtap="onTabTap"
+  >
+    <view class="tab-item__active-bg" wx:if="{{current === index}}"></view>
+    <image class="tab-icon" src="{{current === index ? item.selIcon : item.icon}}" mode="aspectFit" />
+    <text class="tab-text">{{item.text}}</text>
+  </view>
+</view>

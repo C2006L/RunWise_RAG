@@ -3746,4 +3746,437 @@ page {
 
 ---
 
+---
+
+# 13. 小程序 UI 风格统一 & Web/小程序登录系统整合设计方案（v5.0.0 P5R）
+
+> 2026-09-17 立项。目标：将小程序从「白蓝橙毛玻璃风」全面切换为与 Web 端一致的 **P5R 黑红风格**（黑底、主红 #E60012、米色胶带、斜切角、撕裂拼贴），并打通双端统一的账号认证体系。Web 端视觉已封版，本方案以 Web 端现有设计令牌为**唯一事实来源**，小程序对齐。
+
+## 13.1 现状与差异分析（基于 2026-09-17 代码实测）
+
+### 13.1.1 Web 端现状（runwise-web）
+
+- 设计令牌：[variables.css](file:///D:/RunWise/runwise-web/src/styles/variables.css) 四色体系已冻结：`--p5-red #e60012` / `--p5-black #0a0a0a` / `--p5-cream #f5f0e6` / `--p5-white #ffffff`，派生色 panel `#17171a`、深红影 `#5c1518`、分隔线 `rgba(255,255,255,0.14)` 等。
+- 字体：Anton（英文/数字）、Noto Sans SC（正文）、联盟起艺卢帅正锐黑体 LMQY ZRHT（中文标题，子集 woff2 8.8KB）、站酷庆科黄油体（数字数据行）。
+- 组件：P5Card（2px 白描边 + 12px 斜切角 + 右下 22px 红角标 + 6px 6px 0 #5C1518 实心影）、TapeTag 胶带贴纸（红底白字）、NumberBib 号码布、MarqueeBar 跑马灯、切角按钮（clip-path polygon）。
+- 登录：Pinia store 双 token 持久化 localStorage，axios 拦截器 401 静默刷新队列（并发共享一次刷新），真实接口走 `POST /auth/login-password` 附 `device: 'web'`；当前 `USE_MOCK=true`，任意非空账密可登录。
+
+### 13.1.2 小程序现状（RunWise_MiniProgram，uni-app Vue3 + TS）
+
+- UI：白底浅灰渐变页 + 白色毛玻璃卡片（rw-glass-card）+ 橙色主色（`$rw-primary #FF8C42` / `$rw-accent #FF6B35`）+ 大圆角（24~9999rpx）+ 彩色渐变图标。与 Web 端 P5R 风格**完全不同**。
+- 页面：首页/打卡/新建打卡/答疑/我的/个人资料/隐私/协议/通知 共 9 页 + 自定义 tabbar。
+- 登录：`utils/request.ts` 的 `wxLogin()`：`uni.login` 取 code → `POST /api/auth/login` 换双 token 存 Storage；401 → 刷新 → 失败 reLaunch 首页。**无登录页、无账号密码绑定入口、刷新无并发去重、登出仅清本地不通知后端**。页面数据大量为写死 mock（如 mine.vue「跑者小明」）。
+
+### 13.1.3 后端现状（RunWise_Backend，Spring Boot 2.7.18）
+
+实测 [AuthController.java](file:///D:/RunWise/RunWise_Backend/src/main/java/com/runwise/controller/AuthController.java)、[UserController.java](file:///D:/RunWise/RunWise_Backend/src/main/java/com/runwise/controller/UserController.java)、[JwtUtils.java](file:///D:/RunWise/RunWise_Backend/src/main/java/com/runwise/common/JwtUtils.java)、[UserServiceImpl.java](file:///D:/RunWise/RunWise_Backend/src/main/java/com/runwise/service/impl/UserServiceImpl.java)：
+
+| 项 | 现状 | 差距 |
+|---|---|---|
+| 登录接口 | 仅 `POST /api/auth/login`（微信 code）+ `POST /api/auth/refresh` | 缺 `POST /api/auth/login-password`（Web 真实调用会 404） |
+| 账密绑定 | 无 | 缺 `POST /api/user/set-password` |
+| 登出 | 无 | 缺 `POST /api/auth/logout`（踢下线/吊销 refresh） |
+| User 表 | 无 username/password 字段 | 需新增 username（唯一索引）+ password（BCrypt） |
+| JWT claims | 仅 userId/openid/type | 缺 `device`（miniapp/web）声明 |
+| Redis key | `runwise:token:{userId}:access / :refresh` | 缺设备维度，多端登录互相顶掉 → 需改为 `runwise:token:{userId}:{device}:access / :refresh` |
+| 刷新接口 | 从 Header 取 refresh token | 双端语义一致，可沿用（小程序已按 Header 传，Web 走 body 传需统一，见 13.3.4） |
+
+**结论：登录不一致的根因是后端账密体系未落地，Web 端只能靠 mock；小程序登录态与 Web 无法互通。**
+
+### 13.1.4 Java 启动类说明
+
+`RunWiseApplication.java` 经 `mvn compile` 与 `mvn spring-boot:run` 实测**编译、启动均正常**（Java 21 + Spring Boot 2.7.18，2.6s 启动成功）。IDE 中如见红色报错，为 IDEA 工程 JDK 21 与 pom `java.version=1.8` 的语言级别误报或缓存问题，执行 Maven 刷新 + Build → Rebuild Project 即消除，无需改代码。
+
+## 13.2 小程序 UI 风格统一设计规范（P5R）
+
+### 13.2.1 色彩系统
+
+以 Web 端冻结令牌为基准，禁止再改核心三色。新增小程序专属映射（uni.scss v11，全量替换 v10 白橙变量）：
+
+| 令牌 | 色值 | 用途 |
+|---|---|---|
+| `$rw-red`（主红） | `#E60012` | 主按钮、激活态、角标、选中 tab、打卡菱形标记。**已冻结** |
+| `$rw-red-dark`（深红） | `#8F000B` | 渐变收尾、hover/按压压暗 |
+| `$rw-black`（主黑） | `#0A0A0A` | 页面底色。**已冻结** |
+| `$rw-panel`（面板黑） | `#17171A` | 卡片底色（黑上加黑的层次） |
+| `$rw-cream`（米色） | `#F5F0E6` | 胶带贴纸、纸片元素。**已冻结** |
+| `$rw-white`（白） | `#FFFFFF` | 正文、大标题主体、描边 |
+| `$rw-gray`（灰） | `#9C9CA3` | 次要文字、备注、时间戳 |
+| `$rw-red-soft` | `rgba(230,0,18,0.16)` | 选中底、悬浮底蒙层 |
+| `$rw-line` | `rgba(255,255,255,0.14)` | 深色底分隔线 |
+| `$rw-shadow-red` | `#5C1518` | 卡片实心错位影（6px 6px 0） |
+| `$rw-yellow`（功能黄） | `#FFC53D` | **仅限伤病/警示场景**（沿用 Web「黄=功能黄」决议），其余页面禁黄 |
+| `$rw-success` | `#3DA35D` | 成功态（深底可读绿色） |
+| `$rw-error` | 同 `$rw-red` | 错误态与主红共用 |
+| `--accent-blue` | `#35A7FF` | 预留，默认不使用 |
+
+- 废除：`#FF8C42 / #FF6B35 / #5B9BD5 / #00C853 / #1890FF` 等全部白橙体系色；废除毛玻璃（backdrop-filter）材质。
+- 导航与 tabbar（pages.json globalStyle）：`navigationBarBackgroundColor #0A0A0A`、`navigationBarTextStyle white`、`backgroundColor #0A0A0A`；tabbar 用现有 custom-tab-bar 实现：黑底、白字、选中项红底白字 + 斜切角，替换现有橙色 selectedColor。
+- 心情标签定色（对齐 Web 训练类型标签决议）：轻松=灰底白字、适中=白底黑字、吃力=红底白字（切角标签），禁止蓝/绿。
+
+### 13.2.2 排版系统
+
+| 层级 | 字体 | 字号（rpx） | 字重 | 用途 |
+|---|---|---|---|---|
+| 英文/数字展示 | Anton（wx.loadFontFace 子集加载） | 64~88rpx | 400 | 里程、天数、配速等大数字，`font-feature-settings: tnum` |
+| 中文标题 | LMQY ZRHT（复用 Web 8.8KB 子集，小程序所需字追加子集） | 40~48rpx | 400（字体自带厚重，禁叠 800 假粗） | 页面大标题、卡片标题 |
+| 中文数据行 | 站酷庆科黄油体 | 38~40rpx | 400 | 「今日已打卡 6.3km · 36min」类数据行 |
+| 正文 | Noto Sans SC / 系统栈 | 28~30rpx | 400 | 说明文字、列表 |
+| 辅助 | 同正文 | 22~24rpx | 400 | 备注、时间戳、免责声明 |
+
+- 行高：标题 1.2、正文 1.7~1.8（对齐 Web AI 气泡 1.8）。
+- 字体加载（v5.2 修订：因 OSS/CDN 未配置，**全部静态资源打包进小程序**）：三款字体子集以 **base64 内嵌 `@font-face`** 方式放入 `src/styles/fonts.scss`（微信小程序不支持本地路径字体，仅支持网络 URL 或 base64），无网络依赖、首屏即正确；Anton 仅收录 `0-9 . / ' " KM min` 等数字符号、LMQY 收录页面标题用字、黄油体收录数据行用字；**每款子集 base64 后 <150KB 硬约束**，三款合计控制在 200KB 内以保主包体积；加载失败自动回退系统粗体（字体栈兜底）。
+- 禁倾斜规则全站传导：正文、按钮、表格、数字 0° 直立；仅允许①首页主标题区 ②选中卡片 -2° ③徽章贴纸 ±5°（对齐 Web Z 系列封版决议）。
+
+### 13.2.3 组件设计（新建 RWUI 组件库 `src/components/rw/`）
+
+| 组件 | 规格（对齐 Web） | 小程序实现要点 |
+|---|---|---|
+| RwCard | 面板黑 `#17171A` 底、2px 白描边、左上/右下 12px（24rpx）斜切角、右下 22px 红实心角标、6px 6px 0 `#5C1518` 实心影 | clip-path 在 WXSS 同层可用；实心影因 clip-path 裁 box-shadow，采用**双层结构**（外层 wrapper 画影/内层 clip-path），替代 Web 的 drop-shadow 方案，兼容性更好 |
+| RwTape | 胶带贴纸：红底白字 / 米色底黑字两变体，微旋转 ±3° 内 | 卡片右上/左上绝对定位，z-index 压卡 |
+| RwButton | 主按钮：`#E60012` 红底白字、clip-path 左右 10px 切角（`polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)`）；次按钮：黑底 2px 白描边切角；按压 `#8F000B` + scale(0.97) | hover-class 实现，禁圆角胶囊 |
+| RwInput | 黑底、1px `rgba(255,255,255,0.14)` 描边、无圆角；聚焦描边变红 | 对齐 Web QA 页输入框工艺 |
+| RwNumberBib | 号码布：黑底白框 Anton 数字 + 小字单位 | 首页里程牌、打卡月度牌等真实数据位 |
+| RwTag | 切角标签：红底白字（默认）/白底黑字/红描边/灰，禁止圆角 | 训练类型、心情标签 |
+| RwToast | 红底米字、切角、顶部居中 | 对齐 Web request.js toast 样式 |
+| RwSkeleton | 黑底红斜纹骨架屏 | 加载态替代现有灰块 |
+| RwEmpty | 空状态：灰字 + 红色切角按钮引导 | 如「这一天还没有记录 · 去首页打卡 →」 |
+| RwMarquee | 底部跑马灯：白底黑字 13px Anton，30s/循环，reduced-motion 静止 | **v5.1 裁定：仅首页挂一条**（中等密度方案），内页不挂 |
+
+- 装饰元素：星形装饰使用 Web StarField 同款锯齿炸星（L 56 / M 36 / S 22 / XS 14 → rpx ×2），档位颜色透明度照搬；间距规则（装饰距文字 ≥40px、装饰间距 ≥60px）与层级规则（装饰 z-index 0、卡片 z-index 1）全站传导。
+- RansomNote 拼贴仅限中文、仅限首页主标题特权位（对齐 Web 锁定）。
+
+### 13.2.4 交互规范
+
+- 按压反馈：所有可点元素 `scale(0.97)` + 0.15s `cubic-bezier(0.4,0,0.2,1)`（保留现有 rw-tappable 手感，去毛玻璃白闪）。
+- 状态反馈：成功=红/绿 toast 切角样式；失败=红 toast + 输入框红描边；加载=骨架屏/按钮内「登录中…」文案态（对齐 Web LoginView）。
+- 页面过渡：小程序无法自定义路由转场，采用**入场动画**统一：页面首屏卡片依次 fade+translateY(12px) 入场（0.25s，级联延迟 60ms）；tab 切换不加动画。
+- 呼吸/闪烁动画：仅用于「进行中」红点等状态位，全部尊重系统减弱动态（`wx.getSystemSetting()` 无法直接读取，采用 CSS `@media (prefers-reduced-motion: reduce)`，微信基础库 ≥2.26 支持降级为静止）。
+- 热区：所有可点元素最小 88rpx × 88rpx。
+
+### 13.2.5 布局规范
+
+- 间距令牌（Web px ×2 = rpx）：`--sp-1 8rpx` / `--sp-2 16rpx` / `--sp-3 24rpx` / `--sp-4 32rpx` / `--sp-5 48rpx` / `--sp-6 64rpx` / `--sp-7 96rpx`。
+- 切角尺寸：Web 18px 全站统一切角 → 小程序 `--cut: 36rpx`；卡片内切角 24rpx。
+- 页面结构统一：`自定义导航(黑) → 页头区（红色斜杠 + 大标题 + 灰色副题） → 内容卡片流 → RwMarquee(仅首页)`；页头左缘红斜杠（border-left 8rpx + skew）为全站页头签名元素。RansomNote 拼贴仅首页主标题一处。
+- 卡片间距统一 24rpx，页面左右留白 32rpx；底部安全区 `env(safe-area-inset-bottom)` 全站保留。
+- 响应式：以 rpx 弹性为主；≥600rpx 宽逻辑（平板/折叠屏）内容区 max-width 720px 居中，禁止拉伸变形。
+
+### 13.2.6 各界面布局蓝图（v5.1 拍板稿）
+
+> 2026-09-17 用户拍板四项决议：① **页面范围 = 4 tab**（首页/打卡/答疑/我的），训练计划、伤病预防、数据统计本期不做；② **装饰密度 = 中等**（工艺全保留，跑马灯仅首页一条，每页星星 1~2 颗骑卡角）；③ **字体 = 三款远程加载**（Anton + LMQY ZRHT + 黄油体，CDN 子集 + 系统粗体兜底）；④ **配色按 13.2.1 表定稿**。
+
+**设计总原则：工艺全保留、密度打折扣。** Web 是横屏海报，手机竖屏无法承载同等装饰量；但切角、2px 白描边、红角标、深红实心影、胶带贴纸、号码布、红斜杠页头等**签名工艺逐件移植**，仅减少星星数量与跑马灯条数。
+
+**Tab 栏（4 项）**：`首页 / 打卡 / 答疑 / 我的`，沿用 custom-tab-bar 实现——黑底 `#0A0A0A`、未选白字灰图标、选中项红底白字切角块。
+
+#### ① 首页 `pages/index/index`
+
+| 序 | 区块 | 内容与工艺 |
+|---|---|---|
+| 1 | 品牌条 | 左上 RUN WISE 拼贴 logo（Anton 混合大小写，对齐 Web 首页菜单语言） |
+| 2 | Hero 区 | 红色斜切色块背景 + 主标题「你的智能跑步训练中心」（LMQY 白字黑描边 4.5px、整行 rotate(-3°)、RansomNote 逐字拼贴）+ 灰色副题「打卡、答疑与数据统计，一站直达」（28rpx、0°、无描边） |
+| 3 | 今日打卡卡 | RwCard 红框工艺 + 胶带「CHECK-IN」（红底白字）；标题「今日打卡」；黄油体数据行「6.3km · 36min · 5'43"/km」；本周目标进度条（红）；红切角大按钮「去打卡 →」；卡右上 RwNumberBib = 本周合计里程 KM（真实联动） |
+| 4 | 快捷入口三格 | 黑底 2px 白描边切角小卡：记一笔 / 问问题 / 看日历，图标红色（禁彩色渐变） |
+| 5 | 新手常问卡 | 面板黑卡 + 红色 01~05 Anton 编号（-6° skew）；点击 → 切至答疑页并自动发送该问题 |
+| 6 | 敬请期待区 | 训练计划 / 伤病预防 / 数据统计 三格：**红色胶带贴纸样式但整体置灰**（胶带红→灰红 `#6B4A4E` 或 opacity 0.45，保留微旋转 -3° 与撕贴形状，文字「敬请期待」22rpx 灰）；点击弹 RwToast「该模块即将上线」，本期不做功能（v5.2 拍板③：保留视觉钩子） |
+| 7 | 装饰 | 1 颗红色锯齿炸星（M 档 72rpx）骑今日打卡卡右下切角；底部 RwMarquee 一条 |
+
+#### ② 打卡页 `pages/checkin/checkin`
+
+| 序 | 区块 | 内容与工艺 |
+|---|---|---|
+| 1 | 页头 | 红斜杠 + kicker「RUNWISE MP」+ 大标题「打卡记录」（LMQY）+ 灰副题「以日历回顾每一天的训练足迹」+ **左缘竖排字**「RECORD / 每一步都算数」（20rpx 灰、vertical-rl、透明度 0.5，仅此一页） |
+| 2 | 训练日历卡 | RwCard + 胶带「训练日历」；翻月箭头（切角）；已打卡=红菱形（rotate 45°）+ 数字加粗提亮，今天=红底白字带切角；图例「◆ 已打卡 · ■ 今天」（22rpx 灰、符号红）；非今日/非未来日期按压白描边；卡右上 RwNumberBib =「12/30 SEP」（本月已打卡/当月天数 + 当月英文缩写，随翻月联动） |
+| 3 | 当日记录卡 | 胶带「当日记录」；日期标题；2×2 数据格（距离/时长/配速/心情），数字 Anton 64rpx + 小字单位；备注行；有记录时提供编辑/删除入口 |
+| 4 | 空态 | 过去日期无记录 → RwEmpty「这一天还没有记录 · 去首页打卡 →」（红字链接回首页）；今天无记录 → 保留打卡表单（避免打卡链路死循环，沿用 Web 决议） |
+| 5 | 装饰 | 1 颗红炸星（S 档 44rpx）骑当日记录卡右上 |
+
+#### ③ 新建/编辑打卡 `pages/checkin/create`
+
+页头「记一笔」→ 表单卡（RwCard + 胶带「CHECK-IN FORM」）：日期选择（切角控件）、距离、时长、**配速自动计算**（灰底只读、Anton）、心情切角标签（轻松=灰底白字 / 适中=白底黑字 / 吃力=红底白字，禁蓝绿）、备注多行；底部红切角主按钮「完成打卡 →」+ 次按钮「取消」（黑底白描边）。校验失败 → 输入框红描边 + RwToast。
+
+#### ④ 答疑页 `pages/qa/qa`
+
+| 序 | 区块 | 内容与工艺 |
+|---|---|---|
+| 1 | 页头 | 红斜杠 + 大标题「AI 答疑」+ 灰副题 |
+| 2 | 聊天主卡 | RwCard 红框工艺 + 胶带「RUNWISE 助手」。**欢迎卡**：黑底白描边左上/右下切角 + 左上红撕贴标签 + 标题（中文 LMQY 白字黑描边、RunWise 走 Anton 无描边）+ 灰色说明行（行高 1.7）+ 红菱形 bullet 强调行 + 右下 S 档红炸星。**AI 气泡**：黑底白字（正文 30rpx、行高 1.8）+ 1px `#2A2A2E` 描边 + 右上白四角星（16rpx、opacity 0.7）+ RW 红方块 + 「来源 Qwen」标签。**快捷标签**：白底黑字切角 + 红菱形 bullet（训练计划/装备选择/伤痛预防/跑步技术）。**输入区**：黑底 2px 白描边、左上/右下切角、聚焦描边变红 + 红切角「发送」按钮。免责声明贴输入区正下方 16rpx（不入页面流） |
+| 3 | 热门问题卡 | 胶带「热门问题」；01~05 红色 Anton 编号（-6° skew、按压变白）；点击填入草稿 |
+| 4 | 历史记录卡 | 胶带「历史记录」；列表项按压/选中红描边；点击重放问答；「加载更多」贴卡底 |
+| 5 | 高度策略 | 手机不做页面级锁高（Web 桌面端专属规则），消息区随内容自然滚动，输入区 `position: sticky` 吸底 + `env(safe-area-inset-bottom)` |
+
+#### ⑤ 我的页 `pages/mine/mine`
+
+| 序 | 区块 | 内容与工艺 |
+|---|---|---|
+| 1 | 页头 | 红斜杠 + 大标题「个人中心」+ 灰副题「你的跑步档案」 |
+| 2 | 跑者卡 | 胶带「RUNNER」；RW 黑底红字方块头像 + 昵称/@昵称；右侧 Anton 大数字「128」+「已坚持 / 天」 |
+| 3 | 成就徽章卡 | 胶带「BADGES」+ 右上「4/6 BADGES」RwNumberBib；6 枚红菱形徽章网格，已获得红实心 + 暗红底、未获得灰描边；编号贴纸 ±5° 旋转（全站允许倾斜的三处之一） |
+| 4 | 设置列表卡 | 个人资料 / **账号与安全（新增，账密绑定入口）** / 消息通知 / 意见反馈 / 隐私政策 / 用户协议；红色图标 + 白描边切角箭头 |
+| 5 | 退出登录 | 黑底红描边切角按钮（替换现有白底毛玻璃胶囊） |
+
+#### ⑥ 账号与安全 `pages/mine/account`（新增页）
+
+页头「账号与安全」→ RwCard + 胶带「ACCOUNT」；三态：① 未登录 → 红切角大按钮「微信一键登录」；② 已登录未绑定 → RwInput 用户名 + 密码 + 确认密码，红切角「绑定账号」；③ 已绑定 → 显示用户名 + 「修改密码」次按钮 + 「退出登录」。底部灰字说明「绑定后可在 Web 端用同一账号登录」。
+
+#### ⑦ 次级静态页（个人资料 / 隐私政策 / 用户协议 / 消息通知）
+
+统一：黑底 + 页头红斜杠 + RwCard 内容卡；表单页复用 RwInput/RwTag/RwButton；长文本页正文 28rpx 白、行高 1.8、灰字小标题。
+
+#### 本期不做清单（明确排除）
+
+训练计划页、伤病预防页、数据统计页（含 ECharts 图表）、Web 微信扫码登录、短信验证码登录。首页仅置灰胶带入口（样式见 ① 表第 6 行）。
+
+### 13.2.7 v5.2 五项拍板落地细则（2026-09-18）
+
+> 用户拍板：① 静态资源全部打包进小程序（OSS 未配置）；②「敬请期待」三格采用红色胶带贴纸置灰样式；③ 徽章按真实解锁规则实现；④ 打卡编辑功能 Web 端与小程序端都做；⑤ 无设计资源，UI 自绘、以 Web 端风格为唯一参照。
+
+**A. 静态资源打包策略**
+
+- 字体：三款子集 base64 内嵌（见 13.2.2），合计 ≤200KB。
+- 图标：tabbar 8 态图标（4 项 × 选中/未选）与页内功能图标全部**自绘 SVG**（线性、白色 `#FFFFFF` 未选 / 红 `#E60012` 选中，语言对齐 Web 的菱形+切角几何），转 base64 内嵌或存 `src/static/`，零外部依赖。
+- 图片：本期**不开放打卡图片上传**（`t_checkin.imageUrl/imageAudit` 字段保留但入口隐藏，待 OSS 配置后二期开启）；页面插画一律用 CSS 几何（斜切色块、菱形、网点）替代位图，控制包体。
+- 主包体积红线：<1.5MB（P4 验收项）。
+
+**B. 成就徽章真实解锁规则（本期新建后端徽章子系统）**
+
+现状：后端**完全没有**徽章模块（无实体/表/接口），Web「4/6」为 mock。本期新增：
+
+- 表：`t_badge`（code/name/desc/icon/sort）+ `t_user_badge`（user_id/badge_id/unlock_time，唯一索引 user_id+badge_id）。
+- 六枚徽章判定（数据源均为 `t_checkin`，distance 单位 km）：
+
+| # | 徽章 | 解锁条件 |
+|---|---|---|
+| 01 | 首次打卡 | 存在 ≥1 条打卡记录 |
+| 02 | 连续 7 天 | 最大连续打卡天数 ≥7 |
+| 03 | 累计 100km | SUM(distance) ≥100 |
+| 04 | 连续 30 天 | 最大连续打卡天数 ≥30 |
+| 05 | 累计 500km | SUM(distance) ≥500 |
+| 06 | 累计 1000km | SUM(distance) ≥1000 |
+
+- 触发时机：打卡 创建/编辑/删除 成功后同步重算（单用户数据量小，直接实时计算，不做定时任务）；**解锁单向不回收**（编辑致指标回落时已解锁徽章保留，避免用户困惑，解锁时间取首次达成）。
+- 接口：`GET /api/badges`（列表+解锁状态+进度值 progress/target，前端画进度）；`t_user_badge` 首次写入时小程序端弹 RwToast「解锁成就：连续 7 天」+ 炸星动画。
+- 我的页徽章卡接真实接口，「4/6 BADGES」号码布联动，未解锁徽章显示进度（如「86/100 km」灰字）。
+
+**C. 打卡编辑功能（双端）**
+
+- 后端新增：`PUT /api/checkin/{id}`（校验归属；复用 CheckinDTO；重算 pace；编辑日期若与他日冲突需唯一性校验）+ `GET /api/checkin/{id}` 已有。
+- Web 端：打卡记录页当日记录卡加「编辑」切角按钮 → 表单弹层（复用打卡表单组件），保存后刷新日历与统计。
+- 小程序端：当日记录卡「编辑/删除」双切角按钮（对齐 Web 训练计划行操作交互：非按压隐藏、按压态滑入）→ 跳 `pages/checkin/create?mode=edit&id=`，表单预填，提交走 PUT。
+- 一致性：两端编辑后徽章重算逻辑同一入口（Service 层），保证数据同步；删除同样触发重算（不回收已解锁）。
+
+**D. UI 自绘规范（无设计资源）**
+
+- 一切视觉以 Web 端代码为设计稿：色值/字号/切角/影直接抄 variables.css 与组件实现，不做二次发挥；新组件先对照 Web 同名组件截图验收。
+- 图标语言：1.5px 线性描边、圆角 0、几何构成（菱形/斜杠/切角方），禁止使用 emoji 或彩色插画风。
+
+## 13.3 前端登录系统整合设计
+
+### 13.3.1 统一账号模型
+
+一个用户 = 一条 `t_user` 记录，微信 openid 为根身份，username/password 为可选绑定凭据：
+
+```
+t_user 新增字段：
+  username  varchar(32)  唯一索引，可空（未绑定时为 NULL）
+  password  varchar(72)  BCrypt 密文，可空
+```
+
+- 小程序：首次进入静默 `wx.login` 注册/登录（保持现状体验，无强制登录页）；「我的 → 账号与安全 → 设置账密」绑定 username/password（服务端 BCrypt 加密）。
+- Web：账密登录同一 `t_user`，实现「小程序注册 → Web 复用」，数据天然互通。
+
+### 13.3.2 统一登录流程
+
+```mermaid
+flowchart TD
+  subgraph MP[小程序]
+    A1[启动] --> A2{本地双 token 存在?}
+    A2 -- 是 --> A3[请求业务接口]
+    A3 -- 401 --> A4[静默刷新]
+    A2 -- 否 --> A5[wx.login 取 code]
+    A5 --> A6["POST /api/auth/login {code, device:'miniapp'}"]
+    A6 --> A7[存 Storage → 进首页]
+    A8[我的-设置账密] --> A9["POST /api/user/set-password"]
+  end
+  subgraph WEB[Web]
+    B1[登录页] --> B2["POST /api/auth/login-password {username,password,device:'web'}"]
+    B2 -- 账号未绑定 --> B3[提示去小程序绑定]
+    B2 -- 成功 --> B4[存 localStorage → 跳首页]
+    B4 --> B5[请求业务接口]
+    B5 -- 401 --> B6[静默刷新队列]
+  end
+  A7 & B4 -.同一账号体系.-> DB[(t_user + Redis)]
+```
+
+- 找回密码：小程序内通过「已绑定微信 + 手机号快捷验证（微信手机号组件）」重置；Web 端「忘记密码」引导跳小程序操作（与现有 Web 文案「请先在微信小程序绑定」同一路径），第一阶段不做 Web 独立找回。
+- 验证码登录 / 第三方登录（Web 微信扫码）：列入二期（需微信开放平台与短信服务），本期接口设计预留 `loginType` 字段。
+
+### 13.3.3 统一 Token 管理策略
+
+| 项 | 策略 |
+|---|---|
+| 双 token | accessToken 2h / refreshToken 7d（沿用后端现配置） |
+| JWT claims | 新增 `device`（`miniapp` / `web`）；校验时 token 的 device 必须与请求来源声明一致 |
+| Redis 存储 | key 改为 `runwise:token:{userId}:{device}:access` 与 `runwise:token:{userId}:{device}:refresh`，**双端可同时在线互不顶掉** |
+| 刷新 | 双端均 401 → 静默刷新 → 重放原请求；并发 401 共享同一次刷新（小程序 request.ts 需补单飞队列，对齐 Web request.js 的 refreshing 语义）；refresh 成功后**轮换**新 refresh token，旧 refresh 立即失效（Redis 覆盖写天然实现） |
+| 登出 | `POST /api/auth/logout`（带 Bearer）：后端删除该 `{userId}:{device}` 的 Redis 双 key，前端清本地；小程序登出调用后端 + 清 Storage，Web 保持现有 reset() |
+| 被踢/过期 | 双 token 全失效 → 小程序静默重新 wx.login（无感重登）；Web 踢回登录页带 redirect |
+| 安全 | password 仅 BCrypt；refresh token 仅经 HTTPS 传输；Web localStorage 存 token 的 XSS 风险由短 access 有效期 + 无敏感信息 claims 缓解（二期可改 HttpOnly Cookie） |
+
+### 13.3.4 后端改造清单（本期唯一后端改动）
+
+1. DDL：`t_user` 加 `username`（唯一索引）、`password` 字段。
+2. `POST /api/auth/login-password`：body `{username, password, device}`；校验 BCrypt → 签发含 device 的双 token → 写 Redis 设备维度 key；错误码区分「账号不存在/密码错误/未绑定」。
+3. `POST /api/user/set-password`（登录态）：body `{username, password}`；已设密码时需验证旧密码。
+4. `POST /api/auth/logout`：解析 token 删对应设备 Redis key。
+5. `JwtUtils` 签发/解析增加 device claim；`JwtInterceptor` 校验 device 与 Redis 中 access token 一致性（支持服务端主动吊销）。
+6. `AuthController.refresh` 统一为 body `{refreshToken, device}`（Web 已按 body 传；小程序 request.ts 同步改为 body，弃 Header 传参）。
+7. 全接口返回保持 `Result{code,message,data}` 包装，code=200 成功，双端 request 层已按此约定。
+
+### 13.3.5 登录相关界面（P5R 风格）
+
+- 小程序新增「登录/绑定」页（`pages/mine/account`）：黑底 + RwCard 卡体 + 红色撕贴标签「ACCOUNT」+ RwInput/RwButton；微信快捷登录大按钮（红底切角）+ 账密绑定表单；状态机：未登录 → 静默登录 → 已登录未绑定 → 已绑定。
+- Web 登录页：视觉已封版，本期仅接入真实接口与错误分支（未绑定 → 引导小程序），如需海报化改版另行立项评审。
+
+### 13.3.6 登录状态机（双端一致）
+
+```
+[未认证] --小程序: wx.login 成功 / Web: 账密成功--> [已认证]
+[已认证] --access 过期--> [静默刷新中] --成功--> [已认证]
+[静默刷新中] --refresh 失效--> 小程序: 重新静默 wx.login / Web: [登录页(带 redirect)]
+[已认证] --用户登出/服务端吊销--> [未认证]（后端删对应设备 Redis key）
+```
+
+## 13.4 实施计划
+
+> 遵循「严格分阶段、单页交付验收后再下一页」的工作流约束；每阶段结束提交并推送远程。
+
+### 阶段 P0：设计令牌 + RWUI 组件库（约 2 天）
+
+- 改 `uni.scss`（v11 P5R 黑红全量替换）、`pages.json`（导航/tabbar 黑底白字）、App.vue 全局样式；新建 `components/rw/` 10 个基础组件。
+- 验收标准：构建 `npm run build:mp-weixin` 通过；组件 Demo 页（临时页）中 RwCard/RwButton/RwInput 与 Web 截图并排比对，色值逐一对照 13.2.1 表格；所有核心色值与 Web variables.css 一致。
+
+### 阶段 P1：页面逐页改造（每页交付验收后再下一页，约 5~6 天）
+
+范围（v5.1 拍板 = 4 tab）：首页 → 打卡页 → 新建/编辑打卡 → 答疑页 → 我的页 → 账号与安全（新增）→ 次级静态页（个人资料/通知/隐私/协议）→ custom-tab-bar。
+
+- 每页验收标准：① 无任何白底/橙色残留（全局搜索旧变量 `$rw-primary`/`#FF8C42`/`#FF6B35` 为 0 命中）；② 大数字走 Anton、标题走 LMQY，字体降级可用；③ 切角/红角标/实心影工艺与 Web 同款；④ 装饰遵守中等密度（每页星星 ≤2、跑马灯仅首页）与间距规则（距文字 ≥80rpx、装饰间距 ≥120rpx）；⑤ 真机（iOS + Android 各一台）无裁切、无层叠错乱；⑥ 弱动态模式下动画静止。
+- 同时清理各页写死 mock（mine.vue「跑者小明」等），接真实接口或统一 mock 服务。
+- 训练计划/伤病预防/数据统计本期不做，首页仅置灰胶带入口（v5.2 拍板②）。
+
+### 阶段 P2：后端改造——登录整合 + 徽章子系统 + 打卡编辑（约 3 天，与 P1 并行度受控：仅后端仓库）
+
+- 登录：按 13.3.4 清单实施 + Knife4j 文档自测（注册→绑定→账密登录→刷新→登出→多端并发）。
+- 徽章（v5.2 拍板③）：新建 `t_badge`/`t_user_badge` 表 + 种子数据（6 枚）+ `GET /api/badges` + 打卡增改删后同步重算逻辑（Service 层统一入口，解锁单向不回收）。
+- 打卡编辑（v5.2 拍板④）：`PUT /api/checkin/{id}`（归属校验、日期唯一性校验、pace 重算）。
+- 验收标准：Web 端将 `USE_MOCK=false` 后可用小程序绑定的账密真实登录成功；小程序登录不受影响；同账号 miniapp + web 双端同时在线互不顶掉；徽章接口返回真实解锁状态与进度；编辑打卡后指标与徽章进度正确联动。
+
+### 阶段 P2.5：Web 端打卡编辑功能（约 1 天）
+
+- 打卡记录页当日记录卡加「编辑」切角按钮 → 表单弹层（复用打卡表单），保存走 PUT，成功后刷新日历/统计/徽章。
+- 验收标准：编辑后日历数据、当日卡、号码布、徽章进度全部联动正确；与 Web 现有删除操作体验一致（按压显示、切角按钮语言）。
+
+### 阶段 P3：小程序登录/绑定页 + request.ts 升级（约 2 天）
+
+- request.ts 改造：刷新单飞队列、refresh 改 body 传参、401 静默重登、登出调后端；新增 account 页。
+- 验收标准：token 过期场景（改短过期时间实测）无感刷新；登出后 Redis key 被删除；未绑定账号 Web 登录时收到正确引导文案。
+
+### 阶段 P4：兼容性 + 性能 + 收尾（约 2 天）
+
+- 兼容性测试矩阵：iOS 15+（iPhone SE/15 Pro Max）、Android 9+（主流厂商 + 鸿蒙）、微信开发者工具、微信基础库 2.26/3.x 两档、深色模式（微信深色下页面保持黑底不反白）、长屏/折叠屏、弱网（刷新超时路径）。
+- 性能优化：字体子集 base64 内嵌体积校验（单款 <150KB、合计 ≤200KB）与回退验证；首屏接口并行化 + 骨架屏；自绘 SVG 图标压缩；setData 最小化；分包（QA 知识库文案、协议长文拆分包）；主包 <1.5MB 红线复测。
+- 验收标准：首屏可交互 <1.5s（本地环境）；分包后主包 <1.5MB；Lighthouse/体验评分无明显红线。
+
+## 13.5 交付物清单
+
+| # | 交付物 | 载体 |
+|---|---|---|
+| 1 | UI 设计规范文档（本 13.2 全部令牌与组件规格） | 本 PRD 第 13 章 |
+| 2 | 小程序 UI 设计稿（4 tab + 新增账号页 + 次级页 + 组件库，P5R 风格） | 设计稿/真机截图归档 `.shots/mp-p5r/` |
+| 3 | 登录整合流程图与状态图 | 13.3.2 / 13.3.6（mermaid 源码同仓维护） |
+| 4 | RWUI 组件库代码 | `RunWise_MiniProgram/src/components/rw/` |
+| 5 | 后端接口实现 + Knife4j 文档 | `RunWise_Backend`（13.3.4 清单） |
+| 6 | 前端代码实现指南与关键示例 | 13.6 节 + 组件内注释 |
+| 7 | 兼容性测试记录与性能报告 | P4 阶段产出，归档 `.shots/mp-p5r/qa/` |
+
+## 13.6 关键代码示例
+
+**① uni.scss v11 核心令牌（节选）**
+
+```scss
+// RunWise 小程序 P5R 主题（v11）—— 四色核心已冻结，与 Web variables.css 对齐
+$rw-red: #E60012 !default;
+$rw-red-dark: #8F000B !default;
+$rw-black: #0A0A0A !default;
+$rw-panel: #17171A !default;
+$rw-cream: #F5F0E6 !default;
+$rw-gray: #9C9CA3 !default;
+$rw-line: rgba(255, 255, 255, 0.14) !default;
+$rw-shadow-red: #5C1518 !default;
+
+// RwCard 双层结构：外层画影（clip-path 会裁掉 box-shadow），内层切角
+@mixin rw-card-shadow {
+  box-shadow: 12rpx 12rpx 0 $rw-shadow-red;
+}
+@mixin rw-card-clip {
+  clip-path: polygon(24rpx 0, 100% 0, 100% calc(100% - 24rpx), calc(100% - 24rpx) 100%, 0 100%, 0 24rpx);
+}
+```
+
+**② RwButton 切角主按钮（对齐 Web LoginView）**
+
+```vue
+<view class="rw-btn" hover-class="rw-btn--active" :class="{ disabled }" @tap="!disabled && $emit('tap')">
+  <text class="rw-btn__text"><slot /></text>
+</view>
+<style scoped>
+.rw-btn {
+  padding: 24rpx 32rpx; background: #E60012; color: #fff;
+  clip-path: polygon(20rpx 0, 100% 0, calc(100% - 20rpx) 100%, 0 100%);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.rw-btn--active { background: #8F000B; transform: scale(0.97); }
+</style>
+```
+
+**③ 字体加载（App.vue onLaunch，FOUT 兜底）**
+
+```ts
+onLaunch(() => {
+  wx.loadFontFace({
+    global: true, family: 'Anton',
+    source: 'url("https://cdn.example.com/fonts/anton-sub.woff2")',
+    complete: () => {} // 失败时页面字体栈自动回退系统粗体
+  })
+})
+```
+
+**④ request.ts 刷新单飞队列（对齐 Web request.js 语义）**
+
+```ts
+let refreshing: Promise<boolean> | null = null
+function refreshOnce(): Promise<boolean> {
+  refreshing = refreshing || doRefresh().finally(() => { refreshing = null })
+  return refreshing
+}
+// 401 分支统一 await refreshOnce()，成功后重放，失败清 token 静默重登
+```
+
+**⑤ 登录接口（Web 真实通道，Web api/auth.js 现状即此，后端补齐后立即可用）**
+
+```ts
+// 小程序绑定账密
+post('/api/user/set-password', { username, password })
+// 后端签发：claims 增 device；Redis: runwise:token:{userId}:{device}:access|refresh
+```
+
+## 13.7 修订日志
+
+- v5.2.0（2026-09-18）：**五项细节拍板落地**，新增 13.2.7 细则——① 静态资源全部打包进小程序（OSS 未配置；字体 base64 内嵌、图标自绘 SVG、本期不开放打卡图片上传、主包 <1.5MB）；② 首页「敬请期待」三格采用红色胶带贴纸置灰样式（保留视觉钩子）；③ 徽章按真实解锁规则实现（本期新建后端徽章子系统：t_badge/t_user_badge 表、6 枚判定、打卡增改删同步重算、解锁单向不回收）；④ 打卡编辑双端都做（后端新增 PUT /api/checkin/{id}，Web 新增 P2.5 阶段，小程序当日记录卡编辑入口）；⑤ 无设计资源，UI 自绘、以 Web 端代码为唯一设计稿。同步修订 13.2.2 字体加载方案（loadFontFace → base64 内嵌）、P2/P4 阶段任务与验收标准。
+- v5.1.0（2026-09-17）：**用户拍板四项决议**并新增 13.2.6「各界面布局蓝图」——① 页面范围 4 tab（训练计划/伤病预防/数据统计本期不做，首页留灰字占位）；② 装饰密度中等（工艺全保留、跑马灯仅首页一条、每页星星 ≤2 颗骑卡角、RansomNote 仅首页主标题）；③ 字体三款远程加载（后于 v5.2 改为打包内嵌）；④ 配色按 13.2.1 表定稿（黑底深色主题）。同步收窄 P1 实施范围与验收标准、更新交付物清单。
+- v5.0.0（2026-09-17）：新增本章节。确立小程序 P5R 风格统一规范与双端登录整合方案；实测确认 Web 视觉令牌冻结值、后端登录接口缺口（login-password/set-password/logout/device/Redis 设备维度）；明确分阶段实施与验收标准。启动类无代码错误（编译+运行实测通过，为 IDE JDK 语言级别误报）。
+
+---
+
 **文档结束**

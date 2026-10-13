@@ -27,6 +27,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/auth/login",     // 登录接口不拦截
                         "/api/auth/refresh",   // 刷新token不拦截
                         "/api/qa/**",          // 问答模块全部不拦截（调试模式）
+                        "/api/injury/**",      // 伤病预防为公开只读知识库，不拦截
                         "/doc.html",           // Knife4j 文档
                         "/swagger-resources/**",
                         "/webjars/**",

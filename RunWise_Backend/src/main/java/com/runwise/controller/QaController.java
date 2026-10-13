@@ -58,6 +58,10 @@ public class QaController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         Long userId = (Long) request.getAttribute("userId");
+        // 与 ask() 保持一致：未登录时查默认用户，否则两边 userId 对不上历史永远为空
+        if (userId == null) {
+            userId = 1L;
+        }
         return Result.success(qaService.getHistory(userId, pageNum, pageSize));
     }
 
@@ -68,6 +72,9 @@ public class QaController {
             @RequestParam Long id,
             @RequestParam Integer feedback) {
         Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            userId = 1L;
+        }
         qaService.feedback(userId, id, feedback);
         return Result.success();
     }

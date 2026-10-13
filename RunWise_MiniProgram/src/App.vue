@@ -110,14 +110,62 @@ onLaunch(() => {
 });
 </script>
 
-<style>
+<style lang="scss">
+/* =====================================================================
+   RunWise 小程序 P5R 全局样式（v11）
+   黑底深色主题 · 字体 base64 内嵌 · 统一按压/入场动画 · 减弱动态降级
+   ===================================================================== */
+@import '@/styles/fonts.scss';
+
+page {
+  background: $rw-black;
+  color: $rw-white;
+  font-family: $rw-font-body;
+  font-size: 28rpx;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+/* 入场动画：页面首屏卡片依次 fade + translateY(24rpx)，级联延迟 60ms（PRD 13.2.4） */
+@keyframes rw-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rw-enter {
+  animation: rw-rise 0.25s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.rw-enter-1 { animation-delay: 0ms; }
+.rw-enter-2 { animation-delay: 60ms; }
+.rw-enter-3 { animation-delay: 120ms; }
+.rw-enter-4 { animation-delay: 180ms; }
+.rw-enter-5 { animation-delay: 240ms; }
+
+/* 系统减弱动态：全部入场/呼吸动画静止（微信基础库 ≥2.26 支持该媒体查询） */
+@media (prefers-reduced-motion: reduce) {
+  .rw-enter,
+  .rw-enter-1, .rw-enter-2, .rw-enter-3, .rw-enter-4, .rw-enter-5 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===== 协议同意弹窗（P5R：面板黑 + 白描边切角 + 红主按钮） ===== */
 .agreement-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -125,19 +173,20 @@ onLaunch(() => {
 }
 
 .agreement-modal {
-  width: 600rpx;
-  background: #ffffff;
-  border-radius: 24rpx;
+  width: 620rpx;
+  background: $rw-panel;
+  border: 4rpx solid $rw-white;
+  box-shadow: 12rpx 12rpx 0 $rw-shadow-red;
+  @include rw-card-clip;
   overflow: hidden;
-  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.15);
 }
 
 .agreement-title {
   display: block;
   text-align: center;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $rw-white;
   padding: 40rpx 32rpx 16rpx;
 }
 
@@ -149,7 +198,7 @@ onLaunch(() => {
 .agreement-text {
   display: block;
   font-size: 26rpx;
-  color: #6b7280;
+  color: $rw-gray;
   line-height: 1.8;
   margin-bottom: 12rpx;
 }
@@ -159,18 +208,18 @@ onLaunch(() => {
   align-items: center;
   justify-content: center;
   padding: 16rpx 32rpx;
-  border-top: 1rpx solid #f3f4f6;
+  border-top: 2rpx solid $rw-line;
 }
 
 .link-text {
   font-size: 24rpx;
-  color: #ff6b35;
+  color: $rw-red;
   text-decoration: underline;
 }
 
 .link-divider {
   font-size: 24rpx;
-  color: #d1d5db;
+  color: $rw-gray;
   margin: 0 16rpx;
 }
 
@@ -183,60 +232,37 @@ onLaunch(() => {
 .btn-disagree {
   flex: 1;
   height: 80rpx;
-  border-radius: 40rpx;
-  border: 2rpx solid #e5e7eb;
+  border: 4rpx solid $rw-white;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
+  background: $rw-black;
+  @include rw-btn-clip;
 }
 
 .btn-disagree-text {
   font-size: 28rpx;
-  color: #6b7280;
+  color: $rw-white;
 }
 
 .btn-agree {
   flex: 1.5;
   height: 80rpx;
-  border-radius: 40rpx;
-  background: linear-gradient(135deg, #ff6b35, #ff8f5e);
+  background: $rw-red;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(255, 107, 53, 0.3);
+  @include rw-btn-clip;
 }
 
 .btn-agree-text {
   font-size: 28rpx;
   font-weight: 500;
-  color: #ffffff;
+  color: $rw-white;
 }
 
 .btn-hover {
-  opacity: 0.85;
+  opacity: 0.9;
   transform: scale(0.97);
-}
-
-page {
-  background: linear-gradient(135deg, #F5F7FA, #FFFFFF);
-  background-attachment: fixed;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --primary-color: #FF8A65;
-  --primary-light: #FFCC80;
-  --primary-bg: rgba(255, 138, 101, 0.08);
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-placeholder: #9CA3AF;
-  --bg-page: #F5F7FA;
-  --bg-card: rgba(255, 255, 255, 0.85);
-  --glass-blur: blur(15px);
-  --card-radius: 40rpx;
-  --bubble-radius: 100rpx;
-  --shadow-card: 0 16rpx 48rpx rgba(0, 0, 0, 0.08);
-  --shadow-sm: 0 4rpx 12rpx rgba(0, 0, 0, 0.04);
-  --border-glass: 1px solid rgba(255, 255, 255, 0.2);
-  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>

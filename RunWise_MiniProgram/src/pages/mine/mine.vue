@@ -69,7 +69,11 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { setTabBarIndex } from "@/utils/tabbar";
 import { clearTokens } from "@/utils/request";
+
+onShow(() => setTabBarIndex(3));
 
 const userInfo = ref({
   nickname: "跑者小明",

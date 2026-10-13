@@ -4,12 +4,13 @@
  */
 
 /**
- * 后端 API 基础地址
+ * 后端 API 基础地址（全项目唯一来源，其他页面禁止再各自硬编码）
  * 注意：微信开发者工具中小程序沙箱的 localhost 不等于主机 localhost，
  *       必须使用实际的局域网 IP 地址，否则会请求超时。
+ *       换网络后 IP 会变，改这里一处即可。
  * 生产环境需替换为正式域名（必须 HTTPS）。
  */
-const BASE_URL = 'http://192.168.0.103:8080'
+export const BASE_URL = 'http://10.27.194.77:8080'
 
 /** 获取本地存储的 access_token */
 function getToken(): string {

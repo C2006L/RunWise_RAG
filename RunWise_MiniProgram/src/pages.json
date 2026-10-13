@@ -2,7 +2,8 @@
   "easycom": {
     "autoscan": true,
     "custom": {
-      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue",
+      "^rw-(.*)": "@/components/rw/rw-$1.vue"
     }
   },
   "pages": [
@@ -10,72 +11,115 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "RunWise",
-        "navigationBarBackgroundColor": "#F6F7F9",
-        "navigationBarTextStyle": "black",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
         "enablePullDownRefresh": true,
-        "backgroundTextStyle": "dark"
+        "backgroundTextStyle": "light"
       }
     },
     {
       "path": "pages/checkin/checkin",
       "style": {
-        "navigationBarTitleText": "打卡"
+        "navigationBarTitleText": "打卡",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/qa/qa",
       "style": {
-        "navigationBarTitleText": "答疑"
+        "navigationBarTitleText": "答疑",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
+      }
+    },
+    {
+      "path": "pages/qa/injury-detail",
+      "style": {
+        "navigationBarTitleText": "伤病预防",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/mine/mine",
       "style": {
-        "navigationBarTitleText": "我的"
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/checkin/create",
       "style": {
-        "navigationBarTitleText": "新建打卡"
+        "navigationBarTitleText": "新建打卡",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/mine/profile",
       "style": {
-        "navigationBarTitleText": "个人资料"
+        "navigationBarTitleText": "个人资料",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/mine/privacy",
       "style": {
-        "navigationBarTitleText": "隐私政策"
+        "navigationBarTitleText": "隐私政策",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/mine/agreement",
       "style": {
-        "navigationBarTitleText": "用户协议"
+        "navigationBarTitleText": "用户协议",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     },
     {
       "path": "pages/mine/notifications",
       "style": {
-        "navigationBarTitleText": "消息通知"
+        "navigationBarTitleText": "消息通知",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
+      }
+    },
+    {
+      "path": "pages/ui-demo/ui-demo",
+      "style": {
+        "navigationBarTitleText": "RWUI 组件预览",
+        "navigationBarBackgroundColor": "#0A0A0A",
+        "navigationBarTextStyle": "white",
+        "backgroundColor": "#0A0A0A"
       }
     }
   ],
   "globalStyle": {
-    "navigationBarTextStyle": "black",
+    "navigationBarTextStyle": "white",
     "navigationBarTitleText": "RunWise",
-    "navigationBarBackgroundColor": "#F5F7FA",
-    "backgroundColor": "#F5F7FA"
+    "navigationBarBackgroundColor": "#0A0A0A",
+    "backgroundColor": "#0A0A0A"
   },
   "tabBar": {
-    "color": "#666666",
-    "selectedColor": "#FF8A65",
-    "backgroundColor": "rgba(255,255,255,0.9)",
-    "borderStyle": "white",
+    "custom": true,
+    "color": "#9C9CA3",
+    "selectedColor": "#FFFFFF",
+    "backgroundColor": "#0A0A0A",
+    "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/index/index",

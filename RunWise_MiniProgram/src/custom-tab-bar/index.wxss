@@ -1,0 +1,81 @@
+/* P5R tabbar：黑底 #0A0A0A、白字、选中项红底白字切角块（PRD 13.2.1）
+   令牌为 uni.scss 冻结值的原生 CSS 展开（wxss 无法引用 SCSS） */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 110rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  background: #0a0a0a;
+  border-top: 2rpx solid rgba(255, 255, 255, 0.14);
+  z-index: 100;
+}
+
+.tab-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 88rpx;
+  color: #9c9ca3;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-item--hover {
+  /* 按压反馈：整项上移 + 图标文字提亮（20260918 用户指示新增交互） */
+  transform: translateY(-6rpx);
+}
+
+.tab-item--hover .tab-icon {
+  transform: scale(1.08);
+}
+
+.tab-item--hover .tab-text {
+  color: #ffffff;
+}
+
+/* 选中态：红底切角块压住图标文字区 */
+.tab-item__active-bg {
+  position: absolute;
+  left: 50%;
+  top: 12rpx;
+  bottom: 12rpx;
+  width: 128rpx;
+  transform: translateX(-50%);
+  background: #e60012;
+  clip-path: polygon(12rpx 0, 100% 0, calc(100% - 12rpx) 100%, 0 100%);
+}
+
+.tab-item--active {
+  color: #ffffff;
+}
+
+.tab-icon {
+  position: relative;
+  z-index: 1;
+  width: 40rpx;
+  height: 40rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-text {
+  position: relative;
+  z-index: 1;
+  /* 20260918 用户指示：LMQY 标题体 + 斜切感，增强层次（覆盖旧 Z-0 导航直立条款） */
+  font-family: 'RW LMQY', 'Noto Sans SC', 'PingFang SC', sans-serif;
+  font-size: 24rpx;
+  line-height: 1;
+  transform: skewX(-8deg);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tab-item--active .tab-text {
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+}

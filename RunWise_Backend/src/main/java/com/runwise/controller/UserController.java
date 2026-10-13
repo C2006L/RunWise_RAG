@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -49,12 +50,13 @@ public class UserController {
         String currentVersion = "1.0.0";
         boolean agreed = user.getAgreementVersion() != null
                 && user.getAgreementVersion().equals(currentVersion);
-        return Result.success(Map.of(
-                "agreed", agreed,
-                "currentVersion", currentVersion,
-                "agreedVersion", user.getAgreementVersion(),
-                "agreedTime", user.getAgreementTime() != null ? user.getAgreementTime().toString() : null
-        ));
+        return Result.success(new LinkedHashMap<String, Object>() {{
+            // 项目是 Java 8，不能用 Map.of（Java 9+ 且 value 为 null 会抛 NPE）
+            put("agreed", agreed);
+            put("currentVersion", currentVersion);
+            put("agreedVersion", user.getAgreementVersion());
+            put("agreedTime", user.getAgreementTime() != null ? user.getAgreementTime().toString() : null);
+        }});
     }
 
     @PostMapping("/agree-agreement")

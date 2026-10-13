@@ -15,5 +15,12 @@ export default defineConfig({
     // 多项目并存会形成级联抢占）——本项目固定用 5273，远离默认端口级联区
     port: 5273,
     open: false,
+    // 伤病预防等真实接口联调：/api 透传到本机 Spring Boot(8080)，避免跨域
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
   },
 })
