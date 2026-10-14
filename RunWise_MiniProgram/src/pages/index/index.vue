@@ -1,7 +1,11 @@
 <template>
   <view class="page">
-    <!-- ===== ① 品牌条：RUN WISE 拼贴 logo（Web .mlt 三分法同款） ===== -->
+    <!-- ===== ① 品牌区：轻量栏目眉题 + 原拼贴 Logo（品牌视觉核心） ===== -->
     <view class="brand rw-enter rw-enter-1">
+      <view class="brand__meta">
+        <text class="brand__name">RunWise</text>
+        <text class="brand__section">TRAINING CENTER</text>
+      </view>
       <view class="brand__float">
         <text
           v-for="(l, i) in brandLetters"
@@ -29,48 +33,47 @@
             >{{ c.ch }}</text
           >
         </view>
-        <text class="hero__desc">—— 打卡、答疑与数据统计，一站直达</text>
+        <text class="hero__desc">记录每一步，挑战每一次突破。</text>
       </view>
     </view>
 
     <!-- ===== ③ 主视觉舞台：打卡卡 + 跑步女孩（前景主视觉） + 散落拼贴大字入口 =====
-         图层序（由远及近）：波形线/ReCoRd(z1) → 女孩(z2) → 打卡卡(z3) → AsK/CaLeNdAr/RUN!(z4) -->
+         打卡卡与角色展示区上下分区，避免卡片遮挡原创角色 -->
     <view class="stage rw-enter rw-enter-3">
-      <!-- 红色心电图波形线（滚动动画：200% 宽双重复波形，translateX 无缝循环） -->
-      <view class="stage__heartbeat" aria-hidden="true">
-        <view class="stage__heartbeat-line"></view>
-      </view>
-
-      <!-- 跑步女孩主视觉（PNG：webp 在部分安卓真机 alpha 解码失败，20260919 换回） -->
-      <image class="stage__runner" src="/static/images/hero-runner.png" mode="aspectFit" />
-
       <!-- 今日打卡卡 -->
       <view class="ck-section">
         <rw-card frame="red" tag="CHECK-IN" :tag-rotate="'-6deg'" padding="28rpx 28rpx 24rpx">
-          <text class="ck__date">{{ todayDate }}</text>
-          <text class="ck__title">{{ todayCheckin.checkedIn ? "今日已打卡" : "今日打卡" }}</text>
-          <text v-if="todayCheckin.checkedIn" class="ck__data">
-            {{ todayCheckin.distance }}km · {{ todayCheckin.duration }}min ·
-            {{ todayCheckin.pace }}/km
-          </text>
-          <text v-else class="ck__data ck__data--empty">今日还未打卡 —— 去完成第一次奔跑</text>
+          <view class="ck__head">
+            <text class="ck__date">{{ todayDate }}</text>
+            <text class="ck__status">{{ todayCheckin.checkedIn ? "已完成" : "待出发" }}</text>
+          </view>
+          <text class="ck__title">{{ todayCheckin.checkedIn ? "今日训练完成！" : "今天，准备跑多远？" }}</text>
+
+          <view v-if="todayCheckin.checkedIn" class="ck__metrics">
+            <view class="ck__metric">
+              <text class="ck__metric-value">{{ todayCheckin.distance }}</text>
+              <text class="ck__metric-unit">公里</text>
+            </view>
+            <view class="ck__metric">
+              <text class="ck__metric-value">{{ todayCheckin.duration }}</text>
+              <text class="ck__metric-unit">分钟</text>
+            </view>
+            <view class="ck__metric">
+              <text class="ck__metric-value">{{ todayCheckin.pace }}</text>
+              <text class="ck__metric-unit">平均配速/km</text>
+            </view>
+          </view>
+          <text v-else class="ck__data ck__data--empty">穿好跑鞋，完成今天的第一次出发。</text>
 
           <view class="ck__progress">
             <view class="ck__progress-meta">
-              <text class="ck__progress-label">本周目标进度</text>
-              <text class="ck__progress-num">{{ weekPercent }}%</text>
+              <text class="ck__progress-label">本周目标</text>
+              <text class="ck__progress-num">{{ weekStats.distance }} / {{ WEEK_TARGET_KM }} km</text>
             </view>
             <view class="ck__progress-track">
               <view class="ck__progress-fill" :style="{ width: weekPercent + '%' }"></view>
             </view>
           </view>
-
-          <text class="ck__meta">
-            本周
-            <text class="ck__meta-num">{{ weekStats.count }}</text> 次 ·
-            <text class="ck__meta-num">{{ weekStats.duration }}</text> min · 连续
-            <text class="ck__meta-num">{{ todayCheckin.streak }}</text> 天
-          </text>
 
           <!-- 查看详情/去打卡按钮（缩小版）：深红实心影 + 左侧白菱形引出线 + 右上炸星 + 右下红方块 -->
           <view class="ck__btn-wrap">
@@ -80,23 +83,29 @@
               <view class="ck__btn-lead-diamond"></view>
             </view>
             <view class="ck__btn" hover-class="ck__btn--hover" :hover-stay-time="80" @click="goCheckin">
-              <text class="ck__btn-text">{{ todayCheckin.checkedIn ? "查看详情 →" : "去打卡 →" }}</text>
+              <text class="ck__btn-text">{{ todayCheckin.checkedIn ? "查看训练详情 →" : "开始今日打卡 →" }}</text>
             </view>
             <view class="ck__btn-dot" aria-hidden="true"></view>
             <rw-star-field tier="S" color="red" :seed="1" :duration="4.6" right="-18rpx" top="-22rpx" />
           </view>
 
           <template #extra>
-            <view class="ck__bib">
-              <rw-number-bib :value="weekStats.distance" unit="KM" rotate="-3deg" />
-            </view>
             <rw-star-field tier="M" color="red" :seed="2" :duration="5.4" right="-8rpx" bottom="-14rpx" />
           </template>
         </rw-card>
       </view>
 
-      <!-- 快捷入口：无框拼贴大字（Web menu-item 语言：编号+Anton 拼贴+黄油体小注+按压红斜杠） -->
-      <view class="menu menu--record" hover-class="menu--pressed" :hover-stay-time="150" @click="goCreate">
+      <!-- 角色专属展示区：人物完整露出，入口位于两侧且不遮挡主体 -->
+      <view class="stage__visual">
+        <view class="stage__heartbeat" aria-hidden="true">
+          <view class="stage__heartbeat-line"></view>
+        </view>
+
+        <!-- 跑步女孩主视觉（PNG：webp 在部分安卓真机 alpha 解码失败，20260919 换回） -->
+        <image class="stage__runner" src="/static/images/hero-runner.png" mode="aspectFit" />
+
+        <!-- 快捷入口：无框拼贴大字（编号+拼贴字+中文小注） -->
+        <view class="menu menu--record" hover-class="menu--pressed" :hover-stay-time="150" @click="goCreate">
         <text class="menu__no">01</text>
         <view class="menu__word">
           <text
@@ -110,9 +119,9 @@
         </view>
         <text class="menu__note">记一笔</text>
         <view class="menu__underline"></view>
-      </view>
+        </view>
 
-      <view class="menu menu--ask" hover-class="menu--pressed" :hover-stay-time="150" @click="goQa">
+        <view class="menu menu--ask" hover-class="menu--pressed" :hover-stay-time="150" @click="goQa">
         <text class="menu__no">02</text>
         <view class="menu__word">
           <text
@@ -126,9 +135,9 @@
         </view>
         <text class="menu__note">问问题</text>
         <view class="menu__underline"></view>
-      </view>
+        </view>
 
-      <view class="menu menu--calendar" hover-class="menu--pressed" :hover-stay-time="150" @click="goCalendar">
+        <view class="menu menu--calendar" hover-class="menu--pressed" :hover-stay-time="150" @click="goCalendar">
         <text class="menu__no">03</text>
         <view class="menu__word">
           <text
@@ -142,17 +151,18 @@
         </view>
         <text class="menu__note">看日历</text>
         <view class="menu__underline"></view>
-      </view>
+        </view>
 
-      <!-- RUN! 装饰字：女孩脚下左侧（Web 同款位置） -->
-      <text class="stage__run" aria-hidden="true">RUN!</text>
+        <!-- RUN! 装饰字：女孩脚下左侧（Web 同款位置） -->
+        <text class="stage__run" aria-hidden="true">RUN!</text>
+      </view>
     </view>
 
-    <!-- ===== ⑤ 新手常问卡：交错斜排 + 红 01~05 编号，点击灰线滑出+缓抖后切答疑页 ===== -->
+    <!-- ===== ⑤ 新手常问卡：首页只保留高频三条，其余进入答疑页 ===== -->
     <view class="faq rw-enter rw-enter-5">
       <rw-card tag="新手常问" :tag-rotate="'-4deg'" padding="28rpx 32rpx 20rpx">
         <view
-          v-for="(q, idx) in hotQuestions.slice(0, 5)"
+          v-for="(q, idx) in hotQuestions.slice(0, 3)"
           :key="idx"
           class="faq__row"
           :class="idx % 2 === 0 ? 'faq__row--odd' : 'faq__row--even'"
@@ -164,22 +174,21 @@
           <text class="faq__q">{{ q }}</text>
           <view class="faq__underline"></view>
         </view>
+        <view class="faq__more" hover-class="faq__more--pressed" :hover-stay-time="100" @click="goQa">
+          <text>查看全部问题</text>
+          <text class="faq__more-arrow">→</text>
+        </view>
       </rw-card>
     </view>
 
-    <!-- ===== ⑥ 敬请期待三格：红胶带贴纸样式整体置灰，点击 toast ===== -->
-    <view class="soon">
-      <view
-        v-for="s in comingSoon"
-        :key="s.name"
-        class="soon__cell"
-        hover-class="soon__cell--hover"
-        @click="onComingSoon"
-      >
-        <view class="soon__face"></view>
-        <rw-tape :text="s.name" variant="red" rotate="-3deg" top="-16rpx" left="14rpx" />
-        <text class="soon__hint">敬请期待</text>
+    <!-- ===== ⑥ 未开放能力合并为一个轻量预告区 ===== -->
+    <view class="soon" hover-class="soon--pressed" :hover-stay-time="100" @click="onComingSoon">
+      <view class="soon__label">
+        <text class="soon__eyebrow">NEXT UP</text>
+        <text class="soon__title">更多训练能力正在准备</text>
       </view>
+      <text class="soon__features">{{ comingSoonText }}</text>
+      <text class="soon__arrow">→</text>
     </view>
 
     <!-- ===== ⑦ 底部跑马灯（仅首页挂） ===== -->
@@ -197,8 +206,12 @@
 import { ref, computed } from "vue";
 import { onPullDownRefresh, onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
+import { loadCheckinRecords, summarizeCheckins, toDateKey } from "@/utils/checkin-data";
 
-onShow(() => setTabBarIndex(0));
+onShow(() => {
+  setTabBarIndex(0);
+  refreshHomeData();
+});
 
 /* ===== 拼贴字母生成（确定性，避免重渲染抖动；规则对齐 Web HeroSection/RansomNote） ===== */
 const ROTS = ["-5deg", "4deg", "-3deg", "5deg", "-4deg", "3deg"];
@@ -260,6 +273,49 @@ const weekStats = ref({
   duration: 98,
 });
 
+function refreshHomeData() {
+  const records = loadCheckinRecords();
+  const summary = summarizeCheckins(records);
+  const todayKey = toDateKey(new Date());
+  const todayRecord = records.find((item) => item.checkinDate === todayKey);
+
+  todayCheckin.value = todayRecord
+    ? {
+        checkedIn: true,
+        distance: todayRecord.distance,
+        duration: todayRecord.duration,
+        pace: formatHomePace(todayRecord.pace),
+        streak: summary.currentStreak,
+      }
+    : {
+        checkedIn: false,
+        distance: 0,
+        duration: 0,
+        pace: "--",
+        streak: summary.currentStreak,
+      };
+
+  const now = new Date();
+  const monday = new Date(now);
+  const weekday = now.getDay() || 7;
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(now.getDate() - weekday + 1);
+  const mondayKey = toDateKey(monday);
+  const weekRecords = records.filter(
+    (item) => item.checkinDate >= mondayKey && item.checkinDate <= todayKey,
+  );
+  weekStats.value = {
+    distance: Number(weekRecords.reduce((sum, item) => sum + item.distance, 0).toFixed(1)),
+    count: weekRecords.length,
+    duration: weekRecords.reduce((sum, item) => sum + item.duration, 0),
+  };
+}
+
+function formatHomePace(pace: number): string {
+  const seconds = Math.round(pace * 60);
+  return `${Math.floor(seconds / 60)}'${String(seconds % 60).padStart(2, "0")}"`;
+}
+
 const WEEK_TARGET_KM = 40;
 const weekPercent = computed(() =>
   Math.min(100, Math.round((weekStats.value.distance / WEEK_TARGET_KM) * 100))
@@ -280,6 +336,7 @@ const comingSoon = [
   { name: "伤病预防" },
   { name: "数据统计" },
 ];
+const comingSoonText = comingSoon.map((item) => item.name).join(" · ");
 
 /* ===== 跳转语义（原样保留） ===== */
 const goCheckin = () => {
@@ -346,7 +403,30 @@ onPullDownRefresh(() => {
 
 /* ==================== ① 品牌条 ==================== */
 .brand {
-  padding: 28rpx 0 8rpx;
+  padding: 20rpx 0 10rpx;
+}
+
+.brand__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14rpx;
+  margin-bottom: 18rpx;
+  border-bottom: 2rpx solid $rw-line;
+}
+
+.brand__name {
+  font-family: $rw-font-display;
+  font-size: 28rpx;
+  letter-spacing: 1rpx;
+  color: $rw-white;
+}
+
+.brand__section {
+  font-family: $rw-font-display;
+  font-size: 22rpx;
+  letter-spacing: 3rpx;
+  color: $rw-gray;
 }
 
 /* 上下浮动动画挂在包装层，逐字 rotate 在子元素，互不覆盖 */
@@ -356,7 +436,7 @@ onPullDownRefresh(() => {
   /* 字号必须在容器上：子字母的内联 fontSize 用 em 相对父级解析，
      放在 .brand__lt 上会被内联样式覆盖且 em 落到默认 16px（Web .ransom 同构）。
      76rpx 实测品牌区占屏宽 36.9%（20260921 按蓝框标定尺寸收定） */
-  font-size: 76rpx;
+  font-size: 70rpx;
   animation: brand-float 3.2s ease-in-out infinite;
 }
 
@@ -401,7 +481,7 @@ onPullDownRefresh(() => {
 /* ==================== ② Hero ==================== */
 .hero {
   position: relative;
-  padding: 24rpx 0 40rpx;
+  padding: 20rpx 0 32rpx;
 }
 
 .hero__band {
@@ -464,15 +544,21 @@ onPullDownRefresh(() => {
 /* ==================== ③ 主视觉舞台 ==================== */
 .stage {
   position: relative;
-  height: 1240rpx;
   margin-top: 16rpx;
+}
+
+.stage__visual {
+  position: relative;
+  height: 790rpx;
+  margin-top: 28rpx;
+  overflow: hidden;
 }
 
 /* 红色心电图波形线：200% 宽双周期波形，向左无缝滚动（Web signature，女孩身后） */
 .stage__heartbeat {
   position: absolute;
   left: 0;
-  top: 1090rpx;
+  top: 650rpx;
   width: 100%;
   height: 48rpx;
   overflow: hidden;
@@ -513,11 +599,11 @@ onPullDownRefresh(() => {
 /* 跑步女孩：前景主视觉（不透明），20260919 右移至页面中轴线附近，最小化与左侧标题重叠 */
 .stage__runner {
   position: absolute;
-  right: 160rpx;
-  top: 520rpx;
-  width: 460rpx;
-  height: 690rpx;
-  z-index: 2;
+  right: 74rpx;
+  top: 0;
+  width: 500rpx;
+  height: 770rpx;
+  z-index: 3;
   pointer-events: none;
 }
 
@@ -525,7 +611,7 @@ onPullDownRefresh(() => {
 .stage__run {
   position: absolute;
   left: 88rpx;
-  top: 1010rpx;
+  top: 610rpx;
   font-family: $rw-font-display;
   font-size: 44rpx;
   color: $rw-white;
@@ -538,23 +624,71 @@ onPullDownRefresh(() => {
 /* ==================== 打卡卡（舞台内 z3，20260919 整体缩一档） ==================== */
 .ck-section {
   position: relative;
-  z-index: 3;
+  z-index: 4;
+}
+
+.ck__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .ck__date {
-  display: block;
   font-size: 22rpx;
   color: $rw-gray;
 }
 
+.ck__status {
+  padding: 6rpx 14rpx;
+  font-family: $rw-font-cn-data;
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  color: $rw-white;
+  border: 2rpx solid rgba(255, 255, 255, 0.45);
+}
+
 .ck__title {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 14rpx;
   font-family: $rw-font-cn-title;
   font-weight: 400;
   font-size: 36rpx;
   letter-spacing: 2rpx;
   color: $rw-white;
+}
+
+.ck__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18rpx;
+  margin-top: 20rpx;
+  padding: 18rpx 0 20rpx;
+  border-bottom: 2rpx solid $rw-line;
+}
+
+.ck__metric {
+  min-width: 0;
+}
+
+.ck__metric-value,
+.ck__metric-unit {
+  display: block;
+}
+
+.ck__metric-value {
+  font-family: $rw-font-display;
+  font-size: 44rpx;
+  line-height: 1;
+  color: $rw-white;
+  font-feature-settings: "tnum";
+}
+
+.ck__metric-unit {
+  margin-top: 8rpx;
+  font-family: $rw-font-body;
+  font-size: 20rpx;
+  line-height: 1.25;
+  color: $rw-gray;
 }
 
 .ck__data {
@@ -568,12 +702,13 @@ onPullDownRefresh(() => {
   font-feature-settings: "tnum";
 
   &--empty {
+    margin: 22rpx 0 4rpx;
     color: $rw-gray;
   }
 }
 
 .ck__progress {
-  margin-top: 20rpx;
+  margin-top: 22rpx;
 }
 
 .ck__progress-meta {
@@ -592,8 +727,8 @@ onPullDownRefresh(() => {
 
 .ck__progress-num {
   font-family: $rw-font-display;
-  font-size: 28rpx;
-  color: $rw-red;
+  font-size: 26rpx;
+  color: $rw-white;
   font-feature-settings: "tnum";
 }
 
@@ -611,24 +746,10 @@ onPullDownRefresh(() => {
   transition: width 0.4s ease-out;
 }
 
-.ck__meta {
-  display: block;
-  margin-top: 14rpx;
-  font-size: 22rpx;
-  color: $rw-gray;
-}
-
-.ck__meta-num {
-  font-family: $rw-font-display;
-  font-size: 26rpx;
-  color: $rw-white;
-  font-feature-settings: "tnum";
-}
-
 /* 查看详情/去打卡按钮（缩小版，缩幅大于卡片）：居中收窄，四周挂装饰 */
 .ck__btn-wrap {
   position: relative;
-  margin: 20rpx 48rpx 26rpx;
+  margin: 24rpx 28rpx 20rpx;
 }
 
 /* 深红实心影：与按钮同形偏移 8rpx（clip-path 裁 box-shadow，故独立层） */
@@ -700,24 +821,13 @@ onPullDownRefresh(() => {
 
 .ck__btn-text {
   font-family: $rw-font-cn-data;
-  font-size: 38rpx;
+  font-size: 34rpx;
   font-weight: 400;
   letter-spacing: 8rpx;
   text-indent: 8rpx;
   line-height: 1;
   color: $rw-white;
   white-space: nowrap;
-}
-
-.ck__bib {
-  position: absolute;
-  top: -26rpx;
-  right: -8rpx;
-  z-index: 3;
-
-  :deep(.rw-bib) {
-    position: relative;
-  }
 }
 
 /* ==================== 快捷入口：无框拼贴大字（Web menu-item 语言） ==================== */
@@ -728,6 +838,9 @@ onPullDownRefresh(() => {
   align-items: flex-start;
   padding: 8rpx 16rpx 16rpx; /* 扩热区，保证 ≥88rpx 高 */
   min-height: 120rpx;
+  z-index: 2;
+  opacity: 0.92;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 /* 红色 Anton 编号（Web .m-no） */
@@ -737,6 +850,7 @@ onPullDownRefresh(() => {
   letter-spacing: 2rpx;
   color: $rw-red;
   margin-bottom: 4rpx;
+  text-shadow: 0 0 10rpx rgba(230, 0, 18, 0.38);
 }
 
 /* 拼贴大字组：上下轻浮动（Web F2，周期错开） */
@@ -754,19 +868,22 @@ onPullDownRefresh(() => {
 
 .menu__lt--invert {
   padding: 0 4rpx;
-  color: $rw-white;
-  background: $rw-black;
-  border: 3rpx solid $rw-white;
+  color: #ffffff;
+  background: #111114;
+  border: 3rpx solid #ffffff;
+  box-shadow: 0 0 8rpx rgba(255, 255, 255, 0.16);
 }
 
 .menu__lt--wr {
-  color: $rw-white;
+  color: #ffffff;
   text-shadow: 5rpx 5rpx 0 $rw-red;
 }
 
 .menu__lt--rb {
-  color: $rw-red;
-  text-shadow: 5rpx 5rpx 0 rgba(0, 0, 0, 0.85);
+  color: #ff1730;
+  text-shadow:
+    5rpx 5rpx 0 rgba(0, 0, 0, 0.9),
+    0 0 9rpx rgba(230, 0, 18, 0.28);
 }
 
 .menu__lt--gap {
@@ -780,7 +897,8 @@ onPullDownRefresh(() => {
   font-size: 26rpx;
   font-weight: 400;
   letter-spacing: 3rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 2rpx 2rpx 0 rgba(0, 0, 0, 0.9);
 }
 
 /* 红斜杠下划线：按压瞬间从左侧滑出（Web F6 同款） */
@@ -797,6 +915,10 @@ onPullDownRefresh(() => {
 /* 按压态：下划线滑出 + 字母抖动一次 */
 .menu--pressed .menu__underline {
   transform: rotate(-3deg) scaleX(1);
+}
+
+.menu--pressed {
+  opacity: 1;
 }
 
 .menu--pressed .menu__lt {
@@ -841,10 +963,9 @@ onPullDownRefresh(() => {
 /* ReCoRd 记一笔：左中（20260919 提到 z4 浮于女孩之上，保证可见与可点） */
 .menu--record {
   left: 8rpx;
-  top: 780rpx;
-  z-index: 4;
+  top: 260rpx;
   transform: rotate(-6deg);
-  font-size: 60rpx;
+  font-size: 52rpx;
 }
 
 .menu--record .menu__word {
@@ -855,10 +976,9 @@ onPullDownRefresh(() => {
 /* AsK 问问题：右上空白列（20260919 移出画面，女孩完整露出） */
 .menu--ask {
   right: 0;
-  top: 560rpx;
-  z-index: 4;
+  top: 82rpx;
   transform: rotate(4deg);
-  font-size: 84rpx; /* 短词加大字，视觉重量对齐 */
+  font-size: 66rpx; /* 短词略大，但退居人物之后 */
 }
 
 .menu--ask .menu__word {
@@ -869,10 +989,9 @@ onPullDownRefresh(() => {
 /* CaLeNdAr 看日历：右下空白列（20260919 移出画面） */
 .menu--calendar {
   right: 0;
-  top: 950rpx;
-  z-index: 4;
+  top: 475rpx;
   transform: rotate(-5deg);
-  font-size: 48rpx;
+  font-size: 42rpx;
 }
 
 .menu--calendar .menu__word {
@@ -883,15 +1002,15 @@ onPullDownRefresh(() => {
 /* ==================== ⑤ 新手常问卡（交错斜排） ==================== */
 .faq {
   position: relative;
-  margin-top: 24rpx;
+  margin-top: 12rpx;
 }
 
 .faq__row {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: 96rpx;
-  padding: 10rpx 8rpx 14rpx;
+  min-height: 78rpx;
+  padding: 8rpx 8rpx 10rpx;
 }
 
 /* 奇数行（01/03/05）：左对齐、微左倾；偶数行（02/04）：右移 60rpx、微右倾——交错呼吸 */
@@ -901,7 +1020,7 @@ onPullDownRefresh(() => {
 
 .faq__row--even {
   transform: rotate(1.5deg);
-  padding-left: 68rpx;
+  padding-left: 44rpx;
 }
 
 /* 按压态：灰斜线从左滑出 + 整行缓抖一次（幅度小于舞台字组，显松弛） */
@@ -974,51 +1093,97 @@ onPullDownRefresh(() => {
   flex: 1;
   font-family: $rw-font-cn-data; // 黄油体（20260919 用户指定，俏皮且与打卡数据行呼应）
   font-weight: 400;
-  font-size: 32rpx;
+  font-size: 29rpx;
   color: $rw-white;
-  line-height: 1.5;
+  line-height: 1.4;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-/* ==================== ⑥ 敬请期待三格 ==================== */
-.soon {
+.faq__more {
   display: flex;
-  gap: 20rpx;
-  margin-top: 40rpx;
-}
-
-.soon__cell {
-  position: relative;
-  flex: 1;
-  min-height: 140rpx;
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 28rpx 8rpx 20rpx;
-  opacity: 0.45;
+  gap: 14rpx;
+  min-height: 72rpx;
+  margin-top: 8rpx;
+  font-family: $rw-font-cn-data;
+  font-size: 26rpx;
+  letter-spacing: 2rpx;
+  color: $rw-white;
+  border-top: 2rpx solid $rw-line;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.faq__more-arrow {
+  font-family: $rw-font-display;
+  font-size: 34rpx;
+  color: $rw-red;
+}
+
+.faq__more--pressed {
+  color: $rw-red;
+  transform: translateX(4rpx);
+}
+
+/* ==================== ⑥ 合并后的轻量预告区 ==================== */
+.soon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-height: 96rpx;
+  margin-top: 28rpx;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.035);
+  border: 2rpx solid $rw-line;
+  clip-path: polygon(14rpx 0, 100% 0, 100% calc(100% - 14rpx), calc(100% - 14rpx) 100%, 0 100%, 0 14rpx);
   @include rw-tappable;
 }
 
-.soon__face {
-  position: absolute;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: $rw-panel;
-  border: 4rpx solid $rw-white;
-  clip-path: polygon(16rpx 0, 100% 0, 100% calc(100% - 16rpx), calc(100% - 16rpx) 100%, 0 100%, 0 16rpx);
+.soon__label {
+  flex: 1;
+  min-width: 0;
 }
 
-.soon__cell--hover {
+.soon--pressed {
   transform: scale(0.97);
 }
 
-.soon__hint {
-  position: relative;
-  z-index: 1;
-  font-size: 22rpx;
+.soon__eyebrow,
+.soon__title {
+  display: block;
+}
+
+.soon__eyebrow {
+  font-family: $rw-font-display;
+  font-size: 20rpx;
+  letter-spacing: 3rpx;
+  color: $rw-red;
+}
+
+.soon__title {
+  margin-top: 4rpx;
+  font-family: $rw-font-cn-data;
+  font-size: 26rpx;
+  color: $rw-white;
+}
+
+.soon__features {
+  max-width: 220rpx;
+  font-size: 20rpx;
+  line-height: 1.5;
+  text-align: right;
   color: $rw-gray;
+}
+
+.soon__arrow {
+  font-family: $rw-font-display;
+  font-size: 34rpx;
+  color: $rw-red;
 }
 
 /* ==================== ⑦ 跑马灯 ==================== */

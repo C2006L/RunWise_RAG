@@ -15,7 +15,7 @@ public class InjuryArticle {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    /** 分类：急性损伤 / 慢性劳损 / 预防训练 */
+    /** 分类 key：knee / ankle / shin */
     private String category;
 
     private String title;
@@ -23,17 +23,11 @@ public class InjuryArticle {
     /** 摘要（列表页展示） */
     private String summary;
 
-    /** 常见表现 */
-    private String symptoms;
+    /** 标签，数据库中以英文逗号分隔 */
+    private String tags;
 
-    /** 成因分析 */
-    private String causes;
-
-    /** 预防要点 */
-    private String prevention;
-
-    /** 处理建议 */
-    private String treatment;
+    /** 正文分节，数据库中保存 JSON 数组字符串 */
+    private String sections;
 
     /** 预计阅读时长（分钟） */
     private Integer readMinutes;

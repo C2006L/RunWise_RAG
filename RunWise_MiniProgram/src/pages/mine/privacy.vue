@@ -15,7 +15,7 @@
           <text class="section-title">一、我们收集的信息</text>
           <text class="section-subtitle">1.1 您主动提供的信息</text>
           <text class="section-content"
-            >在您使用RunWise服务时，您可能主动提供以下信息：注册/登录时提供的昵称、头像；完善个人资料时填写的性别、出生日期、身高、体重、跑步目标等；创建打卡记录时填写的跑步距离、时长、配速、心情、备注及上传的跑步截图；使用AI问答功能时输入的跑步相关问题及反馈信息。</text
+            >在您使用RunWise服务时，您可能主动提供以下信息：注册/登录时提供的昵称、头像；完善个人资料时填写的性别、出生日期、身高、体重、跑步目标等；创建打卡记录时填写的跑步距离、时长、配速、体感、备注及上传的跑步截图；使用AI问答功能时输入的跑步相关问题及反馈信息。</text
           >
           <text class="section-subtitle">1.2 我们自动收集的信息</text>
           <text class="section-content"

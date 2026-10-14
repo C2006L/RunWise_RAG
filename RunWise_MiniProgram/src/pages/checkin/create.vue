@@ -43,9 +43,9 @@
         />
       </view>
 
-      <!-- 心情 -->
+      <!-- 体感 -->
       <view class="form-item">
-        <text class="form-label">心情</text>
+        <text class="form-label">体感</text>
         <view class="mood-row">
           <view
             v-for="mood in moods"
@@ -238,7 +238,7 @@ function onSubmit() {
   transform: rotate(-45deg);
 }
 
-/* ========== 心情标签 ========== */
+/* ========== 体感标签 ========== */
 .mood-row {
   display: flex;
   gap: 16rpx;

@@ -1,590 +1,366 @@
 <script setup>
-// 个人中心（工程计划 4.9 / M9 骨架态）：资料卡 + 成就徽章 + 本周摘要 + 设置退出
-// - 资料与 joinedDays 来自 stores/user（fetchProfile）
-// - 本周摘要来自 api/stats.getWeeklyStats（与统计页同源）
-// - 徽章：本期静态占位（达成状态推导属后续里程碑），红色实心菱形章 / 灰描边虚章
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import P5Card from '../components/common/P5Card.vue'
-import NumberBib from '../components/common/NumberBib.vue'
-import Stars from '../components/common/Stars.vue'
 import RansomNote from '../components/common/RansomNote.vue'
 import { useAuth } from '../composables/useAuth'
-import * as statsApi from '../api/stats'
+import * as checkinApi from '../api/checkin'
+import runnerArt from '../assets/images/hero-runner.png'
 
 const router = useRouter()
 const { store, logout } = useAuth()
-
-const weekly = ref(null)
+const records = ref([])
+const loading = ref(true)
+const loadError = ref('')
 const loggingOut = ref(false)
 
-onMounted(() => {
-  if (store.isLoggedIn) {
-    store.fetchProfile().catch(() => {})
-  }
-  statsApi
-    .getWeeklyStats()
-    .then((w) => {
-      weekly.value = w
-    })
-    .catch(() => {})
-})
-
-// 成就徽章（M9 静态占位：达成态取固定布尔，后续里程碑从打卡记录推导）
-const badges = [
-  { key: 'first', name: '首次打卡', earned: true, note: '完成第一次跑步打卡' },
-  { key: 'streak7', name: '连续 7 天', earned: true, note: '连续一周不间断' },
-  { key: 'km100', name: '累计 100km', earned: true, note: '总里程破百' },
-  { key: 'weekend', name: '周末跑者', earned: true, note: '完成 10 次周末打卡' },
-  { key: 'night', name: '夜跑侠', earned: false, note: '完成 20 次夜跑（18 点后）' },
-  { key: 'full-month', name: '全勤月', earned: false, note: '单月每日打卡' },
-]
-
-const earnedCount = computed(() => badges.filter((b) => b.earned).length)
-
-// P0-3：迷你红柱 mock 数据（周一~周日里程 km，本期静态，后续里程碑接真实数据）
-const WEEK_KM = [3.2, 0, 5.1, 6, 4.3, 8.5, 12]
-const MC_MAX_H = 48 // 柱最大高度 px
-
-function barHeight(km) {
-  const max = Math.max(...WEEK_KM)
-  return Math.max(2, Math.round((km / max) * MC_MAX_H)) // 0 里程日显示 2px 底柱
+const pad = (value) => String(value).padStart(2, '0')
+const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+const parseDate = (value) => new Date(`${value}T12:00:00`)
+const addDays = (date, amount) => {
+  const result = new Date(date)
+  result.setDate(result.getDate() + amount)
+  return result
 }
 
-function gotoStats() {
-  router.push('/stats')
+onMounted(async () => {
+  const [recordResult] = await Promise.allSettled([
+    checkinApi.getAllCheckins(),
+    store.isLoggedIn ? store.fetchProfile() : Promise.resolve(),
+  ])
+
+  if (recordResult.status === 'fulfilled') {
+    records.value = Array.isArray(recordResult.value) ? recordResult.value : []
+  } else {
+    loadError.value = '训练档案暂时无法读取，请稍后刷新。'
+  }
+  loading.value = false
+})
+
+const summary = computed(() => {
+  const byDate = new Map()
+  records.value.forEach((record) => {
+    if (!record?.date) return
+    const current = byDate.get(record.date) || { distance: 0, count: 0 }
+    current.distance += Number(record.distanceKm) || 0
+    current.count += 1
+    byDate.set(record.date, current)
+  })
+
+  const dates = [...byDate.keys()].sort()
+  let longestStreak = 0
+  let runningStreak = 0
+  let previous = null
+  dates.forEach((value) => {
+    const current = parseDate(value)
+    runningStreak = previous && dateKey(addDays(previous, 1)) === value ? runningStreak + 1 : 1
+    longestStreak = Math.max(longestStreak, runningStreak)
+    previous = current
+  })
+
+  const today = new Date()
+  let cursor = byDate.has(dateKey(today)) ? today : addDays(today, -1)
+  let currentStreak = 0
+  while (byDate.has(dateKey(cursor))) {
+    currentStreak += 1
+    cursor = addDays(cursor, -1)
+  }
+
+  const monthGroups = new Map()
+  dates.forEach((value) => {
+    const date = parseDate(value)
+    const month = value.slice(0, 7)
+    if (!monthGroups.has(month)) monthGroups.set(month, new Set())
+    monthGroups.get(month).add(date.getDate())
+  })
+  const fullMonthEarned = [...monthGroups.entries()].some(([month, days]) => {
+    const [year, index] = month.split('-').map(Number)
+    return days.size === new Date(year, index, 0).getDate()
+  })
+
+  const currentMonth = dateKey(today).slice(0, 7)
+  const currentMonthCount = monthGroups.get(currentMonth)?.size || 0
+  const currentMonthDays = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const weekStart = addDays(today, -6)
+  const week = Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(weekStart, index)
+    const key = dateKey(date)
+    return {
+      key,
+      label: ['日', '一', '二', '三', '四', '五', '六'][date.getDay()],
+      distance: byDate.get(key)?.distance || 0,
+      checked: byDate.has(key),
+    }
+  })
+
+  return {
+    totalCount: records.value.length,
+    totalDistance: records.value.reduce((sum, item) => sum + (Number(item.distanceKm) || 0), 0),
+    longestStreak,
+    currentStreak,
+    weekendCount: dates.filter((value) => [0, 6].includes(parseDate(value).getDay())).length,
+    fullMonthEarned,
+    currentMonthCount,
+    currentMonthDays,
+    week,
+    weekDistance: week.reduce((sum, item) => sum + item.distance, 0),
+    weekCount: week.filter((item) => item.checked).length,
+  }
+})
+
+// 与小程序端保持一致：每完成 5 次打卡提升 1 级。
+const runnerLevel = computed(() => Math.max(1, Math.floor(summary.value.totalCount / 5) + 1))
+const nickname = computed(() => store.userInfo?.nickname || store.userInfo?.username || '跑者')
+const fileNumber = computed(() => {
+  const id = store.userInfo?.id
+  return id == null ? '---' : String(id).padStart(3, '0').slice(-3)
+})
+
+const achievements = computed(() => [
+  { key: 'first', title: '首次打卡', target: 1, value: summary.value.totalCount, earned: summary.value.totalCount >= 1, note: '完成第一条训练记录' },
+  { key: 'streak', title: '连续 7 天', target: 7, value: summary.value.longestStreak, earned: summary.value.longestStreak >= 7, note: `最长连续 ${summary.value.longestStreak} 天` },
+  { key: 'distance', title: '累计百公里', target: 100, value: summary.value.totalDistance, earned: summary.value.totalDistance >= 100, note: `累计 ${formatDistance(summary.value.totalDistance)} km` },
+  { key: 'weekend', title: '周末跑者', target: 10, value: summary.value.weekendCount, earned: summary.value.weekendCount >= 10, note: `已完成 ${summary.value.weekendCount} 次周末训练` },
+  { key: 'night', title: '夜跑侠', measurable: false, earned: false, note: '训练记录尚未保存起跑时间' },
+  { key: 'full-month', title: '全勤月', target: summary.value.currentMonthDays, value: summary.value.currentMonthCount, earned: summary.value.fullMonthEarned, note: summary.value.fullMonthEarned ? '已完成一次自然月全勤' : `本月 ${summary.value.currentMonthCount}/${summary.value.currentMonthDays} 天` },
+])
+
+const earnedCount = computed(() => achievements.value.filter((item) => item.earned).length)
+const achievementRatio = (item) => item.measurable === false ? 0 : Math.min(1, item.value / item.target)
+const nextAchievement = computed(() => achievements.value
+  .filter((item) => !item.earned && item.measurable !== false)
+  .sort((a, b) => achievementRatio(b) - achievementRatio(a))[0] || null)
+const nextProgress = computed(() => Math.round(achievementRatio(nextAchievement.value || {}) * 100))
+const nextRemaining = computed(() => {
+  const item = nextAchievement.value
+  if (!item) return '全部可统计荣誉已解锁'
+  const remaining = Math.max(0, item.target - item.value)
+  if (item.key === 'distance') return `还差 ${formatDistance(remaining)} km`
+  if (item.key === 'full-month') return `还差 ${Math.ceil(remaining)} 天`
+  return `还差 ${Math.ceil(remaining)} 次`
+})
+
+function formatDistance(value) {
+  return Number(value || 0).toFixed(1).replace(/\.0$/, '')
+}
+
+function barHeight(value) {
+  const max = Math.max(1, ...summary.value.week.map((item) => item.distance))
+  return `${Math.max(value > 0 ? 12 : 3, Math.round((value / max) * 78))}px`
 }
 
 async function handleLogout() {
   loggingOut.value = true
-  await logout()
+  try {
+    await logout()
+  } finally {
+    loggingOut.value = false
+  }
 }
 </script>
 
 <template>
-  <div class="profile-page">
-    <header class="page-head p5-page-header">
-      <p class="page-kicker">RUNWISE WEB</p>
-      <h1 class="page-title p5-page-title" aria-label="个人中心">
-        <RansomNote text="个人中心" :seed="55" />
-      </h1>
-      <p class="page-desc">你的跑步档案 —— 坚持的每一天都在这里留下印记。</p>
+  <main class="profile-page">
+    <header class="profile-header">
+      <div>
+        <p class="eyebrow">MY RUNWISE · FILE {{ fileNumber }}</p>
+        <h1><RansomNote text="跑者档案" :seed="55" /></h1>
+      </div>
+      <p class="header-code">RUNNER DOSSIER</p>
     </header>
 
-    <div class="p5-divider" aria-hidden="true"></div>
+    <p v-if="loadError" class="load-error">{{ loadError }}</p>
 
-    <!-- 资料卡（D5：统计斜切卡对齐 .panel-frame 工艺，深红影 + 红角标） -->
-    <P5Card tag="RUNNER" tag-rotate="-4deg" tag-top="-16px" tag-left="32px" frame="red">
-      <div class="profile-card">
-        <div class="avatar" aria-hidden="true">
-          <span v-if="store.userInfo && store.userInfo.avatar">
-            <img :src="store.userInfo.avatar" alt="头像" />
-          </span>
-          <span v-else class="avatar-fallback p5-num">RW</span>
+    <section class="dossier-grid" aria-label="跑者身份档案">
+      <article class="identity-panel">
+        <img class="runner-art" :src="runnerArt" alt="" aria-hidden="true" />
+        <div class="identity-copy">
+          <div class="identity-topline">
+            <span>PHANTOM RUNNER</span>
+            <strong>LV. {{ pad(runnerLevel) }}</strong>
+          </div>
+          <p class="identity-index">NO. {{ fileNumber }}</p>
+          <h2>{{ nickname }}</h2>
+          <p class="motto">坚持奔跑，记录每一步</p>
+          <p class="streak-ribbon">CURRENT STREAK · {{ summary.currentStreak }} DAYS</p>
         </div>
-        <div class="profile-info">
-          <p class="nickname">{{ store.userInfo?.nickname || '跑者' }}</p>
-          <!-- D4：@句柄读登录态（nickname 优先，替代登录账号残留如 @111），禁止硬编码 -->
-          <p class="username" v-if="store.userInfo?.nickname || store.userInfo?.username">
-            @{{ store.userInfo?.nickname || store.userInfo?.username }}
-          </p>
+
+        <div class="identity-stats" :class="{ 'is-loading': loading }">
+          <div><strong>{{ loading ? '--' : formatDistance(summary.totalDistance) }}</strong><span>累计里程 · km</span></div>
+          <div><strong>{{ loading ? '--' : summary.totalCount }}</strong><span>打卡次数 · 次</span></div>
+          <div><strong>{{ loading ? '--' : summary.longestStreak }}</strong><span>最长连续 · 天</span></div>
         </div>
-        <div class="profile-days">
-          <span class="days-value p5-num">{{
-            store.userInfo?.joinedDays ?? '--'
-          }}</span>
-          <span class="days-label">已坚持 / 天</span>
+      </article>
+
+      <aside class="status-panel">
+        <p class="panel-kicker">CURRENT STATUS</p>
+        <div class="level-block"><span>LEVEL</span><strong>{{ pad(runnerLevel) }}</strong></div>
+        <div class="status-divider"></div>
+        <div class="status-line"><span>当前连续</span><strong>{{ summary.currentStreak }} DAYS</strong></div>
+        <div v-if="nextAchievement" class="next-target">
+          <p>NEXT TARGET</p>
+          <h3>{{ nextAchievement.title }}</h3>
+          <div class="progress-track"><span :style="{ width: `${nextProgress}%` }"></span></div>
+          <div class="progress-meta"><span>{{ nextProgress }}%</span><span>{{ nextRemaining }}</span></div>
         </div>
+        <p v-else class="next-complete">ALL MEASURABLE MISSIONS COMPLETE!</p>
+        <button type="button" class="text-link" @click="router.push('/stats')">查看完整统计 →</button>
+      </aside>
+    </section>
+
+    <section class="achievements-section">
+      <header class="section-heading">
+        <div><p class="section-kicker">HONOR FILE</p><h2>ACHIEVEMENTS / 荣誉档案</h2></div>
+        <strong>{{ earnedCount }} / {{ achievements.length }} UNLOCKED</strong>
+      </header>
+      <div class="achievement-grid">
+        <article
+          v-for="(item, index) in achievements"
+          :key="item.key"
+          class="achievement"
+          :class="{ earned: item.earned, next: nextAchievement?.key === item.key, unavailable: item.measurable === false }"
+        >
+          <span class="achievement-index">{{ pad(index + 1) }}</span>
+          <span class="achievement-diamond" aria-hidden="true"></span>
+          <div><h3>{{ item.title }}</h3><p>{{ item.note }}</p></div>
+          <span class="achievement-state">{{ item.earned ? 'UNLOCKED' : item.measurable === false ? 'NO DATA' : nextAchievement?.key === item.key ? 'NEXT' : 'LOCKED' }}</span>
+        </article>
       </div>
-    </P5Card>
+    </section>
 
-    <!-- 成就徽章区（P1-2：贴纸红底白字，与 RUNNER 统一） -->
-    <!-- P1-3：徽章卡右上空档星（高度 0 锚点，星向上出血进卡片间隙） -->
-    <div class="badge-star-anchor" aria-hidden="true">
-      <Stars
-        :count="1"
-        :positions="[
-          {
-            top: '-18px',
-            right: '4px',
-            size: 9,
-            color: 'rgba(255, 255, 255, 0.5)',
-            bright: true,
-            dur: 5,
-          },
-        ]"
-      />
-    </div>
-    <!-- zone 承载号码布贴纸（避开右上 BADGES 胶带与出血星） -->
-    <div class="badge-card-zone">
-      <!-- S1 号码布：已得徽章数/总徽章数 -->
-      <NumberBib
-        unit="BADGES"
-        :value="`${earnedCount}/${badges.length}`"
-        rotate="-2deg"
-        style="top: -22px; right: 140px"
-      />
-      <P5Card tag="BADGES" tag-rotate="3deg" tag-top="-14px" tag-right="36px" frame="red">
-      <div class="section-body">
-        <div class="section-head">
-          <h3 class="section-title">成就徽章</h3>
-          <span class="section-meta p5-num"
-            >{{ earnedCount }} / {{ badges.length }}</span
-          >
-        </div>
-        <div class="badge-grid">
-          <div
-            v-for="(b, i) in badges"
-            :key="b.key"
-            class="badge"
-            :class="{ 'badge--earned': b.earned }"
-            :title="b.note"
-          >
-            <!-- P1-1：左上角编号 01~06（10px 灰色等宽字） -->
-            <span class="badge-idx">{{ String(i + 1).padStart(2, '0') }}</span>
-            <span class="badge-diamond" aria-hidden="true"></span>
-            <span class="badge-name">{{ b.name }}</span>
-            <span class="badge-note">{{ b.earned ? b.note : '未达成' }}</span>
+    <section class="lower-grid">
+      <article class="week-panel">
+        <header class="section-heading compact">
+          <div><p class="section-kicker">LAST 7 DAYS</p><h2>THIS WEEK / 本周战绩</h2></div>
+          <button type="button" class="text-link" @click="router.push('/stats')">查看统计 →</button>
+        </header>
+        <div class="week-content">
+          <div class="week-summary"><strong>{{ formatDistance(summary.weekDistance) }}</strong><span>km · 近 7 日</span><b>{{ summary.weekCount }} 次训练</b></div>
+          <div class="week-chart" aria-label="近七日里程图">
+            <div v-for="day in summary.week" :key="day.key" class="week-day" :title="`${day.key} · ${formatDistance(day.distance)} km`">
+              <span class="week-value">{{ day.distance ? formatDistance(day.distance) : '' }}</span>
+              <i :style="{ height: barHeight(day.distance) }"></i>
+              <span>{{ day.label }}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </P5Card>
-    </div>
+      </article>
 
-    <!-- 本周数据摘要（D5：同款红框工艺） -->
-    <P5Card tag="THIS WEEK" tag-rotate="-3deg" tag-top="-18px" tag-left="48px" frame="red">
-      <div class="section-body">
-        <div class="section-head">
-          <h3 class="section-title">本周数据</h3>
-          <button class="stats-link" type="button" @click="gotoStats">
-            查看统计 →
-            <span class="m-underline" aria-hidden="true"></span>
-          </button>
-        </div>
-        <button class="summary-bar" type="button" @click="gotoStats">
-          <span class="summary-nums">
-            <span class="summary-item">
-              <span class="summary-value p5-num">{{
-                weekly ? weekly.totalKm : '--'
-              }}</span>
-              <span class="summary-label">km · 本周里程</span>
-            </span>
-            <span class="summary-item">
-              <span class="summary-value p5-num">{{
-                weekly ? weekly.checkinCount : '--'
-              }}</span>
-              <span class="summary-label">次 · 打卡</span>
-            </span>
-            <span class="summary-item">
-              <span class="summary-value p5-num">{{
-                weekly ? weekly.streakDays : '--'
-              }}</span>
-              <span class="summary-label">天 · 连续</span>
-            </span>
-          </span>
-          <!-- P0-3：右半空档迷你红柱（周一~周日里程 mock，最高柱亮红） -->
-          <span class="mini-chart" aria-hidden="true">
-            <span
-              v-for="(d, i) in WEEK_KM"
-              :key="i"
-              class="mc-col"
-            >
-              <span
-                class="mc-bar"
-                :class="{ 'mc-bar--peak': d === Math.max(...WEEK_KM) }"
-                :style="{ height: barHeight(d) + 'px' }"
-              ></span>
-              <span class="mc-day">{{ '一二三四五六日'[i] }}</span>
-            </span>
-          </span>
-        </button>
-      </div>
-    </P5Card>
-
-    <!-- 设置区（P1-2：贴纸红底白字，与 RUNNER 统一） -->
-    <P5Card tag="SETTINGS" tag-rotate="4deg" tag-bottom="-13px" tag-right="40px" frame="red">
-      <div class="section-body">
-        <div class="section-head">
-          <h3 class="section-title">设置</h3>
-        </div>
-        <div class="settings-list">
-          <!-- D2：移除「消息通知」「深色模式」占位行，仅保留退出登录 -->
-          <button class="setting-item setting-item--logout" type="button" :disabled="loggingOut" @click="handleLogout">
-            <span>{{ loggingOut ? '正在退出…' : '退出登录' }}</span>
-            <span class="setting-meta">→</span>
-          </button>
-        </div>
-      </div>
-    </P5Card>
-
-    <!-- P1-3：页面底部留白星（1 白 1 红；另 1 白在徽章卡右上，共 3 颗 = 白2红1） -->
-    <div class="stars-zone" aria-hidden="true">
-      <Stars
-        :count="2"
-        :positions="[
-          { left: '14%', bottom: '22px', size: 11, color: 'rgba(255, 255, 255, 0.55)', bright: true, dur: 4.6 },
-          { left: '76%', bottom: '48px', size: 8, color: 'var(--p5-red)', bright: true, dur: 5.8 },
-        ]"
-      />
-    </div>
-  </div>
+      <aside class="account-panel">
+        <p class="section-kicker">ACCOUNT</p>
+        <h2>设置与账户</h2>
+        <p>{{ store.userInfo?.username || nickname }}</p>
+        <button type="button" :disabled="loggingOut" @click="handleLogout">{{ loggingOut ? '正在退出…' : '退出登录' }}<span>→</span></button>
+      </aside>
+    </section>
+  </main>
 </template>
 
 <style scoped>
-.profile-page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-5);
-  max-width: 880px;
-  margin: 0 auto;
-}
+.profile-page { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0 110px; color: var(--p5-white); }
+.profile-header, .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.profile-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--p5-line); }
+.eyebrow, .section-kicker, .panel-kicker { margin: 0 0 7px; color: var(--p5-red); font-size: 12px; font-weight: 900; letter-spacing: .16em; }
+.profile-header h1 { margin: 0; font-size: clamp(42px, 5vw, 68px); line-height: .95; }
+.header-code { color: var(--p5-text-dim); font-size: 15px; letter-spacing: .12em; }
+.load-error { margin: 0 0 14px; padding: 10px 14px; color: #fff; background: rgba(230, 0, 18, .2); border-left: 4px solid var(--p5-red); }
 
-.page-kicker {
-  font-size: var(--fs-caption);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--p5-red);
-  margin-bottom: var(--sp-2);
-}
+.dossier-grid { display: grid; grid-template-columns: minmax(0, 1.82fr) minmax(290px, .85fr); gap: 18px; }
+.identity-panel, .status-panel, .achievements-section, .week-panel, .account-panel { position: relative; background: #101012; border: 1px solid rgba(255,255,255,.18); overflow: hidden; }
+.identity-panel { min-height: 500px; isolation: isolate; }
+.identity-panel::before { content: ''; position: absolute; inset: 0; z-index: -2; background: linear-gradient(135deg, rgba(230,0,18,.15), transparent 43%), radial-gradient(circle at 25% 20%, rgba(255,255,255,.04) 0 1px, transparent 1.5px); background-size: auto, 18px 18px; }
+.identity-panel::after { content: ''; position: absolute; inset: auto 0 0; z-index: 1; height: 42%; background: linear-gradient(to bottom, transparent, #101012 62%); pointer-events: none; }
+.runner-art { position: absolute; z-index: 0; right: -42px; top: 15px; width: 52%; height: 485px; object-fit: contain; object-position: center right; opacity: .64; filter: saturate(.92) contrast(1.08); -webkit-mask-image: linear-gradient(to bottom, #000 0 68%, transparent 96%); mask-image: linear-gradient(to bottom, #000 0 68%, transparent 96%); }
+.identity-copy { position: relative; z-index: 2; width: 64%; padding: 34px 34px 168px; }
+.identity-topline { display: flex; justify-content: space-between; gap: 18px; color: #fff; font-weight: 900; letter-spacing: .08em; }
+.identity-topline strong { color: var(--p5-red); white-space: nowrap; }
+.identity-index { margin-top: 12px; color: var(--p5-text-dim); font: 700 12px ui-monospace, monospace; }
+.identity-copy h2 { margin: 62px 0 7px; font-size: clamp(34px, 4vw, 56px); line-height: 1; text-shadow: 4px 4px 0 rgba(230,0,18,.72); }
+.motto { color: #c9c9cf; }
+.streak-ribbon { margin-top: 22px; padding: 9px 14px; width: min(410px, 100%); color: #fff; background: var(--p5-red); font-size: 14px; font-weight: 900; transform: skewX(-8deg); }
+.identity-stats { position: absolute; z-index: 3; left: 28px; right: 28px; bottom: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding-top: 19px; border-top: 1px solid rgba(255,255,255,.28); }
+.identity-stats div { display: flex; flex-direction: column; text-align: center; }
+.identity-stats strong { font-size: clamp(31px, 3vw, 46px); line-height: 1; }
+.identity-stats span { margin-top: 7px; color: #aaaab3; font-size: 12px; }
+.is-loading { opacity: .65; }
 
-.page-title {
-  font-size: 48px;
-  line-height: 1.2;
-  margin-bottom: var(--sp-3);
-}
+.status-panel { padding: 30px; background: linear-gradient(155deg, #17171a 0 62%, #2b1014 100%); }
+.level-block { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 20px; }
+.level-block span { color: #aaaab3; font-weight: 800; letter-spacing: .12em; }
+.level-block strong { color: var(--p5-red); font-size: clamp(82px, 8vw, 116px); line-height: .78; text-shadow: 4px 4px 0 rgba(255,255,255,.13); }
+.status-divider { height: 8px; margin: 28px -38px 24px; background: var(--p5-red); transform: rotate(-2deg); }
+.status-line { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,.16); color: #aaaab3; }
+.status-line strong { color: #fff; }
+.next-target { margin-top: 28px; }
+.next-target > p { color: var(--p5-red); font-size: 11px; font-weight: 900; letter-spacing: .15em; }
+.next-target h3 { margin: 7px 0 18px; font-size: 25px; }
+.progress-track { height: 8px; overflow: hidden; background: #36363d; transform: skewX(-12deg); }
+.progress-track span { display: block; height: 100%; background: var(--p5-red); }
+.progress-meta { display: flex; justify-content: space-between; margin-top: 9px; color: #aaaab3; font-size: 12px; }
+.next-complete { margin-top: 30px; color: #d4a44f; font-weight: 900; }
+.text-link { color: var(--p5-red); font-weight: 800; }
+.status-panel > .text-link { position: absolute; left: 30px; bottom: 26px; }
 
-.page-desc {
-  font-size: var(--fs-body);
-  color: var(--p5-text-dim);
-}
+.achievements-section { margin-top: 20px; padding: 26px; overflow: visible; }
+.section-heading h2, .account-panel h2 { margin: 0; font-size: clamp(22px, 2.3vw, 31px); }
+.section-heading > strong { color: var(--p5-red); font-size: 13px; white-space: nowrap; }
+.achievement-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; margin-top: 22px; }
+.achievement { position: relative; grid-column: span 4; min-height: 122px; display: flex; align-items: center; gap: 18px; padding: 24px 20px 17px; color: #8d8d98; background: #19191d; border: 1px solid #393941; }
+.achievement:nth-child(even) { transform: translateY(5px); }
+.achievement.earned { color: #fff; background: linear-gradient(135deg, #3b171b, #241316); border-color: #d4a44f; box-shadow: inset 0 0 22px rgba(212,164,79,.09); transform: rotate(-.7deg); }
+.achievement.earned:nth-child(even) { transform: translateY(5px) rotate(.7deg); }
+.achievement.next { grid-column: span 6; color: #fff; border-color: var(--p5-red); background: linear-gradient(125deg, rgba(230,0,18,.22), #19191d 62%); }
+.achievement.unavailable { opacity: .66; }
+.achievement-index { position: absolute; top: 8px; left: 10px; color: var(--p5-red); font: 800 10px ui-monospace, monospace; }
+.achievement-diamond { flex: 0 0 30px; width: 30px; height: 30px; border: 2px solid #656570; transform: rotate(45deg); }
+.achievement.earned .achievement-diamond { background: var(--p5-red); border-color: #efc86d; box-shadow: 0 0 15px rgba(212,164,79,.35); }
+.achievement h3 { margin: 0 0 7px; font-size: 17px; color: inherit; }
+.achievement p { margin: 0; font-size: 12px; line-height: 1.5; color: #aaaab3; }
+.achievement-state { position: absolute; top: 9px; right: 10px; font-size: 9px; letter-spacing: .1em; color: #777782; }
+.achievement.earned .achievement-state, .achievement.next .achievement-state { color: #efc86d; }
 
-/* ===== 资料卡 ===== */
-.profile-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--sp-5);
-  padding: var(--sp-6);
-}
+.lower-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(250px, .8fr); gap: 18px; margin-top: 20px; }
+.week-panel, .account-panel { padding: 25px; }
+.section-heading.compact { align-items: center; }
+.week-content { display: grid; grid-template-columns: 190px 1fr; align-items: end; gap: 24px; margin-top: 18px; }
+.week-summary { display: flex; flex-direction: column; }
+.week-summary strong { font-size: 58px; line-height: .92; text-shadow: 4px 4px 0 var(--p5-red); }
+.week-summary span, .week-summary b { margin-top: 8px; color: #aaaab3; font-size: 12px; }
+.week-chart { height: 118px; display: grid; grid-template-columns: repeat(7, 1fr); align-items: end; gap: 10px; border-bottom: 1px solid #47474f; }
+.week-day { height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; color: #8e8e98; font-size: 10px; }
+.week-day i { width: min(24px, 70%); background: var(--p5-red); clip-path: polygon(10% 0,100% 0,85% 100%,0 100%); }
+.week-value { min-height: 12px; color: #ddd; font-size: 9px; }
+.account-panel { display: flex; flex-direction: column; }
+.account-panel > p:not(.section-kicker) { margin-top: 15px; color: #8e8e98; }
+.account-panel button { display: flex; justify-content: space-between; margin-top: auto; padding: 15px 0 4px; color: var(--p5-red); border-top: 1px solid #393941; font-weight: 900; }
+.account-panel button:disabled { opacity: .5; }
 
-.avatar {
-  width: 84px;
-  height: 84px;
-  overflow: hidden;
-  background: var(--p5-black);
-  border: 1px solid var(--p5-line);
-  clip-path: polygon(
-    0 0,
-    calc(100% - 14px) 0,
-    100% 14px,
-    100% 100%,
-    14px 100%,
-    0 calc(100% - 14px)
-  );
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@media (max-width: 1040px) {
+  .profile-page { width: min(100% - 36px, 940px); }
+  .dossier-grid { grid-template-columns: minmax(0, 1.55fr) minmax(270px, .8fr); }
+  .runner-art { right: -65px; width: 57%; }
+  .identity-copy { width: 69%; padding-left: 26px; }
+  .achievement { grid-column: span 6; }
 }
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+@media (max-width: 860px) {
+  .dossier-grid, .lower-grid { grid-template-columns: 1fr; }
+  .status-panel { min-height: 390px; }
+  .achievement.next { grid-column: span 6; }
 }
-
-.avatar-fallback {
-  font-size: var(--fs-h2);
-  color: var(--p5-red);
-}
-
-.nickname {
-  font-size: var(--fs-h2);
-  font-weight: 900;
-  color: var(--p5-white);
-}
-
-.username {
-  margin-top: var(--sp-1);
-  font-size: var(--fs-sub);
-  color: var(--p5-text-dim);
-}
-
-.profile-days {
-  text-align: left;
-}
-
-/* P0-1：全页第一主角 —— 128 巨字（Anton ≥120px 白 + 红错位影） */
-.days-value {
-  display: block;
-  font-size: 128px;
-  line-height: 0.9;
-  color: var(--p5-white);
-  text-shadow: 5px 5px 0 var(--p5-red);
-}
-
-/* 「已坚持 / 天」12px 灰字紧贴数字左下角 */
-.days-label {
-  display: block;
-  margin-top: 4px;
-  font-size: var(--fs-caption);
-  letter-spacing: 0.1em;
-  color: var(--p5-text-dim);
-}
-
-/* ===== 通用分区 ===== */
-.section-body {
-  padding: var(--sp-5) var(--sp-6) var(--sp-6);
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sp-4);
-}
-
-.section-title {
-  font-size: var(--fs-caption);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--p5-text-dim);
-}
-
-.section-meta {
-  font-size: var(--fs-h3);
-  color: var(--p5-red);
-}
-
-.stats-link {
-  position: relative; /* 承载 D3 红斜杠下划线 */
-  font-size: var(--fs-caption);
-  letter-spacing: 0.1em;
-  color: var(--p5-red);
-}
-
-/* D3：hover 红斜杠下划线（首页菜单 .m-underline 同款参数）：
-   4px 红条 rotate(-3deg)，0.25s 从左划出，悬停期间保持 */
-.stats-link .m-underline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -5px;
-  height: 4px;
-  background: var(--p5-red);
-  transform: rotate(-3deg) scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.25s ease-out;
-}
-
-.stats-link:hover .m-underline {
-  transform: rotate(-3deg) scaleX(1);
-}
-
-/* ===== 徽章网格（2×3，非均分留给 M10 构图） ===== */
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-4);
-}
-
-@media (max-width: 720px) {
-  .badge-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.badge {
-  position: relative; /* 承载 P1-1 左上角编号 */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-5) var(--sp-3);
-  text-align: center;
-  border: 1px dashed var(--p5-line);
-}
-
-/* P1-1：相邻已获得格交替旋转，制造贴纸节奏 */
-.badge--earned:nth-child(odd) {
-  transform: rotate(-4deg);
-}
-
-.badge--earned:nth-child(even) {
-  transform: rotate(4deg);
-}
-
-/* P1-1：已获得底色压暗一档（0.16 → 0.08，更沉的黑红） */
-.badge--earned {
-  border: 1px solid var(--p5-line);
-  background: rgba(230, 0, 18, 0.08);
-}
-
-/* P1-1：编号 01~06，10px 灰色等宽字 */
-.badge-idx {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--p5-text-dim);
-}
-
-/* 菱形章：已达成红色实心，未达成灰描边 */
-.badge-diamond {
-  width: 28px;
-  height: 28px;
-  transform: rotate(45deg);
-  border: 2px solid var(--p5-text-dim);
-  opacity: 0.4;
-}
-
-.badge--earned .badge-diamond {
-  width: 40px; /* P1-1：已获得菱形放大至 40px */
-  height: 40px;
-  background: var(--p5-red);
-  border-color: var(--p5-red);
-  opacity: 1;
-}
-
-.badge-name {
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  color: var(--p5-white);
-}
-
-.badge-note {
-  font-size: var(--fs-caption);
-  line-height: 1.5;
-  color: var(--p5-text-dim);
-}
-
-/* ===== 本周摘要 ===== */
-/* D1 等距保留：数字区 flex 统一 gap；P0-3 右半空档放迷你红柱，整体垂直居中 */
-.summary-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-6);
-  padding: var(--sp-4) var(--sp-2);
-  text-align: left;
-  transition: background 0.2s;
-}
-
-.summary-bar:hover {
-  background: var(--p5-red-soft);
-}
-
-.summary-nums {
-  display: flex;
-  gap: var(--sp-6); /* 组间距严格相等（D1） */
-}
-
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
-/* P0-2：三数字 60px Anton 白 + 红错位影 */
-.summary-value {
-  font-size: 60px;
-  line-height: 1;
-  color: var(--p5-white);
-  text-shadow: 4px 4px 0 var(--p5-red);
-}
-
-.summary-label {
-  font-size: var(--fs-caption); /* 12px */
-  letter-spacing: 0.08em;
-  color: var(--p5-text-dim);
-}
-
-/* ===== P0-3：迷你红柱（周一~周日里程） ===== */
-.mini-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px; /* 柱间距 10px */
-  padding-right: var(--sp-2);
-}
-
-.mc-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 4px; /* 柱宽 4px（日字更宽，居中于柱位） */
-}
-
-.mc-bar {
-  width: 4px;
-  background: #8a1f24; /* 常规柱暗红 */
-}
-
-.mc-bar--peak {
-  background: #e8323e; /* 最高柱亮红 */
-}
-
-.mc-day {
-  font-size: 8px;
-  line-height: 1;
-  color: var(--p5-text-dim);
-  transform: scale(0.9); /* 8px 视觉校正 */
-  white-space: nowrap;
-}
-
-/* ===== 设置区 ===== */
-.settings-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sp-4) var(--sp-2);
-  font-size: var(--fs-sub);
-  color: var(--p5-white);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.2s;
-}
-
-.setting-item:last-child {
-  border-bottom: none;
-}
-
-.setting-meta {
-  font-size: var(--fs-caption);
-  color: var(--p5-text-dim);
-}
-
-.setting-item--logout {
-  width: 100%;
-  text-align: left;
-  color: var(--p5-red);
-  font-weight: 700;
-}
-
-.setting-item--logout:hover:not(:disabled) {
-  background: var(--p5-red-soft);
-}
-
-.setting-item--logout:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ===== P1-3：徽章卡右上星锚点（高度 0，星向上出血进卡片间隙，不碰文字） ===== */
-.badge-star-anchor {
-  position: relative;
-  height: 0;
-}
-
-/* ===== P1-3/D6：页面底部星光留白带 =====
-   独立 96px 空白区，星只落在带内（距上方设置卡文字 > 40px，宪法 C-3） */
-.stars-zone {
-  position: relative; /* <Stars> 的定位父级 */
-  height: 96px;
+@media (max-width: 640px) {
+  .profile-page { width: calc(100% - 24px); padding-top: 20px; }
+  .header-code { display: none; }
+  .identity-panel { min-height: 520px; }
+  .runner-art { right: -85px; top: 48px; width: 78%; opacity: .48; }
+  .identity-copy { width: 83%; padding: 24px 20px 180px; }
+  .identity-copy h2 { margin-top: 56px; }
+  .identity-stats { left: 14px; right: 14px; gap: 4px; }
+  .identity-stats strong { font-size: 28px; }
+  .identity-stats span { font-size: 10px; }
+  .achievements-section, .week-panel, .account-panel { padding: 18px; }
+  .section-heading { align-items: flex-start; }
+  .achievement, .achievement.next { grid-column: span 12; }
+  .achievement:nth-child(n) { transform: none; }
+  .week-content { grid-template-columns: 1fr; }
+  .week-summary strong { font-size: 48px; }
 }
 </style>

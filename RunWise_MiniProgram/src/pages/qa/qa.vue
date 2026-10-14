@@ -3,7 +3,7 @@
     <!-- 背景网点纹理（P5 语言，纯 CSS 零体积） -->
     <view class="qa-page__dots"></view>
 
-    <!-- 二级导航：问答 / 历史 / 伤病预防（红切角选中块 + 1px 地基线） -->
+    <!-- 三个视图始终共用同一套顶部导航 -->
     <view class="sub-nav">
       <view
         v-for="(tab, idx) in tabs"
@@ -25,77 +25,82 @@
     >
       <!-- 问答视图 -->
       <view v-show="currentTab === 0" class="qa-view">
-        <!-- 分类入口 V4（终版·锁死）：运动品牌控制面板件 -->
-        <view class="category-grid">
-          <view
-            class="category-card"
-            v-for="(item, idx) in categories"
-            :key="item.name"
-            :class="{ 'category-card--active': isCategoryHot(item.name) }"
-            @touchstart="onCategoryPressStart(item.name)"
-            @touchend="onCategoryPressEnd"
-            @touchcancel="onCategoryPressEnd"
-            @tap="onCategoryTap(item)"
-          >
-            <text class="category-card__num">0{{ idx + 1 }}</text>
-            <uni-icons
-              :type="item.icon"
-              size="28"
-              :color="isCategoryHot(item.name) ? '#E8442E' : '#FFFFFF'"
-            ></uni-icons>
-            <text class="category-name">{{ item.name }}</text>
-          </view>
-        </view>
-
-        <!-- 热门问题（横向滑动：红切角胶带块，交错斜排 + 按压抖动） -->
-        <view class="hot-section">
-          <view class="section-header">
-            <view class="section-icon-wrap">
-              <uni-icons type="fire" size="16" color="#ffffff"></uni-icons>
-            </view>
-            <text class="section-title">热门问题</text>
-          </view>
-
-          <scroll-view class="hot-scroll" scroll-x :show-scrollbar="false">
+        <!-- 尚未提问：恢复旧版 P5R 四入口与漫画热门问题 -->
+        <view v-if="!hasConversation" class="ask-landing">
+          <view class="category-grid">
             <view
-              v-for="(q, idx) in hotQuestions"
-              :key="idx"
-              class="hot-item"
-              :class="idx % 2 === 0 ? 'hot-item--odd' : 'hot-item--even'"
-              hover-class="hot-item--pressed"
-              :hover-stay-time="150"
-              @tap="onHotQuestionTap(q)"
+              class="category-card"
+              v-for="(item, idx) in categories"
+              :key="item.name"
+              :class="{ 'category-card--active': isCategoryHot(item.name) }"
+              @touchstart="onCategoryPressStart(item.name)"
+              @touchend="onCategoryPressEnd"
+              @touchcancel="onCategoryPressEnd"
+              @tap="onCategoryTap(item)"
             >
-              <text class="hot-item__num">0{{ idx + 1 }}</text>
-              <text class="hot-item__word">{{ q.word }}</text>
-              <text class="hot-item__q">{{ q.question }}</text>
-              <view class="hot-item__hint"></view>
+              <text class="category-card__num">0{{ idx + 1 }}</text>
+              <uni-icons
+                :type="item.icon"
+                size="25"
+                :color="isCategoryHot(item.name) ? '#E8442E' : '#FFFFFF'"
+              ></uni-icons>
+              <text class="category-name">{{ item.name }}</text>
             </view>
-          </scroll-view>
-        </view>
+          </view>
 
-        <!-- AI 欢迎卡（黑底白描边切角 + 红撕贴标签 + 红菱形要点） -->
-        <view class="welcome-zone" v-if="!messages.length">
-          <rw-card tag="RUNWISE 助手" tag-rotate="-5deg" tag-variant="red" frame="red">
-            <view class="welcome">
-              <text class="welcome__title"
-                >你好，我是 <text class="welcome__title-en">RunWise</text> 智能训练助手</text
-              >
-              <text class="welcome__desc"
-                >跑量、配速、伤痛、装备，任何跑步问题都可以直接问我。</text
-              >
-              <view class="welcome__list">
-                <view class="welcome__item" v-for="(tip, i) in welcomeTips" :key="i">
-                  <view class="welcome__bullet"></view>
-                  <text class="welcome__item-text">{{ tip }}</text>
+          <view class="hot-section">
+            <view class="section-header">
+              <view class="section-icon-wrap">
+                <uni-icons type="fire" size="16" color="#ffffff"></uni-icons>
+              </view>
+              <text class="section-title">热门问题 / HOT MISSIONS</text>
+              <text class="section-more">SWIPE →</text>
+            </view>
+
+            <scroll-view
+              class="hot-poster-scroll"
+              scroll-x
+              :show-scrollbar="false"
+              :scroll-with-animation="true"
+            >
+              <view class="hot-poster-track">
+                <view
+                  v-for="(q, idx) in hotQuestions.slice(0, 8)"
+                  :key="q.question"
+                  class="hot-poster"
+                  :class="`hot-poster--${(idx % 4) + 1}`"
+                  hover-class="hot-poster--pressed"
+                  :hover-stay-time="140"
+                  @tap="onHotQuestionTap(q)"
+                >
+                  <text class="hot-poster__num">0{{ idx + 1 }}</text>
+                  <text class="hot-poster__word">{{ q.word }}</text>
+                  <text class="hot-poster__question">{{ q.question }}</text>
+                  <view class="hot-poster__slash"></view>
                 </view>
               </view>
-            </view>
-          </rw-card>
+            </scroll-view>
+          </view>
+
+          <view class="assistant-note">
+            <text class="assistant-note__title">ASK RUNWISE!</text>
+            <text class="assistant-note__text">
+              训练、装备、伤痛都可以问。输入问题，开始你的任务简报。
+            </text>
+          </view>
         </view>
 
         <!-- 对话区域 -->
-        <view class="chat-area" v-if="messages.length">
+        <view class="chat-area" v-if="hasConversation">
+          <view class="chat-session-head">
+            <view>
+              <text class="chat-session-head__en">CURRENT MISSION</text>
+              <text class="chat-session-head__cn">RunWise 训练对话</text>
+            </view>
+            <text v-if="!loading" class="chat-session-head__new" @tap="startNewConversation">
+              + 新对话
+            </text>
+          </view>
           <view class="msg-wrap" v-for="(msg, idx) in messages" :key="idx">
             <!-- 用户气泡（红底白字切角） -->
             <view v-if="msg.role === 'user'" class="msg msg--user">
@@ -108,6 +113,7 @@
             <view v-else class="msg msg--assistant">
               <view class="ai-cloud-bubble">
                 <view class="ai-sparkle"></view>
+                <text v-if="msg.missionTitle" class="ai-mission-title">{{ msg.missionTitle }}</text>
                 <text class="ai-cloud-text">{{ msg.content }}</text>
               </view>
               <!-- 参考来源 -->
@@ -140,38 +146,49 @@
 
         <!-- 滚动锚点 + 输入栏占位 -->
         <view
-          id="anchor-bottom"
+          id="qa-anchor-bottom"
           class="anchor-bottom anchor-bottom--input"
         ></view>
       </view>
 
       <!-- 历史视图 -->
       <view v-show="currentTab === 1" class="history-view">
-        <view
-          class="history-group"
-          v-for="group in historyGroups"
-          :key="group.date"
-        >
-          <text class="history-date">{{ group.date }}</text>
-          <view class="card history-card">
-            <view
-              class="history-item"
-              hover-class="history-item--pressed"
-              :hover-stay-time="120"
-              v-for="(item, idx) in group.items"
-              :key="idx"
-              @tap="onHistoryTap(item)"
-            >
-              <text class="history-question">{{ item.question }}</text>
-              <text class="history-summary">{{ item.summary }}</text>
-              <view class="history-meta">
-                <text class="history-time">{{ item.time || item.date }}</text>
-                <text class="history-reask">点击重新提问 →</text>
+        <view v-if="historyGroups.length">
+          <view
+            class="history-group"
+            v-for="group in historyGroups"
+            :key="group.date"
+          >
+            <text class="history-date">{{ group.date }}</text>
+            <view class="card history-card">
+              <view
+                class="history-item"
+                hover-class="history-item--pressed"
+                :hover-stay-time="120"
+                v-for="item in group.items"
+                :key="item.key"
+                @tap="onHistoryTap(item)"
+              >
+                <text class="history-question">{{ item.question }}</text>
+                <text class="history-summary">{{ item.summary }}</text>
+                <view class="history-meta">
+                  <text class="history-time">更新于 {{ item.time || item.date }}</text>
+                  <text class="history-reask">打开会话 →</text>
+                </view>
               </view>
             </view>
           </view>
         </view>
-        <view id="anchor-bottom" class="anchor-bottom"></view>
+        <view v-else-if="historyLoading" class="history-sync">SYNCING CASE FILES...</view>
+        <view v-else-if="historyLoaded" class="history-empty">
+          <text class="history-empty__en">NO CASE FILES!</text>
+          <text class="history-empty__title">还没有真实问答记录</text>
+          <text class="history-empty__desc">完成一次提问后，会话会自动保存在这里。</text>
+          <view class="history-empty__button" hover-class="history-empty__button--pressed" @tap="startFromHistory">
+            开始第一次提问 →
+          </view>
+        </view>
+        <view id="history-anchor-bottom" class="anchor-bottom"></view>
       </view>
 
       <!-- 伤病预防视图：分类筛选 + 科普文章列表（数据来自 /api/injury/articles） -->
@@ -213,13 +230,24 @@
           </view>
         </view>
 
-        <!-- 空态（加载完成后才显示，避免闪烁） -->
-        <rw-empty v-else-if="injuryLoaded" text="这个分类下暂时没有文章" />
+        <!-- 空态只陈述真实数据，不伪造医学文章 -->
+        <view v-else-if="injuryLoaded" class="injury-empty">
+          <text class="injury-empty__en">NO INTEL FOUND!</text>
+          <text class="injury-empty__title">当前分类暂无资料。</text>
+          <text class="injury-empty__desc">你可以直接描述不适位置和运动情况，让 RunWise 帮你整理下一步。</text>
+          <view class="injury-empty__button" hover-class="injury-empty__button--pressed" @tap="askAboutInjury">
+            向 RunWise 提问 →
+          </view>
+        </view>
       </view>
     </scroll-view>
 
     <!-- 底部输入区（textarea 支持多行换行，发送统一走右侧按钮） -->
-    <view class="input-bar" v-if="currentTab === 0">
+    <view
+      class="input-bar"
+      :class="{ 'input-bar--landing': !hasConversation }"
+      v-if="currentTab === 0"
+    >
       <textarea
         class="input-field"
         :class="{ 'input-field--focus': shouldFocusInput }"
@@ -228,8 +256,10 @@
         auto-height
         :show-confirm-bar="false"
         :disable-default-padding="true"
+        :adjust-position="true"
+        :cursor-spacing="20"
         :maxlength="500"
-        placeholder="输入你的跑步问题...（可换行）"
+        :placeholder="hasConversation ? '继续追问...' : '输入你的跑步问题...'"
         placeholder-class="input-placeholder"
         @blur="shouldFocusInput = false"
       />
@@ -250,6 +280,15 @@ import { onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
 // API 基础地址统一取自 utils/request.ts，禁止在页面内重复硬编码
 import { BASE_URL } from "@/utils/request";
+import {
+  createQaSessionId,
+  findQaSession,
+  getCurrentQaSessionId,
+  loadQaSessions,
+  saveQaSession,
+  setCurrentQaSessionId,
+  type QaSession,
+} from "@/utils/qa-history";
 
 
 // 接口定义
@@ -257,26 +296,28 @@ interface ChatMessage {
   id?: number;
   role: "user" | "assistant";
   content: string;
+  missionTitle?: string;
   sources?: string[];
   safetyTip?: string;
 }
 
 interface HistoryItem {
+  key: string;
   id?: number;
+  sessionId?: string;
   date: string;
   time?: string;
+  updatedAt: string;
   question: string;
   summary: string;
+  answer?: string;
+  sources?: string[];
+  messages?: ChatMessage[];
+  source: "local" | "server";
 }
 
 // 二级导航（伤病预防视图 P2 接入后端文章数据）
 const tabs = ["问答", "历史", "伤病预防"];
-
-// AI 欢迎卡要点
-const welcomeTips = [
-  "结合你的打卡记录给出跑量与配速建议",
-  "伤病问题会附上警示提示，必要时请就医",
-];
 
 // 状态管理
 const currentTab = ref(0);
@@ -285,6 +326,7 @@ const intoView = ref("");
 const loading = ref(false);
 const apiError = ref<string | null>(null);
 const shouldFocusInput = ref(false);
+const activeSessionId = ref("");
 
 const activeCategory = ref("");
 
@@ -296,17 +338,27 @@ const CATEGORY_ICONS: Record<string, string> = {
   跑步技术: "gear",
 };
 
+const CATEGORY_QUESTIONS: Record<string, string> = {
+  训练计划: "请帮我制定一个适合当前水平的跑步训练计划。",
+  装备选择: "我该如何根据自己的跑步情况选择跑鞋和装备？",
+  伤痛预防: "跑步训练中应该如何预防常见伤痛？",
+  跑步技术: "请分析新手最需要掌握的跑步技术要点。",
+};
+
 // 数据列表（初始为空，从后端加载）
 const categories = ref<any[]>([]);
 const hotQuestions = ref<{ question: string; word: string }[]>([]);
 const messages = ref<ChatMessage[]>([]);
 const history = ref<HistoryItem[]>([]);
+const hasConversation = computed(() => messages.value.length > 0);
+const historyLoaded = ref(false);
+const historyLoading = ref(false);
 
 // 分类 key → 首页 RUN! 同款大字母（Anton 展示字体、白字红影）
 const HOT_WORD_MAP: Record<string, string> = {
   beginner: "START!",
   injury: "KNEE!",
-  equipment: "SHOES!",
+  equipment: "SHOE!",
   training: "PACE!",
   nutrition: "FUEL!",
   recovery: "RESET!",
@@ -410,6 +462,7 @@ onMounted(async () => {
   } catch (error) {
     console.error("初始化数据加载失败");
   }
+  restoreCurrentConversation();
 });
 
 // 页面显示时检查是否需要自动聚焦输入框（来自首页"问问题"按钮）
@@ -434,37 +487,128 @@ onShow(() => {
     app.globalData.qaAutoSend = undefined;
     // 延迟发送，确保页面完全渲染
     setTimeout(() => {
+      messages.value = [];
+      activeSessionId.value = "";
+      setCurrentQaSessionId("");
       sendMessage(question);
     }, 300);
   }
 });
 
-// 加载历史记录
-const loadHistory = async () => {
-  if (loading.value) return;
+function toHistoryDate(value: string) {
+  return value?.split("T")[0] || value?.split(" ")[0] || "未知日期";
+}
+
+function toHistoryTime(value: string) {
+  const normalized = value?.replace(" ", "T") || "";
+  return normalized.split("T")[1]?.substring(0, 5) || "";
+}
+
+function sessionToHistoryItem(session: QaSession): HistoryItem {
+  const firstQuestion = session.messages.find((message) => message.role === "user");
+  const lastAnswer = [...session.messages]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  return {
+    key: `local-${session.id}`,
+    sessionId: session.id,
+    date: toHistoryDate(session.updatedAt),
+    time: toHistoryTime(session.updatedAt),
+    updatedAt: session.updatedAt,
+    question: session.title || firstQuestion?.content || "未命名会话",
+    summary: lastAnswer?.content?.slice(0, 72) || "会话已创建，等待回答",
+    messages: session.messages.map((message) => ({ ...message })),
+    source: "local",
+  };
+}
+
+function persistCurrentConversation() {
+  if (!activeSessionId.value) activeSessionId.value = createQaSessionId();
+  const firstQuestion = messages.value.find((message) => message.role === "user");
+  const now = new Date().toISOString();
+  const existing = findQaSession(activeSessionId.value);
+  const validMessages = messages.value.filter(
+    (message) => !message.content.startsWith("请求失败："),
+  );
+  if (!firstQuestion || !validMessages.some((message) => message.role === "assistant")) return;
 
   try {
-    loading.value = true;
-    // 后端契约：GET /api/qa/history?pageNum&pageSize，返回 PageResult{ list, total, ... }
+    saveQaSession({
+      id: activeSessionId.value,
+      title: firstQuestion.content.slice(0, 40),
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+      messages: validMessages.map((message) => ({ ...message })),
+    });
+  } catch (error) {
+    console.warn("本地会话保存失败，不影响当前回答展示", error);
+  }
+}
+
+function restoreCurrentConversation() {
+  if (messages.value.length) return;
+  const id = getCurrentQaSessionId();
+  const session = id ? findQaSession(id) : undefined;
+  if (!session) return;
+  activeSessionId.value = session.id;
+  messages.value = session.messages.map((message) => ({ ...message }));
+  scrollToBottom();
+}
+
+// 本地保存多轮会话，服务端真实单条问答作为兼容回退；两者都不注入 Mock。
+const loadHistory = async () => {
+  if (historyLoading.value) return;
+  historyLoading.value = true;
+
+  const localItems = loadQaSessions().map(sessionToHistoryItem);
+  history.value = localItems;
+  historyLoaded.value = true;
+  let serverItems: HistoryItem[] = [];
+
+  try {
     const historyData = await request({
       url: "/qa/history",
       method: "GET",
-      data: { pageNum: 1, pageSize: 20 },
+      data: { pageNum: 1, pageSize: 50 },
     });
 
-    history.value = (historyData?.list || []).map((item: any) => ({
-      id: item.id,
-      date:
-        item.createTime?.split("T")[0] || item.createTime?.split(" ")[0] || "",
-      time: (item.createTime || "").split("T")[1]?.substring(0, 5) || "",
-      question: item.question,
-      summary: item.answer?.substring(0, 50) + "..." || "",
-    }));
+    const localPairs = new Set<string>();
+    localItems.forEach((item) => {
+      const sessionMessages = item.messages || [];
+      sessionMessages.forEach((message, index) => {
+        if (message.role !== "user") return;
+        const answer = sessionMessages
+          .slice(index + 1)
+          .find((candidate) => candidate.role === "assistant");
+        if (answer) localPairs.add(`${message.content}\n${answer.content}`);
+      });
+    });
+
+    serverItems = (historyData?.list || [])
+      .filter((item: any) => !localPairs.has(`${item.question}\n${item.answer || ""}`))
+      .map((item: any) => {
+        const updatedAt = item.updateTime || item.createTime || "";
+        return {
+          key: `server-${item.id}`,
+          id: item.id,
+          date: toHistoryDate(updatedAt),
+          time: toHistoryTime(updatedAt),
+          updatedAt,
+          question: item.question,
+          summary: (item.answer || "").slice(0, 72),
+          answer: item.answer || "",
+          sources: item.sources ? String(item.sources).split("、").filter(Boolean) : [],
+          source: "server" as const,
+        };
+      });
   } catch (error) {
-    console.error("加载历史记录失败");
-    uni.showToast({ title: "加载历史失败", icon: "none" });
+    console.warn("服务端历史加载失败，继续展示本地真实会话", error);
   } finally {
-    loading.value = false;
+    history.value = [...localItems, ...serverItems].sort((a, b) =>
+      b.updatedAt.localeCompare(a.updatedAt),
+    );
+    historyLoading.value = false;
+    historyLoaded.value = true;
   }
 };
 
@@ -479,6 +623,9 @@ const injuryCategories = [
 const injuryCategory = ref("");
 const injuryArticles = ref<any[]>([]);
 const injuryLoaded = ref(false);
+const currentInjuryLabel = computed(
+  () => injuryCategories.find((item) => item.key === injuryCategory.value)?.label || "伤病预防",
+);
 
 // 加载文章列表（"全部"时 key 为空，不传 category，后端返回全部）
 const loadInjuryArticles = async () => {
@@ -514,6 +661,20 @@ const onInjuryTap = (article: { id: number }) => {
   uni.navigateTo({ url: `/pages/qa/injury-detail?id=${article.id}` });
 };
 
+const askAboutInjury = () => {
+  currentTab.value = 0;
+  messages.value = [];
+  activeSessionId.value = "";
+  setCurrentQaSessionId("");
+  inputText.value =
+    injuryCategory.value === ""
+      ? "我有一个跑步伤病预防方面的问题："
+      : `我有一个关于${currentInjuryLabel.value}不适的问题：`;
+  nextTick(() => {
+    shouldFocusInput.value = true;
+  });
+};
+
 // 计算属性：按日期分组历史记录
 const historyGroups = computed(() => {
   const map = new Map<string, HistoryItem[]>();
@@ -542,9 +703,27 @@ const scrollToBottom = () => {
   nextTick(() => {
     intoView.value = "";
     setTimeout(() => {
-      intoView.value = "anchor-bottom";
+      intoView.value = "qa-anchor-bottom";
     }, 30);
   });
+};
+
+// 根据提问内容给回答加一个简短、有辨识度的任务标题。
+// 标题只负责表达语气，专业结论仍完全来自后端回答与安全提示。
+const buildMissionTitle = (question: string) => {
+  if (/疼|痛|伤|肿|发热|头晕|不适/.test(question)) {
+    return "SAFETY CHECK · 先判断是否该停跑";
+  }
+  if (/不想|疲劳|累|硬撑|没状态|没动力/.test(question)) {
+    return "MISSION CHECK · 今天必须硬撑吗？";
+  }
+  if (/配速|心率|节奏|间歇/.test(question)) {
+    return "PACE CHECK · 先稳住节奏";
+  }
+  if (/计划|目标|跑量|训练/.test(question)) {
+    return "TRAINING BRIEF · 把目标拆成下一步";
+  }
+  return "RUNWISE BRIEF · 先给你一个可执行答案";
 };
 
 // 发送消息（调用后端RAG接口）
@@ -553,8 +732,10 @@ const sendMessage = async (text: string) => {
   if (!content) return;
 
   // 立即显示用户消息
+  if (!activeSessionId.value) activeSessionId.value = createQaSessionId();
   messages.value.push({ role: "user", content });
   inputText.value = "";
+  shouldFocusInput.value = false;
   scrollToBottom();
 
   try {
@@ -574,10 +755,12 @@ const sendMessage = async (text: string) => {
     messages.value.push({
       role: "assistant",
       content: response.answer || "抱歉，未能获取有效回答。",
+      missionTitle: buildMissionTitle(content),
       sources: response.sources || [],
       safetyTip: response.safetyTip,
     });
 
+    persistCurrentConversation();
     scrollToBottom();
   } catch (error: any) {
     console.error("提问失败 - 完整错误:", error);
@@ -604,6 +787,19 @@ const sendMessage = async (text: string) => {
   }
 };
 
+const startNewConversation = () => {
+  if (loading.value) return;
+  messages.value = [];
+  inputText.value = "";
+  activeSessionId.value = "";
+  setCurrentQaSessionId("");
+  activeCategory.value = "";
+  intoView.value = "";
+  nextTick(() => {
+    shouldFocusInput.value = true;
+  });
+};
+
 // 发送按钮点击
 const onSend = () => {
   if (loading.value) return; // 防止重复发送
@@ -614,41 +810,6 @@ const onSend = () => {
 const onHotQuestionTap = (q: { question: string; word: string }) => {
   sendMessage(q.question);
 };
-
-const onMoreQuestions = () => {
-  if (hotQuestions.value.length > 3) {
-    const rest = hotQuestions.value.slice(3).map((q) => q.question);
-    uni.showActionSheet({
-      itemList: rest,
-      success: (res) => {
-        sendMessage(rest[res.tapIndex]);
-      },
-    });
-  } else {
-    uni.showToast({ title: '暂无更多问题', icon: 'none' });
-  }
-};
-
-const latestAnswers = ref([
-  {
-    question: "跑完膝盖疼怎么办？",
-    answer: "先判断疼痛位置是髌骨还是外侧，髌骨疼可减少跑量加强股四头肌，外侧疼注意鞋底磨损…",
-    likes: 23,
-    time: "2小时前",
-  },
-  {
-    question: "晨跑好还是夜跑好？",
-    answer: "各有优势：晨跑提升代谢、夜跑释放压力。关键看个人作息规律，坚持比选择更重要…",
-    likes: 18,
-    time: "5小时前",
-  },
-  {
-    question: "如何提高配速？",
-    answer: "建议采用80/20法则：80%慢跑+20%间歇。每周一次节奏跑，逐步提升乳酸阈值…",
-    likes: 15,
-    time: "昨天",
-  },
-]);
 
 // 分类卡点击/按压态（唯一反馈：红条拉长 + 图标变红）
 const pressedCategory = ref("");
@@ -664,13 +825,49 @@ const onCategoryPressEnd = () => {
 // 点击分类
 const onCategoryTap = (item: any) => {
   activeCategory.value = item.name;
-  sendMessage(`请介绍一下${item.name}方面的建议`);
+  sendMessage(CATEGORY_QUESTIONS[item.name] || `请介绍一下${item.name}方面的建议。`);
 };
 
-// 点击历史卡片：重新提问该问题
-const onHistoryTap = (item: HistoryItem) => {
+const startFromHistory = () => {
   currentTab.value = 0;
-  sendMessage(item.question);
+  startNewConversation();
+};
+
+// 点击历史记录还原真实消息，不重复调用模型。
+const onHistoryTap = (item: HistoryItem) => {
+  let restoredMessages = item.messages?.map((message) => ({ ...message })) || [];
+
+  if (!restoredMessages.length && item.answer) {
+    restoredMessages = [
+      { role: "user", content: item.question },
+      {
+        role: "assistant",
+        content: item.answer,
+        missionTitle: buildMissionTitle(item.question),
+        sources: item.sources || [],
+      },
+    ];
+  }
+
+  if (!restoredMessages.length) return;
+
+  const sessionId = item.sessionId || `server-${item.id}`;
+  activeSessionId.value = sessionId;
+  messages.value = restoredMessages;
+  const now = item.updatedAt || new Date().toISOString();
+  try {
+    saveQaSession({
+      id: sessionId,
+      title: item.question.slice(0, 40),
+      createdAt: now,
+      updatedAt: now,
+      messages: restoredMessages.map((message) => ({ ...message })),
+    });
+  } catch (error) {
+    console.warn("历史会话缓存失败", error);
+  }
+  currentTab.value = 0;
+  scrollToBottom();
 };
 </script>
 
@@ -751,6 +948,212 @@ const onHistoryTap = (item: HistoryItem) => {
 /* ========== 问答视图 ========== */
 .qa-view {
   padding-bottom: 24rpx;
+}
+
+/* ========== 未提问状态：恢复四入口 + 三张错位漫画海报 ========== */
+.ask-landing {
+  padding: 8rpx 0 22rpx;
+  overflow: hidden;
+}
+
+.ask-landing .category-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12rpx;
+  padding: 20rpx 24rpx 28rpx;
+}
+
+.ask-landing .category-card {
+  min-width: 0;
+  height: 132rpx;
+  flex-direction: column;
+  gap: 0;
+  background: transparent;
+  border: 0;
+  clip-path: none;
+  transition: transform 0.14s ease, opacity 0.14s ease;
+}
+
+.ask-landing .category-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 8rpx;
+  width: 34rpx;
+  height: 4rpx;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateX(-50%) skewX(-28deg);
+  transition: width 0.14s ease, background-color 0.14s ease;
+}
+
+.ask-landing .category-card--active {
+  background: transparent;
+  transform: translateY(4rpx);
+}
+
+.ask-landing .category-card--active::after {
+  width: 64rpx;
+  background: $rw-red;
+}
+
+.ask-landing .category-card__num {
+  top: 12rpx;
+  left: 12rpx;
+  font-size: 27rpx;
+}
+
+.ask-landing .category-name {
+  margin-top: 10rpx;
+  max-width: 100%;
+  font-size: 21rpx;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.section-more {
+  margin-left: auto;
+  font-family: $rw-font-display;
+  font-size: 22rpx;
+  color: $rw-red;
+  letter-spacing: 1rpx;
+}
+
+.hot-poster-scroll {
+  width: 100%;
+  height: 326rpx;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.hot-poster-track {
+  height: 100%;
+  padding: 0 92rpx 18rpx 24rpx;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.hot-poster {
+  position: relative;
+  display: inline-flex;
+  vertical-align: top;
+  width: 254rpx;
+  min-height: 238rpx;
+  margin-right: 24rpx;
+  padding: 18rpx 12rpx 22rpx;
+  box-sizing: border-box;
+  flex-direction: column;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  clip-path: none;
+  white-space: normal;
+  transition: opacity 0.14s ease;
+}
+
+.hot-poster:last-child {
+  margin-right: 92rpx;
+}
+
+.hot-poster--1 {
+  margin-top: 2rpx;
+}
+
+.hot-poster--2 {
+  margin-top: 34rpx;
+}
+
+.hot-poster--3 {
+  margin-top: 12rpx;
+}
+
+.hot-poster--4 {
+  margin-top: 28rpx;
+}
+
+.hot-poster--pressed {
+  opacity: 0.62;
+}
+
+.hot-poster__num {
+  font-family: $rw-font-display;
+  font-size: 22rpx;
+  font-style: italic;
+  color: $rw-red;
+  line-height: 1;
+}
+
+.hot-poster__word {
+  display: block;
+  width: fit-content;
+  max-width: 230rpx;
+  font-family: $rw-font-display;
+  margin-top: 8rpx;
+  font-size: 56rpx;
+  color: $rw-white;
+  line-height: 1;
+  letter-spacing: -1rpx;
+  white-space: nowrap;
+  text-shadow: 6rpx 6rpx 0 $rw-red;
+  transform: rotate(-5deg) translateX(4rpx);
+  transform-origin: left center;
+}
+
+.hot-poster--2 .hot-poster__word {
+  transform: rotate(3deg) translateX(-2rpx);
+}
+
+.hot-poster--3 .hot-poster__word {
+  transform: rotate(-2deg) translateX(8rpx);
+}
+
+.hot-poster--4 .hot-poster__word {
+  transform: rotate(4deg) translateX(2rpx);
+}
+
+.hot-poster__question {
+  display: block;
+  margin-top: 18rpx;
+  max-width: 230rpx;
+  font-size: 23rpx;
+  font-weight: 600;
+  color: $rw-white;
+  line-height: 1.4;
+  word-break: break-all;
+  white-space: normal;
+}
+
+.hot-poster__slash {
+  position: absolute;
+  left: 12rpx;
+  bottom: 8rpx;
+  width: 82rpx;
+  height: 6rpx;
+  background: $rw-red;
+  transform: skewX(-34deg);
+}
+
+.assistant-note {
+  margin: 18rpx 24rpx 0;
+  padding: 18rpx 22rpx;
+  display: flex;
+  align-items: center;
+  background: #18181b;
+  border-left: 6rpx solid $rw-red;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16rpx) 100%, 0 100%);
+}
+
+.assistant-note__title {
+  flex-shrink: 0;
+  font-family: $rw-font-display;
+  font-size: 27rpx;
+  color: $rw-white;
+  text-shadow: 4rpx 3rpx 0 $rw-red;
+}
+
+.assistant-note__text {
+  margin-left: 22rpx;
+  font-size: 21rpx;
+  color: $rw-gray;
+  line-height: 1.4;
 }
 
 /* ==================================================================
@@ -1043,6 +1446,42 @@ const onHistoryTap = (item: HistoryItem) => {
   padding-bottom: 32rpx;
 }
 
+.chat-session-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
+  padding: 18rpx 22rpx;
+  background: #151518;
+  border-left: 6rpx solid $rw-red;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16rpx) 100%, 0 100%);
+}
+
+.chat-session-head__en,
+.chat-session-head__cn {
+  display: block;
+}
+
+.chat-session-head__en {
+  font-family: $rw-font-display;
+  font-size: 24rpx;
+  color: $rw-white;
+  letter-spacing: 1rpx;
+}
+
+.chat-session-head__cn {
+  margin-top: 5rpx;
+  font-size: 20rpx;
+  color: $rw-gray;
+}
+
+.chat-session-head__new {
+  flex-shrink: 0;
+  margin-left: 18rpx;
+  font-size: 22rpx;
+  color: $rw-red;
+}
+
 .msg-wrap {
   margin-bottom: 32rpx;
 }
@@ -1108,9 +1547,31 @@ const onHistoryTap = (item: HistoryItem) => {
 }
 
 .ai-cloud-text {
+  display: block;
   font-size: 28rpx;
   color: $rw-white;
   line-height: 1.65;
+}
+
+.ai-mission-title {
+  display: block;
+  margin-bottom: 16rpx;
+  padding-right: 18rpx;
+  font-family: $rw-font-display;
+  font-size: 25rpx;
+  font-weight: 700;
+  color: $rw-white;
+  line-height: 1.35;
+  letter-spacing: 1rpx;
+}
+
+.ai-mission-title::after {
+  content: "";
+  display: block;
+  width: 56rpx;
+  height: 4rpx;
+  margin-top: 12rpx;
+  background: $rw-red;
 }
 
 /* 参考来源 */
@@ -1155,10 +1616,15 @@ const onHistoryTap = (item: HistoryItem) => {
   border-top: 2rpx solid $rw-line;
 }
 
+.input-bar--landing {
+  border-top-color: $rw-red;
+}
+
 /* textarea 自增高：min-height 起步，随内容换行向上生长 */
 .input-field {
   flex: 1;
   min-height: 88rpx;
+  max-height: 180rpx;
   height: auto;
   padding: 22rpx 28rpx;
   background: $rw-panel;
@@ -1218,6 +1684,9 @@ const onHistoryTap = (item: HistoryItem) => {
 
 .history-card {
   margin: 0 24rpx;
+  background: #141417;
+  border: 2rpx solid #333338;
+  clip-path: polygon(18rpx 0, 100% 0, 100% calc(100% - 18rpx), calc(100% - 18rpx) 100%, 0 100%, 0 18rpx);
 }
 
 .history-item {
@@ -1264,6 +1733,72 @@ const onHistoryTap = (item: HistoryItem) => {
 
 .history-item--pressed {
   opacity: 0.7;
+}
+
+.history-sync {
+  margin: 72rpx 24rpx 0;
+  font-family: $rw-font-display;
+  font-size: 30rpx;
+  color: $rw-gray;
+  letter-spacing: 2rpx;
+  text-align: center;
+}
+
+.history-empty,
+.injury-empty {
+  margin: 54rpx 24rpx 0;
+  padding: 34rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+  background: #141417;
+  border: 2rpx solid #3a3a40;
+  border-left: 8rpx solid $rw-red;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24rpx), calc(100% - 24rpx) 100%, 0 100%);
+}
+
+.history-empty__en,
+.injury-empty__en {
+  font-family: $rw-font-display;
+  font-size: 48rpx;
+  color: $rw-white;
+  line-height: 1;
+  text-shadow: 6rpx 5rpx 0 $rw-red;
+  transform: rotate(-1deg);
+  transform-origin: left center;
+}
+
+.history-empty__title,
+.injury-empty__title {
+  margin-top: 26rpx;
+  font-family: $rw-font-cn-title;
+  font-size: 32rpx;
+  color: $rw-white;
+}
+
+.history-empty__desc,
+.injury-empty__desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $rw-gray;
+  line-height: 1.55;
+}
+
+.history-empty__button,
+.injury-empty__button {
+  align-self: flex-start;
+  margin-top: 26rpx;
+  padding: 18rpx 30rpx;
+  background: $rw-red;
+  color: $rw-white;
+  font-size: 25rpx;
+  font-weight: 700;
+  clip-path: polygon(14rpx 0, 100% 0, calc(100% - 14rpx) 100%, 0 100%);
+  transition: transform 0.14s ease;
+}
+
+.history-empty__button--pressed,
+.injury-empty__button--pressed {
+  transform: translateX(6rpx) scale(0.98);
 }
 
 /* ========== 伤病预防视图：分类筛选 + 文章卡片列表 ========== */
@@ -1373,6 +1908,10 @@ const onHistoryTap = (item: HistoryItem) => {
   font-size: 22rpx;
   color: $rw-red;
   letter-spacing: 1rpx;
+}
+
+.injury-empty {
+  margin-top: 42rpx;
 }
 
 /* ========== 滚动锚点 ========== */

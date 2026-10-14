@@ -50,7 +50,7 @@
       </rw-card>
     </view>
 
-    <!-- RwTag 心情/类型定色 -->
+    <!-- RwTag 体感/类型定色 -->
     <view class="demo-block">
       <rw-card tag="TAGS" :padding="'28rpx'">
         <view class="demo-row">

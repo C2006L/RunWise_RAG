@@ -231,6 +231,9 @@ const categoryLabel = computed(
 /* F5：页面为星层定位父级；星层只覆盖页头右侧空白带（180px 高），远离卡片区 */
 .injury-page {
   position: relative;
+  /* App 已为固定跑马灯预留 60px；本页再留出斜带抬高后的安全区，
+     让最后一张卡和详情底部按钮完整露出。 */
+  padding-bottom: 36px;
 }
 
 .page-stars {
@@ -321,7 +324,7 @@ const categoryLabel = computed(
 
 .article-card-wrap:hover,
 .article-card-wrap.selected {
-  transform: rotate(-2deg); /* X-2 整卡倾斜 2°（0.12s 干脆，漫画式） */
+  transform: rotate(-1.25deg);
   z-index: 10;
 }
 
@@ -383,6 +386,8 @@ const categoryLabel = computed(
   width: 100%;
   padding: var(--sp-5) var(--sp-6) var(--sp-5);
   text-align: left;
+  transform-origin: center;
+  transition: transform 0.12s;
   clip-path: polygon(
     12px 0,
     100% 0,
@@ -391,6 +396,12 @@ const categoryLabel = computed(
     0 100%,
     0 12px
   );
+}
+
+/* 外壳、便签和红色装饰继续倾斜；正文反向校正，维持水平阅读。 */
+.article-card-wrap:hover .article-card,
+.article-card-wrap.selected .article-card {
+  transform: rotate(1.25deg);
 }
 
 .article-title {
@@ -403,7 +414,7 @@ const categoryLabel = computed(
 .article-summary {
   font-size: var(--fs-sub);
   line-height: 1.7;
-  color: var(--p5-text-dim);
+  color: #c9c9cf;
 }
 
 .article-meta {
@@ -417,8 +428,8 @@ const categoryLabel = computed(
 .article-tag {
   padding: 2px 10px;
   font-size: var(--fs-caption);
-  color: var(--p5-text-dim);
-  border: 1px dashed var(--p5-line);
+  color: #d7d7dc;
+  border: 1px dashed rgba(255, 255, 255, 0.32);
 }
 
 /* X-3 阅读全文 →：红色切角小按钮（红底白字 12px）；

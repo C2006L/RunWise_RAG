@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 /**
- * RwTag —— 切角标签（对齐 Web 训练类型/心情标签定色，禁圆角、禁蓝绿）
+ * RwTag —— 切角标签（对齐 Web 训练类型/体感标签定色，禁圆角、禁蓝绿）
  * variant: red 红底白字（默认/吃力） | white 白底黑字（适中） | outline 红描边白字 | gray 灰底白字（轻松）
  */
 defineProps({

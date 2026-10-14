@@ -17,6 +17,55 @@ export function getCheckinList(startDate, endDate) {
     .then((res) => res.data.data)
 }
 
+// 个人档案统计使用的完整记录集。
+// Mock 继续复用同一份打卡数据；真实环境分页读取现有 /checkin/list，
+// 只在前端做字段归一化，不新增或修改后端接口。
+export async function getAllCheckins() {
+  if (USE_MOCK) {
+    return withAuthRetry(() =>
+      mockCheckin.getCheckinList(
+        '2000-01-01',
+        '2099-12-31',
+        useUserStore().accessToken,
+      ),
+    )
+  }
+
+  const pageSize = 200
+  const firstResponse = await instance.get('/checkin/list', {
+    params: { pageNum: 1, pageSize },
+  })
+  const firstPage = firstResponse.data.data || {}
+  const total = Number(firstPage.total || 0)
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const remainingRequests = []
+
+  for (let pageNum = 2; pageNum <= pageCount; pageNum += 1) {
+    remainingRequests.push(
+      instance.get('/checkin/list', { params: { pageNum, pageSize } }),
+    )
+  }
+
+  const remainingResponses = await Promise.all(remainingRequests)
+  const rawRecords = [
+    ...(firstPage.list || []),
+    ...remainingResponses.flatMap((response) => response.data.data?.list || []),
+  ]
+
+  return rawRecords
+    .map((record) => ({
+      id: record.id,
+      date: record.checkinDate,
+      distanceKm: Number(record.distance || 0),
+      durationMin: Number(record.duration || 0),
+      pace: record.pace,
+      mood: record.mood,
+      note: record.remark || '',
+      createTime: record.createTime,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 // 单日记录，无则 null
 export function getCheckinByDate(date) {
   if (USE_MOCK) {

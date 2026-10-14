@@ -1,8 +1,9 @@
 package com.runwise.controller;
 
 import com.runwise.common.Result;
-import com.runwise.entity.InjuryArticle;
 import com.runwise.service.InjuryService;
+import com.runwise.vo.InjuryArticleVO;
+import com.runwise.vo.InjuryCategoryVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -25,14 +26,20 @@ public class InjuryController {
 
     @GetMapping("/articles")
     @Operation(summary = "文章列表(可按分类筛选)")
-    public Result<List<InjuryArticle>> listArticles(
+    public Result<List<InjuryArticleVO>> listArticles(
             @RequestParam(required = false) String category) {
         return Result.success(injuryService.listArticles(category));
     }
 
+    @GetMapping("/categories")
+    @Operation(summary = "伤病文章分类")
+    public Result<List<InjuryCategoryVO>> listCategories() {
+        return Result.success(injuryService.listCategories());
+    }
+
     @GetMapping("/articles/{id}")
     @Operation(summary = "文章详情")
-    public Result<InjuryArticle> getArticle(@PathVariable Long id) {
+    public Result<InjuryArticleVO> getArticle(@PathVariable Long id) {
         return Result.success(injuryService.getArticle(id));
     }
 }

@@ -52,12 +52,14 @@
               <text v-for="(w, i) in weekdays" :key="i" class="cal__week-item">{{ w }}</text>
             </view>
 
-            <!-- B3 图例：◆ 已打卡 · ■ 今天 -->
+            <!-- 状态图例：已打卡 / 今天 / 当前选中各自独立 -->
             <view class="cal__legend">
               <text class="cal__legend-mark">◆</text>
               <text class="cal__legend-text">已打卡 · </text>
               <text class="cal__legend-mark">■</text>
-              <text class="cal__legend-text"> 今天</text>
+              <text class="cal__legend-text">今天 · </text>
+              <text class="cal__legend-select">□</text>
+              <text class="cal__legend-text">选中</text>
             </view>
 
             <view class="cal__grid">
@@ -102,7 +104,7 @@
         >
           <view class="ck">
             <!-- ① 只读：该日已有记录 -->
-            <template v-if="selectedDayCheckin">
+            <template v-if="selectedDayCheckin && formMode !== 'edit'">
               <text class="ck__kicker">{{
                 isTodaySelected ? "TODAY · 已完成打卡" : "RECORD · 当日记录"
               }}</text>
@@ -129,7 +131,7 @@
                   >
                 </view>
                 <view class="ck__item">
-                  <text class="ck__label">心情</text>
+                  <text class="ck__label">体感</text>
                   <text class="ck__value ck__value--text">{{ selectedDayCheckin.mood }}</text>
                 </view>
               </view>
@@ -138,22 +140,16 @@
                 <text class="ck__label">备注</text>
                 <text class="ck__note-text">{{ selectedDayCheckin.remark || "无" }}</text>
               </view>
-            </template>
 
-            <!-- ② 空态：过去日期无记录 -->
-            <template v-else-if="!isTodaySelected">
-              <text class="ck__kicker">EMPTY · 暂无记录</text>
-              <text class="ck__date">{{ selectedDateLabel }}</text>
-              <view class="ck__empty">
-                <text class="ck__empty-text">这一天还没有记录 · </text>
-                <text class="ck__empty-link" @click="goToday">去今天打卡 →</text>
+              <view class="ck__detail-action">
+                <rw-button text="编辑记录" variant="ghost" size="sm" @tap="startEdit" />
               </view>
             </template>
 
-            <!-- ③ 表单：今天无记录（打卡主链路） -->
-            <template v-else>
-              <text class="ck__kicker">TODAY · 待打卡</text>
-              <text class="ck__date">今日打卡</text>
+            <!-- ② 表单：今日新建 / 历史补录 / 已有记录编辑 -->
+            <template v-else-if="showForm">
+              <text class="ck__kicker">{{ formKicker }}</text>
+              <text class="ck__date">{{ formTitle }}</text>
 
               <view class="field-row">
                 <view class="field">
@@ -167,7 +163,7 @@
               </view>
 
               <view class="field">
-                <text class="field__label">心情</text>
+                <text class="field__label">体感</text>
                 <view class="mood-chips">
                   <view
                     v-for="m in MOODS"
@@ -183,7 +179,7 @@
 
               <view class="field">
                 <text class="field__label">备注（可选）</text>
-                <rw-input v-model="form.note" placeholder="一句话记录今天的跑步" :maxlength="100" />
+                <rw-input v-model="form.note" placeholder="一句话记录这次跑步" :maxlength="100" />
               </view>
 
               <view class="pace-preview">
@@ -194,11 +190,28 @@
               <text v-if="errorMsg" class="ck__error">{{ errorMsg }}</text>
 
               <rw-button
-                text="提交打卡"
+                :text="submitText"
                 variant="primary"
                 style="min-width: 340rpx"
                 @tap="handleSubmit"
               />
+              <text
+                v-if="formMode"
+                class="ck__cancel"
+                hover-class="ck__cancel--pressed"
+                @click="cancelForm"
+              >取消</text>
+            </template>
+
+            <!-- ③ 空态：过去日期无记录，可补录训练 -->
+            <template v-else>
+              <text class="ck__kicker">EMPTY · 暂无记录</text>
+              <text class="ck__date">{{ selectedDateLabel }}</text>
+              <view class="ck__empty">
+                <text class="ck__empty-text">这一天还没有训练记录。</text>
+                <text class="ck__empty-rule">每个日期仅保存一条训练，可补录后继续编辑。</text>
+                <rw-button text="补录训练" variant="primary" size="sm" @tap="startBackfill" />
+              </view>
             </template>
           </view>
         </rw-card>
@@ -254,9 +267,15 @@
       <view class="total-zone">
         <rw-card frame="red" padding="44rpx 32rpx">
           <view class="total">
-            <text class="total__num">{{ stats.totalDistance }}</text>
-            <text class="total__unit">km</text>
-            <text class="total__label">累计总里程</text>
+            <text class="total__eyebrow">TOTAL DISTANCE · 历史累计里程</text>
+            <view class="total__number-row">
+              <text class="total__num">{{ stats.totalDistance }}</text>
+              <text class="total__unit">km</text>
+            </view>
+            <view class="total__foot">
+              <text class="total__label">本月训练</text>
+              <text class="total__month">{{ stats.monthDistance }} km · {{ stats.monthCount }} 次</text>
+            </view>
           </view>
         </rw-card>
       </view>
@@ -265,32 +284,72 @@
         <rw-card tag="月度里程" tag-variant="red" frame="red" padding="0">
           <view class="chart">
             <view class="chart__head">
-              <text class="chart__title">近 8 个月</text>
-              <text class="chart__sub">本月 {{ stats.monthDistance }} km</text>
+              <view>
+                <text class="chart__title">最近跑得怎么样</text>
+                <text class="chart__caption">近 8 个月 · 纵轴从 0 开始</text>
+              </view>
+              <text class="chart__sub">点击柱形读取</text>
             </view>
             <view class="chart__bars">
-              <view v-for="(val, i) in stats.monthData" :key="i" class="chart__col">
+              <view
+                v-for="(val, i) in stats.monthData"
+                :key="i"
+                class="chart__col"
+                :class="{ 'is-selected': selectedMonthIndex === i }"
+                hover-class="chart__col--pressed"
+                @click="selectedMonthIndex = i"
+              >
                 <view class="chart__track">
+                  <text class="chart__value">{{ val }}</text>
                   <view
                     class="chart__bar"
-                    :class="{ 'is-current': i === stats.monthData.length - 1 }"
+                    :class="{
+                      'is-current': i === stats.monthData.length - 1,
+                      'is-zero': val === 0,
+                    }"
                     :style="{ height: barHeight(val) + 'rpx' }"
                   ></view>
                 </view>
                 <text class="chart__label">{{ monthLabels[i] }}</text>
               </view>
             </view>
+            <view class="chart__readout">
+              <view>
+                <text class="chart__readout-month">{{ selectedMonthSummary.label }}</text>
+                <text class="chart__readout-note">月度训练明细</text>
+              </view>
+              <text class="chart__readout-value">{{ selectedMonthSummary.distance }} km</text>
+              <text class="chart__readout-count">{{ selectedMonthSummary.count }} 次</text>
+            </view>
           </view>
         </rw-card>
       </view>
 
+      <view class="metrics-head">
+        <text class="metrics-head__title">本月成果与训练习惯</text>
+        <text class="metrics-head__sub">跑了多少 → 是否稳定</text>
+      </view>
       <view class="metrics">
-        <rw-card v-for="m in metricList" :key="m.label" frame="red" padding="28rpx 16rpx">
-          <view class="metric">
-            <text class="metric__value">{{ m.value }}</text>
-            <text class="metric__label">{{ m.label }}</text>
-          </view>
-        </rw-card>
+        <view
+          v-for="m in metricList"
+          :key="m.label"
+          class="metric-wrap"
+          :class="{ 'is-primary': m.primary }"
+        >
+          <rw-card :frame="m.primary ? 'red' : ''" :accent="m.primary" padding="28rpx 20rpx">
+            <view class="metric">
+              <text class="metric__value">{{ m.value }}</text>
+              <text class="metric__label">{{ m.label }}</text>
+            </view>
+          </rw-card>
+        </view>
+      </view>
+
+      <view class="habit-strip">
+        <text class="habit-strip__kicker">TRAINING HABIT</text>
+        <text class="habit-strip__text">
+          当前连续 {{ stats.streak }} 天 · 历史最长 {{ stats.longestStreak }} 天 · 累计 {{ stats.totalCount }} 次
+        </text>
       </view>
     </view>
 
@@ -307,22 +366,19 @@
 import { ref, computed, nextTick } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
-
-interface CheckinItem {
-  id: number;
-  checkinDate: string;
-  distance: number;
-  duration: number;
-  pace: number; // 分钟/公里
-  mood: string;
-  remark: string;
-  imageUrl: string;
-}
+import {
+  loadCheckinRecords,
+  saveCheckinRecords,
+  summarizeCheckins,
+  type CheckinRecord as CheckinItem,
+} from "@/utils/checkin-data";
 
 interface DayCell {
   date: number;
   dateStr: string;
 }
+
+type FormMode = "create" | "edit" | null;
 
 const tabs = ["日历", "列表", "统计"];
 const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
@@ -352,34 +408,8 @@ const month = ref(today.getMonth() + 1);
 const todayStr = formatDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
 const selectedDate = ref(todayStr);
 
-/* ========== mock 数据（动态日期，随系统时间生成；P2 换接口） ========== */
-const MOCK_DISTANCE = [5.2, 4.0, 6.3, 3.5, 7.1, 5.0, 4.6, 6.0];
-const MOCK_DURATION = [32, 25, 40, 22, 46, 31, 28, 38];
-const MOCK_MOOD = ["适中", "轻松", "适中", "轻松", "吃力", "适中", "轻松", "适中"];
-const MOCK_REMARK = ["操场 5K", "晨跑恢复", "节奏跑", "慢跑放松", "长距离", "夜跑", "间歇训练", "轻松跑"];
-// 距今天的天数（不含今天 → 默认展示「今日打卡」表单，主链路可直接体验）
-const MOCK_OFFSETS = [1, 3, 5, 8, 11, 14, 17, 20];
-
-function buildMockList(): CheckinItem[] {
-  return MOCK_OFFSETS.map((off, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - off);
-    const distance = MOCK_DISTANCE[i];
-    const duration = MOCK_DURATION[i];
-    return {
-      id: i + 1,
-      checkinDate: formatDate(d.getFullYear(), d.getMonth() + 1, d.getDate()),
-      distance,
-      duration,
-      pace: Number((duration / distance).toFixed(2)),
-      mood: MOCK_MOOD[i],
-      remark: MOCK_REMARK[i],
-      imageUrl: "",
-    };
-  });
-}
-
-const checkinList = ref<CheckinItem[]>(buildMockList());
+/* ========== 本地共享数据（P2 接口联调时替换此数据层） ========== */
+const checkinList = ref<CheckinItem[]>(loadCheckinRecords());
 
 /* ========== 日历逻辑 ========== */
 const calendarDays = computed<(DayCell | null)[]>(() => {
@@ -408,14 +438,35 @@ const selectedDayCheckin = computed<CheckinItem | null>(
 );
 
 const isTodaySelected = computed(() => selectedDate.value === todayStr);
+const formMode = ref<FormMode>(null);
 
 const selectedDateLabel = computed(() => {
   const parts = selectedDate.value.split("-");
   return `${Number(parts[1])}月${Number(parts[2])}日`;
 });
 
+const showForm = computed(
+  () => formMode.value !== null || (!selectedDayCheckin.value && isTodaySelected.value),
+);
+
+const formKicker = computed(() => {
+  if (formMode.value === "edit") return "EDIT · 编辑训练";
+  if (!isTodaySelected.value) return "BACKFILL · 补录训练";
+  return "TODAY · 待打卡";
+});
+
+const formTitle = computed(() => {
+  if (formMode.value === "edit") return `${selectedDateLabel.value} · 编辑记录`;
+  if (!isTodaySelected.value) return `${selectedDateLabel.value} · 补录训练`;
+  return "今日打卡";
+});
+
+const submitText = computed(() => (formMode.value === "edit" ? "保存修改" : "保存训练"));
+
 // 胶带文案与卡片内容严格一致（有记录 / 今日打卡 / 暂无记录）
 const detailTag = computed(() => {
+  if (formMode.value === "edit") return "编辑记录";
+  if (formMode.value === "create" && !isTodaySelected.value) return "补录训练";
   if (selectedDayCheckin.value) return "当日记录";
   return isTodaySelected.value ? "今日打卡" : "暂无记录";
 });
@@ -439,6 +490,8 @@ function isDisabled(dateStr: string): boolean {
 function selectDay(cell: DayCell) {
   if (isDisabled(cell.dateStr)) return;
   selectedDate.value = cell.dateStr;
+  formMode.value = null;
+  resetForm();
 }
 
 function prevMonth() {
@@ -461,6 +514,10 @@ function nextMonth() {
 
 function switchTab(idx: number) {
   currentTab.value = idx;
+  if (idx === 0) {
+    formMode.value = null;
+    resetForm();
+  }
 }
 
 // S1 号码布：本月已打卡 / 当月天数（自动计算，禁止手写）
@@ -486,6 +543,39 @@ let stampTimer: ReturnType<typeof setTimeout> | null = null;
 const form = ref({ distance: "", duration: "", mood: "moderate", note: "" });
 const errorMsg = ref("");
 
+function resetForm() {
+  form.value = { distance: "", duration: "", mood: "moderate", note: "" };
+  errorMsg.value = "";
+}
+
+function moodValue(label: string): string {
+  return MOODS.find((m) => m.label === label)?.value || "moderate";
+}
+
+function startBackfill() {
+  if (isDisabled(selectedDate.value) || selectedDayCheckin.value) return;
+  resetForm();
+  formMode.value = "create";
+}
+
+function startEdit() {
+  const item = selectedDayCheckin.value;
+  if (!item) return;
+  form.value = {
+    distance: String(item.distance),
+    duration: String(item.duration),
+    mood: moodValue(item.mood),
+    note: item.remark || "",
+  };
+  errorMsg.value = "";
+  formMode.value = "edit";
+}
+
+function cancelForm() {
+  formMode.value = null;
+  resetForm();
+}
+
 // 配速随输入实时预览
 const pacePreview = computed(() => {
   const d = Number(form.value.distance);
@@ -507,43 +597,59 @@ function moodVariant(mood: string): string {
 function handleSubmit() {
   const d = Number(form.value.distance);
   const t = Number(form.value.duration);
-  if (!d || d <= 0) {
+  if (!Number.isFinite(d) || d <= 0) {
     errorMsg.value = "请填写有效的跑步距离";
     return;
   }
-  if (!t || t <= 0) {
-    errorMsg.value = "请填写有效的跑步时长";
+  if (!Number.isFinite(t) || t <= 0 || !Number.isInteger(t)) {
+    errorMsg.value = "跑步时长必须是大于 0 的整数分钟";
     return;
   }
   errorMsg.value = "";
 
   const date = selectedDate.value;
-  checkinList.value.unshift({
-    id: Date.now(),
+  const existing = selectedDayCheckin.value;
+  const payload = {
     checkinDate: date,
     distance: Number(d.toFixed(2)),
     duration: t,
     pace: Number((t / d).toFixed(2)),
     mood: moodLabel(form.value.mood),
     remark: form.value.note.trim(),
-    imageUrl: "",
-  });
+    imageUrl: existing?.imageUrl || "",
+  };
 
-  // 盖章动画（700ms 后清除标记）
-  stampedDate.value = date;
-  if (stampTimer) clearTimeout(stampTimer);
-  stampTimer = setTimeout(() => {
-    stampedDate.value = "";
-  }, 700);
+  if (formMode.value === "edit" && existing) {
+    const index = checkinList.value.findIndex((item) => item.id === existing.id);
+    if (index >= 0) checkinList.value[index] = { ...existing, ...payload };
+    saveCheckinRecords(checkinList.value);
+    toastRef.value?.show("记录已更新", "success");
+  } else {
+    if (existing) {
+      errorMsg.value = "该日期已有训练记录，请使用编辑功能修改";
+      return;
+    }
+    checkinList.value.unshift({ id: Date.now(), ...payload });
+    saveCheckinRecords(checkinList.value);
 
-  form.value = { distance: "", duration: "", mood: "moderate", note: "" };
-  toastRef.value?.show("打卡成功", "success");
+    // 盖章动画（700ms 后清除标记）
+    stampedDate.value = date;
+    if (stampTimer) clearTimeout(stampTimer);
+    stampTimer = setTimeout(() => {
+      stampedDate.value = "";
+    }, 700);
+    toastRef.value?.show(isTodaySelected.value ? "打卡成功" : "补录成功", "success");
+  }
+
+  formMode.value = null;
+  resetForm();
 }
 
 /* ========== 格式化 ========== */
 function formatPace(pace: number): string {
-  const m = Math.floor(pace);
-  const s = Math.round((pace - m) * 60);
+  const totalSeconds = Math.round(pace * 60);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
   return `${m}'${pad(s)}"`;
 }
 
@@ -558,10 +664,10 @@ function dayOf(dateStr: string): string {
 /* ========== 统计（全部由记录实时计算，禁止手写） ========== */
 const stats = computed(() => {
   const list = checkinList.value;
-  const totalDistance = Number(list.reduce((s, i) => s + i.distance, 0).toFixed(1));
-  const totalCount = list.length;
+  const summary = summarizeCheckins(list);
 
-  const prefix = `${year.value}-${pad(month.value)}`;
+  // “本月”始终指自然月，而不是用户当前翻看的日历月份
+  const prefix = `${today.getFullYear()}-${pad(today.getMonth() + 1)}`;
   const monthList = list.filter((i) => i.checkinDate.startsWith(prefix));
   const monthCount = monthList.length;
   const monthDistance = Number(monthList.reduce((s, i) => s + i.distance, 0).toFixed(1));
@@ -570,29 +676,29 @@ const stats = computed(() => {
     ? formatPace(list.reduce((s, i) => s + i.pace, 0) / list.length)
     : "--";
 
-  // 连续天数：今天无记录则从昨天起算
-  let streak = 0;
-  const cursor = new Date(today);
-  if (!checkedDateSet.value.has(todayStr)) cursor.setDate(cursor.getDate() - 1);
-  while (streak < 365) {
-    const key = formatDate(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate());
-    if (!checkedDateSet.value.has(key)) break;
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
   // 近 8 个月里程
   const monthData: number[] = [];
+  const monthCountData: number[] = [];
   const base = new Date(today.getFullYear(), today.getMonth(), 1);
   for (let i = 7; i >= 0; i--) {
     const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
     const p = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-    monthData.push(
-      Number(list.filter((x) => x.checkinDate.startsWith(p)).reduce((s, x) => s + x.distance, 0).toFixed(1)),
-    );
+    const records = list.filter((x) => x.checkinDate.startsWith(p));
+    monthData.push(Number(records.reduce((s, x) => s + x.distance, 0).toFixed(1)));
+    monthCountData.push(records.length);
   }
 
-  return { totalDistance, totalCount, monthCount, monthDistance, avgPace, streak, monthData };
+  return {
+    totalDistance: summary.totalDistance,
+    totalCount: summary.totalCount,
+    monthCount,
+    monthDistance,
+    avgPace,
+    streak: summary.currentStreak,
+    longestStreak: summary.longestStreak,
+    monthData,
+    monthCountData,
+  };
 });
 
 const monthLabels = computed(() => {
@@ -606,17 +712,25 @@ const monthLabels = computed(() => {
 });
 
 const metricList = computed(() => [
-  { label: "连续天数", value: stats.value.streak },
-  { label: "本月打卡", value: stats.value.monthCount },
-  { label: "平均配速", value: stats.value.avgPace },
-  { label: "总打卡次数", value: stats.value.totalCount },
+  { label: "本月里程", value: `${stats.value.monthDistance} km`, primary: true },
+  { label: "本月打卡", value: `${stats.value.monthCount} 次`, primary: true },
+  { label: "平均配速", value: `${stats.value.avgPace}/km`, primary: false },
+  { label: "当前连续打卡", value: `${stats.value.streak} 天`, primary: false },
 ]);
+
+const selectedMonthIndex = ref(7);
+const selectedMonthSummary = computed(() => ({
+  label: monthLabels.value[selectedMonthIndex.value] || "--",
+  distance: stats.value.monthData[selectedMonthIndex.value] ?? 0,
+  count: stats.value.monthCountData[selectedMonthIndex.value] ?? 0,
+}));
 
 const maxMonthData = computed(() => Math.max(...stats.value.monthData, 1));
 
 function barHeight(val: number): number {
-  const maxH = 220;
-  return Math.max(16, (val / maxMonthData.value) * maxH);
+  const maxH = 200;
+  if (val <= 0) return 0;
+  return Math.max(3, (val / maxMonthData.value) * maxH);
 }
 
 /* ========== 交互 ========== */
@@ -626,16 +740,12 @@ function scrollToForm() {
   });
 }
 
-// 空态「去今天打卡 →」：切到今天（表单态）
-function goToday() {
-  selectedDate.value = todayStr;
-  scrollToForm();
-}
-
 // FAB：回到日历 tab 的今日打卡表单
 function goForm() {
   currentTab.value = 0;
   selectedDate.value = todayStr;
+  formMode.value = null;
+  resetForm();
   scrollToForm();
 }
 
@@ -643,6 +753,8 @@ function goForm() {
 function onItemClick(item: CheckinItem) {
   currentTab.value = 0;
   selectedDate.value = item.checkinDate;
+  formMode.value = null;
+  resetForm();
   const [y, m] = item.checkinDate.split("-").map(Number);
   year.value = y;
   month.value = m;
@@ -651,6 +763,7 @@ function onItemClick(item: CheckinItem) {
 
 onShow(() => {
   setTabBarIndex(1);
+  checkinList.value = loadCheckinRecords();
   const app = getApp();
   if (app.globalData?.checkinTab !== undefined) {
     currentTab.value = app.globalData.checkinTab;
@@ -842,6 +955,11 @@ onShow(() => {
   color: $rw-red;
 }
 
+.cal__legend-select {
+  font-size: 22rpx;
+  color: $rw-white;
+}
+
 .cal__legend-text {
   font-size: 20rpx;
   letter-spacing: 1rpx;
@@ -871,40 +989,43 @@ onShow(() => {
   font-family: $rw-font-display;
   font-size: 26rpx;
   line-height: 1.1;
-  color: $rw-white;
+  color: $rw-gray;
   font-feature-settings: "tnum";
 }
 
 /* 有打卡：数字加粗提亮 */
 .cal__cell.has-record .cal__daynum {
   font-weight: 700;
+  color: $rw-white;
 }
 
-/* 今日：红蒙层切角小标签（呼应全站切角语言） */
-.cal__cell.is-today .cal__daynum {
-  padding: 2rpx 8rpx;
-  background: $rw-red-soft;
-  clip-path: polygon(0 0, calc(100% - 8rpx) 0, 100% 8rpx, 100% 100%, 0 100%);
-}
-
-/* 选中：红底白字 */
-.cal__cell.is-selected {
+/* 今日：红色背景；它和选中日期是两个可叠加的状态 */
+.cal__cell.is-today {
   background: $rw-red;
 
   .cal__daynum {
     color: $rw-white;
     font-weight: 700;
-    background: none;
-    clip-path: none;
+  }
+}
+
+/* 当前选中：白色内描边，不抢占「今天」的红色语义 */
+.cal__cell.is-selected {
+  box-shadow: inset 0 0 0 3rpx $rw-white;
+
+  .cal__daynum {
+    color: $rw-white;
+    font-weight: 700;
   }
 }
 
 /* 未来日期：灰禁点 */
 .cal__cell.is-future {
+  opacity: 0.35;
+  pointer-events: none;
+
   .cal__daynum {
     color: #55555c;
-    background: none;
-    clip-path: none;
   }
 }
 
@@ -917,7 +1038,7 @@ onShow(() => {
   transform: rotate(45deg);
 }
 
-.cal__cell.is-selected .cal__dot {
+.cal__cell.is-today .cal__dot {
   background: $rw-white;
 }
 
@@ -1028,11 +1149,20 @@ onShow(() => {
   color: $rw-gray;
 }
 
+.ck__detail-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid $rw-line;
+}
+
 /* 空态：过去日期无记录 */
 .ck__empty {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18rpx;
   padding: 24rpx 0;
 }
 
@@ -1042,10 +1172,10 @@ onShow(() => {
   color: $rw-gray;
 }
 
-.ck__empty-link {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: $rw-red;
+.ck__empty-rule {
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: rgba(156, 156, 163, 0.75);
 }
 
 /* ========== 内联打卡表单 ========== */
@@ -1068,7 +1198,7 @@ onShow(() => {
   color: $rw-gray;
 }
 
-/* 心情贴纸：切角，选中红底 */
+/* 体感选项：切角，选中红底 */
 .mood-chips {
   display: flex;
   gap: 20rpx;
@@ -1125,6 +1255,19 @@ onShow(() => {
   font-size: 24rpx;
   color: $rw-red;
   margin-bottom: 16rpx;
+}
+
+.ck__cancel {
+  display: inline-block;
+  margin-left: 28rpx;
+  padding: 20rpx 28rpx;
+  font-size: 26rpx;
+  color: $rw-gray;
+  vertical-align: middle;
+}
+
+.ck__cancel--pressed {
+  color: $rw-white;
 }
 
 /* ========== 列表视图 ========== */
@@ -1259,7 +1402,21 @@ onShow(() => {
 .total {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
+}
+
+.total__eyebrow {
+  font-family: $rw-font-display;
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  color: $rw-gray;
+}
+
+.total__number-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-top: 14rpx;
 }
 
 .total__num {
@@ -1272,18 +1429,31 @@ onShow(() => {
 }
 
 .total__unit {
-  margin-top: 4rpx;
   font-family: $rw-font-display;
-  font-size: 26rpx;
-  letter-spacing: 4rpx;
+  font-size: 32rpx;
+  letter-spacing: 2rpx;
   color: $rw-gray;
 }
 
+.total__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 28rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid $rw-line;
+}
+
 .total__label {
-  margin-top: 16rpx;
-  font-size: 24rpx;
-  letter-spacing: 2rpx;
+  font-size: 26rpx;
   color: $rw-gray;
+}
+
+.total__month {
+  font-family: $rw-font-display;
+  font-size: 32rpx;
+  letter-spacing: 1rpx;
+  color: $rw-red;
 }
 
 .chart-zone {
@@ -1302,9 +1472,17 @@ onShow(() => {
 }
 
 .chart__title {
+  display: block;
   font-size: 28rpx;
   letter-spacing: 1rpx;
   color: $rw-white;
+}
+
+.chart__caption {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $rw-gray;
 }
 
 .chart__sub {
@@ -1325,14 +1503,36 @@ onShow(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  opacity: 0.62;
+}
+
+.chart__col.is-selected {
+  opacity: 1;
+}
+
+.chart__col--pressed {
+  transform: translateY(-4rpx);
 }
 
 .chart__track {
+  position: relative;
   width: 100%;
   height: 240rpx;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+}
+
+.chart__value {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  font-family: $rw-font-display;
+  font-size: 18rpx;
+  text-align: center;
+  color: $rw-gray;
 }
 
 .chart__bar {
@@ -1344,6 +1544,16 @@ onShow(() => {
   &.is-current {
     background: $rw-red;
   }
+
+  &.is-zero {
+    height: 2rpx !important;
+    background: $rw-line;
+    clip-path: none;
+  }
+}
+
+.chart__col.is-selected .chart__bar {
+  background: $rw-red;
 }
 
 .chart__label {
@@ -1352,22 +1562,91 @@ onShow(() => {
   color: $rw-gray;
 }
 
+.chart__col.is-selected .chart__label,
+.chart__col.is-selected .chart__value {
+  color: $rw-white;
+}
+
+.chart__readout {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 24rpx;
+  margin-top: 28rpx;
+  padding: 22rpx 24rpx;
+  background: $rw-black;
+  border-left: 6rpx solid $rw-red;
+}
+
+.chart__readout-month,
+.chart__readout-note {
+  display: block;
+}
+
+.chart__readout-month {
+  font-family: $rw-font-display;
+  font-size: 26rpx;
+  color: $rw-white;
+}
+
+.chart__readout-note {
+  margin-top: 4rpx;
+  font-size: 19rpx;
+  color: $rw-gray;
+}
+
+.chart__readout-value,
+.chart__readout-count {
+  font-family: $rw-font-display;
+  font-size: 30rpx;
+  color: $rw-white;
+}
+
+.chart__readout-value {
+  color: $rw-red;
+}
+
+.metrics-head {
+  margin-top: 44rpx;
+}
+
+.metrics-head__title,
+.metrics-head__sub {
+  display: block;
+}
+
+.metrics-head__title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $rw-white;
+}
+
+.metrics-head__sub {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: $rw-gray;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 32rpx;
-  margin-top: 40rpx;
+  margin-top: 20rpx;
+}
+
+.metric-wrap:not(.is-primary) .rw-card-body {
+  border: 2rpx solid $rw-line;
 }
 
 .metric {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .metric__value {
   font-family: $rw-font-display;
-  font-size: 52rpx;
+  font-size: 44rpx;
   line-height: 1.2;
   color: $rw-white;
   font-feature-settings: "tnum";
@@ -1375,9 +1654,40 @@ onShow(() => {
   margin-bottom: 8rpx;
 }
 
+.metric-wrap.is-primary .metric__value {
+  font-size: 52rpx;
+}
+
 .metric__label {
   font-size: 24rpx;
   letter-spacing: 1rpx;
+  color: $rw-gray;
+}
+
+.habit-strip {
+  margin-top: 28rpx;
+  padding: 24rpx 28rpx;
+  background: rgba(255, 255, 255, 0.035);
+  border: 2rpx solid $rw-line;
+  border-left: 6rpx solid $rw-red;
+}
+
+.habit-strip__kicker,
+.habit-strip__text {
+  display: block;
+}
+
+.habit-strip__kicker {
+  font-family: $rw-font-display;
+  font-size: 20rpx;
+  letter-spacing: 3rpx;
+  color: $rw-red;
+}
+
+.habit-strip__text {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
   color: $rw-gray;
 }
 
