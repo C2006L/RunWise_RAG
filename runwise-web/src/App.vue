@@ -1,7 +1,7 @@
 <script setup>
 // 根组件：按路由 meta 决定 NavBar 显隐（login 页隐藏，见 4.2）
-// 底部跑马灯（S2 签名元素）：五个内页统一，由路由 meta.marquee 标记
-// （AI 答疑页桌面端高度锁死、页面级禁止滚动，不参与跑马灯）
+// 底部跑马灯（S2 签名元素）：内页统一由路由 meta.marquee 标记。
+// 纯装饰层 pointer-events 穿透，各页面通过 app-main--marquee 预留底部空间。
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import NavBar from './components/layout/NavBar.vue'

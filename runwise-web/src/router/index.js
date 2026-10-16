@@ -27,7 +27,7 @@ const routes = [
     path: "/checkin",
     name: "checkin",
     component: () => import("../views/CheckinView.vue"),
-    // marquee：底部跑马灯（S2，五内页统一；AI 答疑页高度锁死不挂）
+    // marquee：底部跑马灯（S2，内页统一复用 App.vue 的全局组件）
     meta: { requiresAuth: true, title: "打卡记录", marquee: true },
   },
   {
@@ -40,7 +40,7 @@ const routes = [
     path: "/qa",
     name: "qa",
     component: () => import("../views/QaView.vue"),
-    meta: { requiresAuth: true, title: "AI 答疑" },
+    meta: { requiresAuth: true, title: "AI 答疑", marquee: true },
   },
   {
     path: "/injury",

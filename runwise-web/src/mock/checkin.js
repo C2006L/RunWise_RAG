@@ -88,6 +88,7 @@ function ensureData() {
       pace: formatPace(distanceKm, durationMin), // 配速由距离时长推导
       mood,
       note,
+      imageUrl: '',
     }
   }
 
@@ -147,7 +148,38 @@ export async function createCheckin(data, token) {
     pace: formatPace(data.distanceKm, data.durationMin),
     mood: data.mood,
     note: (data.note || '').trim(),
+    imageUrl: data.imageUrl || '',
   }
   records.set(record.date, record)
   return { ...record }
+}
+
+export async function updateCheckin(id, data, token) {
+  verifyAccess(token)
+  await sleep(240)
+  const { records } = ensureData()
+  const existing = records.get(data.date)
+  if (!existing || existing.id !== id) throw new Error('打卡记录不存在')
+  const record = {
+    ...existing,
+    distanceKm: data.distanceKm,
+    durationMin: data.durationMin,
+    pace: formatPace(data.distanceKm, data.durationMin),
+    mood: data.mood,
+    note: (data.note || '').trim(),
+    imageUrl: data.imageUrl || '',
+  }
+  records.set(record.date, record)
+  return { ...record }
+}
+
+export async function uploadCheckinImage(file, token) {
+  verifyAccess(token)
+  await sleep(180)
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('图片读取失败'))
+    reader.readAsDataURL(file)
+  })
 }

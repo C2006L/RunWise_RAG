@@ -17,6 +17,11 @@ public interface CheckinService extends IService<Checkin> {
     Long createCheckin(Long userId, CheckinDTO dto);
 
     /**
+     * 修改自己的打卡记录
+     */
+    Checkin updateCheckin(Long userId, Long id, CheckinDTO dto);
+
+    /**
      * 查询今日打卡状态
      */
     Checkin getTodayCheckin(Long userId);

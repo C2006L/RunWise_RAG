@@ -15,12 +15,14 @@ import { formatDate } from "../composables/useFormatDate";
 // 打卡页（工程计划 4.4 / M3 功能态）：日历卡 + 表单卡，容器均为 P5Card 切角容器
 // 页面职责：驱动数据加载（初始当月 + 翻月），选中日期状态收在 store
 const store = useCheckinStore();
+const formEditing = ref(false);
 
 const todayKey = formatDate(new Date());
 // 胶带文案与卡片内容严格一致（UI 精修 P0-3 / B2 空态）：
 // 有记录 →「当日记录」（只读卡）；今天无记录 →「今日打卡」（表单）；
 // 过去无记录 →「暂无记录」（空态卡 + 去首页打卡链接）
 const formTag = computed(() => {
+  if (formEditing.value) return "编辑记录";
   if (store.selectedRecord) return "当日记录";
   return store.selectedDate === todayKey ? "今日打卡" : "暂无记录";
 });
@@ -101,7 +103,7 @@ onMounted(() => {
         tag-right="36px"
         tag-variant="red"
       >
-        <CheckinForm />
+        <CheckinForm @editing-change="formEditing = $event" />
       </P5Card>
     </div>
   </div>
@@ -113,6 +115,9 @@ onMounted(() => {
 }
 
 .page-head {
+  position: relative;
+  z-index: 1;
+  padding-top: clamp(10px, 1.4vh, 16px);
   margin-bottom: 0; /* 间距由 p5-page-header 的 padding-bottom 提供 */
 }
 
@@ -139,11 +144,20 @@ onMounted(() => {
   position: relative;
   z-index: 1; /* 0-2 装饰层级：卡片永远在装饰层（z-index:0）之上 */
   display: grid;
-  /* v2.0 3.4.2 规则 1：7:5 不等分栏（告别均分栅格的 AI 味工整） */
-  grid-template-columns: 7fr 5fr;
+  grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
   gap: var(--sp-5);
   /* 拉伸对齐：右栏表单卡与日历卡等高，右栏下方不出空洞（空白压缩） */
   align-items: stretch;
+}
+
+.checkin-layout :deep(.p5-card) {
+  border: 1px solid rgba(255, 255, 255, .62);
+  background: var(--p5-panel);
+  filter: none;
+}
+
+.checkin-layout :deep(.p5-card-wrap) {
+  filter: drop-shadow(5px 6px 0 rgba(92, 21, 24, .72));
 }
 
 /* S1 号码布锚定区：网格拉伸由 zone 承接（原 wrap 为直接网格项） */

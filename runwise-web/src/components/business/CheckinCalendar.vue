@@ -125,7 +125,7 @@ function handleClick(cell) {
 
 <style scoped>
 .cal {
-  padding: var(--sp-6);
+  padding: 22px var(--sp-6) var(--sp-5);
 }
 
 .cal-head {
@@ -136,10 +136,11 @@ function handleClick(cell) {
 }
 
 .cal-title {
-  font-size: var(--fs-h3);
-  font-weight: 700;
+  font-size: clamp(20px, 2vw, 25px);
+  font-weight: 800;
   letter-spacing: 0.05em;
   color: var(--p5-white);
+  text-shadow: 2px 2px 0 rgba(230, 0, 18, .55);
 }
 
 .cal-nav {
@@ -164,7 +165,7 @@ function handleClick(cell) {
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
   font-size: var(--fs-caption);
-  color: var(--p5-text-dim);
+  color: #777780;
   margin-bottom: var(--sp-2);
 }
 
@@ -185,12 +186,14 @@ function handleClick(cell) {
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: var(--sp-1);
+  gap: 4px;
 }
 
 .cal-cell {
   position: relative;
-  aspect-ratio: 1;
+  width: clamp(48px, 4.5vw, 64px);
+  height: clamp(48px, 4.5vw, 64px);
+  justify-self: center;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -200,7 +203,8 @@ function handleClick(cell) {
   font-size: var(--fs-sub);
   transition:
     background-color 0.15s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    color 0.15s;
 }
 
 /* B2：hover 白色描边浮现（0.2s），暗示可点 */
@@ -220,7 +224,8 @@ function handleClick(cell) {
 }
 
 .is-future {
-  color: #55555c;
+  color: #4d4d54;
+  opacity: .62;
   cursor: default;
 }
 
@@ -234,6 +239,7 @@ function handleClick(cell) {
 .is-selected {
   background: var(--p5-red);
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.52);
 }
 
 .is-selected:hover {
@@ -251,6 +257,21 @@ function handleClick(cell) {
 
 .is-selected .cal-dot {
   background: var(--p5-white);
+}
+
+.is-selected .cal-daynum {
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 520px) {
+  .cal { padding-right: 14px; padding-left: 14px; }
+  .cal-cell { width: clamp(36px, 11vw, 42px); height: clamp(36px, 11vw, 42px); }
 }
 
 /* 新打卡盖章动画（P3-2）：scale 1.6→1 落章 */

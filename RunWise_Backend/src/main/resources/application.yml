@@ -4,6 +4,11 @@ server:
     context-path: /
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   # MySQL 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -44,6 +49,9 @@ mybatis-plus:
 
 # RunWise 自定义配置
 runwise:
+  # 本地开发上传目录；生产环境可通过 RUNWISE_UPLOAD_DIR 覆盖
+  upload-dir: ${RUNWISE_UPLOAD_DIR:uploads}
+
   # JWT 配置
   jwt:
     secret: RunWiseSecretKey2024ForJwtTokenGenerationPleaseChangeInProduction

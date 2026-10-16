@@ -3,6 +3,8 @@ package com.runwise.dto;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
@@ -16,9 +18,11 @@ public class CheckinDTO {
     private String checkinDate;
 
     @NotNull(message = "距离不能为空")
+    @DecimalMin(value = "0.01", message = "距离必须大于0")
     private BigDecimal distance;
 
     @NotNull(message = "时长不能为空")
+    @Min(value = 1, message = "时长必须大于0")
     private Integer duration;
 
     private String mood;

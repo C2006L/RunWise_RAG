@@ -17,6 +17,7 @@ import * as statsApi from "../api/stats";
 //   getWeeklyStats 实时组装（数据注入），点击候选填入草稿
 // - 伤病预防页「问 AI 助手」跳转携带 ?draft=，进页填入草稿并聚焦
 const HISTORY_PAGE_SIZE = 5;
+const HOT_LABELS = ["START!", "KNEE!", "SHOE!", "PLAN!", "PULSE!"];
 
 // ===== 分类候选问题（第一条为数据注入占位，运行时由 weekly 数据组装） =====
 const CATEGORY_CANDIDATES = {
@@ -299,7 +300,7 @@ function loadHistoryIntoChat(record) {
         <RansomNote text="AI 答疑" :seed="33" />
       </h1>
       <p class="page-desc">
-        训练计划、装备选择、伤痛预防 —— 有疑问，随时问 RunWise 助手。
+        训练决策 · 装备情报 · 恢复判断 · 跑步技术
       </p>
     </header>
 
@@ -342,15 +343,14 @@ function loadHistoryIntoChat(record) {
                 </svg>
               </span>
               <span class="welcome-text">
-                <span class="empty-title">
-                  你好，我是 <span class="et-en">RunWise</span> 智能训练助手
-                </span>
+                <span class="terminal-label">RUNWISE AI</span>
+                <span class="empty-title">智能训练助手</span>
                 <span class="empty-desc">
-                  训练计划、装备选择、伤痛预防、跑步技术方面的疑问都可以直接问我
+                  训练计划 · 装备选择 · 伤病预防 · 跑步技术
                 </span>
                 <span class="welcome-meta">
-                  <span class="empty-hint">点击此处，从第一个问题开始 →</span>
-                  <span class="empty-note">（填入草稿，可编辑后发送）</span>
+                  <span class="empty-hint">点击载入起始问题 →</span>
+                  <span class="empty-note">可编辑后发送</span>
                 </span>
               </span>
               <!-- W-2：卡片右下角红色炸星（StarField S 档 22px，色覆盖为红） -->
@@ -361,9 +361,8 @@ function loadHistoryIntoChat(record) {
 
             <!-- 第二段：消息区（flex:1，消息多时内部滚动） -->
             <div ref="chatBody" class="chat-body">
-              <!-- F-3：空态提示（有消息后消失） -->
               <p v-if="!messages.length" class="chat-empty-hint">
-                试试下方快捷标签，或直接输入你的问题
+                选择下方快捷标签，或直接输入你的跑步问题
               </p>
               <QaChatMessage
                 v-for="m in messages"
@@ -418,7 +417,7 @@ function loadHistoryIntoChat(record) {
                   :disabled="asking || !inputText.trim()"
                   @click="sendFromInput"
                 >
-                  发送
+                  发送 →
                 </button>
               </div>
               <!-- A-4：免责声明移入卡内（输入区正下方 8px），不再单独占页面高度 -->
@@ -430,9 +429,13 @@ function loadHistoryIntoChat(record) {
 
       <!-- 侧栏：热门问题 + 历史记录（同款红框工艺） -->
       <aside class="qa-side">
-        <P5Card tag="热门问题" tag-rotate="3deg" frame="red">
-          <div class="side-card">
-            <h3 class="side-title">大家都在问</h3>
+        <section class="hot-panel" aria-labelledby="hot-title">
+          <div class="side-card side-card--hot">
+            <div class="side-heading">
+              <p>QUICK INTEL</p>
+              <h3 id="hot-title" class="side-title">大家都在问</h3>
+              <span>CLICK TO DRAFT</span>
+            </div>
             <button
               v-for="(h, i) in hotQuestions"
               :key="h.question"
@@ -443,42 +446,49 @@ function loadHistoryIntoChat(record) {
               <span class="hot-idx p5-num">{{
                 String(i + 1).padStart(2, "0")
               }}</span>
-              <span class="side-text">{{ h.question }}</span>
+              <span class="hot-copy">
+                <span class="hot-en">{{ HOT_LABELS[i] || "RUN!" }}</span>
+                <span class="side-text">{{ h.question }}</span>
+              </span>
+              <span class="hot-mark" aria-hidden="true"></span>
             </button>
             <p v-if="!hotQuestions.length" class="side-empty">暂无热门问题</p>
           </div>
-        </P5Card>
+        </section>
 
-        <P5Card
-          tag="历史记录"
-          tag-rotate="-4deg"
-          tag-top="-18px"
-          tag-left="44px"
-          frame="red"
-        >
+        <section class="history-panel" aria-labelledby="history-title">
           <!-- A-3：历史卡 = 标题 + 列表（flex:1 内滚）+ 加载更多（贴卡底） -->
           <div class="side-card side-card--history">
-            <h3 class="side-title">我的问答</h3>
+            <div class="side-heading side-heading--history">
+              <p>MISSION FILES</p>
+              <h3 id="history-title" class="side-title">我的问答</h3>
+              <span>{{ historyTotal }} FILES</span>
+            </div>
             <div class="history-list">
               <button
-                v-for="r in historyList"
+                v-for="(r, i) in historyList"
                 :key="r.id"
-                class="side-item"
+                class="side-item side-item--history"
                 type="button"
                 @click="loadHistoryIntoChat(r)"
               >
-                <span class="side-text">{{ r.question }}</span>
-                <span class="side-meta">
-                  {{ shortTime(r.createTime)
-                  }}<template v-if="r.feedback === 1"> · 已赞</template
-                  ><template v-else-if="r.feedback === -1"> · 已踩</template>
+                <span class="history-file">FILE {{ String(i + 1).padStart(2, "0") }}</span>
+                <span class="history-copy">
+                  <span class="side-text">{{ r.question }}</span>
+                  <span class="side-meta">
+                    {{ shortTime(r.createTime)
+                    }}<template v-if="r.feedback === 1"> · 已赞</template
+                    ><template v-else-if="r.feedback === -1"> · 已踩</template>
+                  </span>
                 </span>
+                <span class="history-arrow" aria-hidden="true">→</span>
               </button>
               <p
                 v-if="!historyList.length && !historyLoading"
                 class="side-empty"
               >
-                暂无历史记录，提问后自动保存
+                <strong>NO FILE FOUND!</strong>
+                <span>暂无历史记录，提问后自动保存</span>
               </p>
             </div>
             <button
@@ -491,7 +501,7 @@ function loadHistoryIntoChat(record) {
               {{ historyLoading ? "加载中…" : "加载更多" }}
             </button>
           </div>
-        </P5Card>
+        </section>
       </aside>
     </div>
   </div>
@@ -499,6 +509,7 @@ function loadHistoryIntoChat(record) {
 
 <style scoped>
 .page-head {
+  padding-top: clamp(10px, 1.4vh, 16px);
   margin-bottom: 0; /* 间距由 p5-page-header 的 padding-bottom 提供 */
 }
 
@@ -513,12 +524,12 @@ function loadHistoryIntoChat(record) {
   margin-bottom: var(--sp-2);
 }
 
-/* 眉标装饰线：电光蓝（答疑页蓝色点缀，全页唯二的蓝元素之一） */
+/* 眉标装饰线统一使用 RunWise 主红，避免出现通用 AI 产品常见的蓝紫提示色。 */
 .page-kicker::before {
   content: "";
   width: 28px;
   height: 2px;
-  background: var(--accent-blue);
+  background: var(--p5-red);
 }
 
 .page-title {
@@ -535,16 +546,17 @@ function loadHistoryIntoChat(record) {
 /* ===== 布局：主聊天区 + 侧栏 ===== */
 .qa-page {
   position: relative; /* 承载 QaDecor 装饰层 */
-  /* A-1：页面高度锁死 = 100vh - 导航 (64) - app-main 上下内边距 (32+32)，
-     页面级滚动被根除——滚动只允许发生在卡片内部 */
-  height: calc(100vh - var(--nav-h) - var(--sp-6) * 2);
+  /* QA 恢复全局底部跑马灯后，主区保留稳定工作高度；视口不足时允许页面滚动，
+     聊天与历史各自仍在明确高度内独立滚动，避免侧栏被 flex 压缩裁切。 */
+  min-height: calc(100vh - var(--nav-h) - var(--sp-6) - 60px);
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* 双保险：任何溢出不外泄为页面滚动条 */
+  overflow: visible;
 }
 
 .qa-layout {
-  flex: 1;
+  flex: 0 0 auto;
+  height: clamp(540px, calc(100vh - 300px), 610px);
   min-height: 0; /* flex 链路归零：容器高只由视口决定，绝不由内容撑 */
   display: grid;
   grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
@@ -554,7 +566,9 @@ function loadHistoryIntoChat(record) {
 }
 
 .qa-side {
+  position: relative;
   display: flex;
+  height: 100%;
   flex-direction: column;
   gap: var(--sp-5);
   min-height: 0; /* grid 项 min-height:auto 会把列表内容高度计入行高——归零 */
@@ -579,6 +593,7 @@ function loadHistoryIntoChat(record) {
   }
 
   .qa-layout {
+    height: auto;
     grid-template-columns: 1fr;
     grid-template-rows: none;
     align-items: start;
@@ -1148,5 +1163,528 @@ function loadHistoryIntoChat(record) {
 
 .more-btn:disabled {
   opacity: 0.5;
+}
+
+/* ===== v3 · 漫画情报面板（仅非核心区域去方正化） ===== */
+.chat-welcome {
+  isolation: isolate;
+  gap: clamp(18px, 2.2vw, 30px);
+  margin: var(--sp-5) var(--sp-6) 0;
+  padding: 24px 38px 24px 30px;
+  overflow: hidden;
+  border: 0;
+  background:
+    linear-gradient(112deg, rgba(230, 0, 18, 0.18), transparent 44%),
+    radial-gradient(rgba(255, 255, 255, 0.09) 1.25px, transparent 1.25px) 0 0 / 17px 17px,
+    #0c0c0e;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42), 8px 7px 0 rgba(92, 21, 24, 0.68);
+  clip-path: polygon(0 13px, 18px 0, 95% 0, 100% 24px, 98% 100%, 7% 100%, 0 82%);
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.chat-welcome::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 12px;
+  right: 30px;
+  width: 72px;
+  height: 4px;
+  background: var(--p5-red);
+  clip-path: polygon(7px 0, 100% 0, calc(100% - 7px) 100%, 0 100%);
+}
+
+.chat-welcome::after {
+  right: 0;
+  bottom: 0;
+  width: 48px;
+  height: 31px;
+  background:
+    linear-gradient(-18deg, transparent 0 38%, var(--p5-red) 40% 53%, transparent 55%),
+    linear-gradient(-18deg, transparent 0 60%, #fff 62% 68%, transparent 70%);
+  clip-path: none;
+}
+
+.chat-welcome:hover {
+  transform: translate(2px, -2px);
+  filter: drop-shadow(-4px 5px 0 rgba(230, 0, 18, 0.2));
+}
+
+.chat-welcome:focus-visible {
+  outline: 2px solid var(--p5-white);
+  outline-offset: -5px;
+}
+
+.empty-runner {
+  width: 72px;
+  height: 72px;
+  opacity: 0.7;
+  transform: rotate(-2deg);
+}
+
+.empty-runner::before {
+  content: "";
+  position: absolute;
+  inset: 8px -7px 2px 4px;
+  z-index: -1;
+  background: rgba(230, 0, 18, 0.64);
+  clip-path: polygon(15% 0, 100% 8%, 88% 100%, 0 82%);
+}
+
+.runner-shadow { color: #09090a; transform: translate(6px, 6px); }
+.runner-body { color: var(--p5-white); filter: drop-shadow(2px 2px 0 var(--p5-red)); }
+
+.terminal-label {
+  align-self: flex-start;
+  padding: 4px 15px 4px 10px;
+  color: #fff;
+  background: var(--p5-red);
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 5px 100%);
+}
+
+.empty-title {
+  font-family: var(--font-cn-title), var(--font-body);
+  font-size: clamp(21px, 1.8vw, 25px);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-shadow: 2px 2px 0 rgba(230, 0, 18, 0.56);
+}
+
+.empty-title em {
+  color: var(--p5-red);
+  font-style: normal;
+  text-shadow: 2px 2px 0 #fff;
+}
+
+.empty-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: #c5c5cc;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.empty-desc span:last-child { color: #f0f0f2; }
+.empty-hint { font-family: var(--font-cn-display), var(--font-body); font-weight: 400; }
+
+/* 侧栏不再使用两张同款红框卡，热门菜单开放、历史档案有边界。 */
+.qa-side {
+  gap: clamp(15px, 1.8vh, 20px);
+  padding: 0 2px 0 10px;
+  background: linear-gradient(rgba(255,255,255,.22), rgba(255,255,255,.22)) 0 8px / 1px calc(100% - 16px) no-repeat;
+}
+
+.hot-panel {
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  padding: 6px 0 2px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)) 0 18px / 1px 46% no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)) 0 18px / 31% 1px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)) 100% 100% / 42% 1px no-repeat;
+}
+
+.hot-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -8px;
+  width: 38%;
+  height: 5px;
+  background: var(--p5-red);
+  transform: skewX(-32deg);
+}
+
+.side-card--hot { padding: 11px 6px 0 10px; }
+
+.side-heading {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  margin-bottom: 4px;
+  padding: 0 7px 5px 4px;
+}
+
+.side-heading p {
+  grid-column: 1 / -1;
+  color: var(--p5-red);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.17em;
+}
+
+.side-heading .side-title {
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-cn-title), var(--font-body);
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: none;
+}
+
+.side-heading > span {
+  color: #777780;
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.side-item--hot {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 17px;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 3px 5px 4px 1px;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.side-item--hot + .side-item--hot {
+  position: relative;
+  margin-top: 3px;
+}
+
+.side-item--hot + .side-item--hot::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 47px;
+  width: 46%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--p5-red), transparent);
+}
+
+.side-item--hot::before { display: none; }
+.side-item--hot:nth-of-type(2) { padding-left: 10px; }
+.side-item--hot:nth-of-type(3) { padding-left: 3px; }
+.side-item--hot:nth-of-type(4) { padding-left: 14px; }
+.side-item--hot:nth-of-type(5) { padding-left: 6px; }
+
+.side-item--hot:hover,
+.side-item--hot:focus-visible {
+  border-color: transparent;
+  background: linear-gradient(90deg, rgba(230, 0, 18, 0.16), transparent 78%);
+  transform: translateX(4px);
+}
+
+.side-item--hot:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.68);
+  outline-offset: 2px;
+}
+
+.hot-idx {
+  align-self: start;
+  padding-top: 4px;
+  font-size: 16px;
+  transform: none;
+}
+
+.hot-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+
+.hot-en {
+  display: inline-block;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 1.7vw, 25px);
+  letter-spacing: 0.035em;
+  line-height: 0.9;
+  text-shadow: 3px 3px 0 var(--p5-red);
+  transition: color 180ms ease, text-shadow 180ms ease, transform 180ms ease;
+}
+
+.side-item--hot:nth-of-type(2) .hot-en { transform: rotate(-1.4deg) translateY(1px); }
+.side-item--hot:nth-of-type(3) .hot-en { transform: rotate(1deg) translateX(4px); }
+.side-item--hot:nth-of-type(4) .hot-en { transform: rotate(-0.6deg) translateY(-1px); }
+.side-item--hot:nth-of-type(5) .hot-en { transform: rotate(1.3deg) translateX(-2px); }
+
+.side-item--hot .side-text {
+  margin-top: 6px;
+  color: #c2c2c9;
+  font-family: var(--font-cn-display), var(--font-body);
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-line-clamp: 2;
+}
+
+.side-item--hot:hover .hot-en,
+.side-item--hot:focus-visible .hot-en {
+  color: var(--p5-red);
+  text-shadow: 2px 2px 0 #fff, 5px 4px 0 #080808;
+  transform: translate(3px, -1px) rotate(0deg);
+}
+
+.hot-mark {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #5f5f68;
+  transform: rotate(45deg);
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.side-item--hot:hover .hot-mark,
+.side-item--hot:focus-visible .hot-mark {
+  border-color: var(--p5-red);
+  background: var(--p5-red);
+}
+
+/* 历史记录作为任务档案：边框局部断开，正文保持水平。 */
+.history-panel {
+  position: relative;
+  flex: 1 0 220px;
+  min-height: 220px;
+  overflow: hidden;
+  background:
+    linear-gradient(#fff, #fff) 0 0 / 36% 1px no-repeat,
+    linear-gradient(var(--p5-red), var(--p5-red)) 100% 0 / 27% 4px no-repeat,
+    linear-gradient(rgba(255,255,255,.58), rgba(255,255,255,.58)) 100% 18px / 1px 53% no-repeat,
+    linear-gradient(rgba(255,255,255,.42), rgba(255,255,255,.42)) 0 100% / 22% 1px no-repeat,
+    linear-gradient(#fff, #fff) 100% 100% / 58% 1px no-repeat,
+    #141416;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.22);
+  clip-path: polygon(0 0, 100% 8px, 100% 92%, 94% 100%, 0 100%);
+}
+
+.side-card--history { padding: 18px 16px 14px; }
+.side-heading--history { padding-right: 2px; padding-left: 2px; }
+
+.side-item--history {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 9px 7px 9px 5px;
+  overflow: hidden;
+  border: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.14)) 0 100% / 72% 1px no-repeat;
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+.side-item--history::before {
+  top: 16px;
+  bottom: 16px;
+  width: 4px;
+}
+
+.side-item--history:hover,
+.side-item--history:focus-visible {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--p5-red), var(--p5-red)) 0 100% / 88% 2px no-repeat,
+    linear-gradient(90deg, rgba(230, 0, 18, 0.17), transparent 82%);
+  transform: translateX(3px);
+}
+
+.side-item--history:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.65);
+  outline-offset: -2px;
+}
+
+.history-file {
+  color: var(--p5-red);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.history-copy { min-width: 0; }
+.side-item--history .side-text { font-size: 13px; -webkit-line-clamp: 1; }
+.side-item--history .side-meta { display: block; margin-top: 3px; font-size: 10px; }
+.history-arrow { color: #696971; font-family: var(--font-display); transition: color 180ms ease; }
+.side-item--history:hover .history-arrow,
+.side-item--history:focus-visible .history-arrow { color: var(--p5-red); }
+
+.history-panel .side-empty {
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.11);
+}
+
+.history-panel .side-empty strong {
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-shadow: 2px 2px 0 var(--p5-red);
+}
+
+.history-panel .side-empty span { color: var(--p5-text-dim); }
+
+.more-btn:focus-visible,
+.chip:focus-visible,
+.candidate:focus-visible,
+.send-btn:focus-visible {
+  outline: 2px solid var(--p5-white);
+  outline-offset: 2px;
+}
+
+.history-panel .history-list {
+  padding-right: 3px;
+}
+
+.history-panel .more-btn {
+  flex: none;
+  min-height: 32px;
+  margin-top: 8px;
+}
+
+/* 左侧继续保留明确内容边界，但将完整矩形描边拆成局部线段。 */
+.chat-col > .p5-card-wrap {
+  filter: drop-shadow(7px 7px 0 var(--p5-shadow-red));
+}
+
+.chat-col > .p5-card-wrap :deep(.p5-card--redframe) {
+  border: 0;
+  background:
+    linear-gradient(var(--p5-white), var(--p5-white)) 12px 0 / 62% 2px no-repeat,
+    linear-gradient(var(--p5-white), var(--p5-white)) 0 12px / 2px 78% no-repeat,
+    linear-gradient(var(--p5-white), var(--p5-white)) 100% 12px / 2px 34% no-repeat,
+    linear-gradient(var(--p5-white), var(--p5-white)) 0 100% / 31% 2px no-repeat,
+    linear-gradient(var(--p5-white), var(--p5-white)) 100% 100% / 46% 2px no-repeat,
+    linear-gradient(var(--p5-red), var(--p5-red)) 100% 0 / 22% 4px no-repeat,
+    var(--p5-panel);
+  box-shadow: none;
+  clip-path: polygon(12px 0, 100% 0, 100% 92%, 96% 100%, 0 100%, 0 12px);
+}
+
+/* ===== v4 · 回归 RunWise AI 问答工作台 ===== */
+/* 欢迎区保持克制，只说明身份与能力，不再承担控制台式信息展示。 */
+.chat-welcome {
+  min-height: 118px;
+  gap: 18px;
+  margin: 16px 24px 0;
+  padding: 19px 30px 19px 24px;
+  cursor: pointer;
+}
+
+.empty-runner {
+  width: 60px;
+  height: 60px;
+  opacity: 0.6;
+}
+
+.welcome-text { gap: 5px; }
+.terminal-label { padding-top: 3px; padding-bottom: 3px; font-size: 9px; }
+
+.chat-welcome .empty-title {
+  color: var(--p5-white);
+  font-family: var(--font-cn-title), var(--font-body);
+  font-size: clamp(20px, 1.8vw, 24px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: .04em;
+  text-shadow: 2px 2px 0 rgba(230, 0, 18, .55);
+}
+
+.chat-welcome .empty-desc {
+  display: block;
+  margin-top: 4px;
+  color: #c8c8ce;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.welcome-star { right: 18px; bottom: 8px; width: 18px; height: 18px; opacity: 0.7; }
+
+/* 沿用原有空状态，只增加极轻的品牌识别，不创建新的视觉模块。 */
+.chat-empty-hint {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  justify-content: flex-start;
+  gap: 11px;
+  margin: clamp(38px, 7vh, 62px) 0 auto 5%;
+  text-align: left;
+  color: #92929a;
+}
+
+.chat-empty-hint::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  background: var(--p5-red);
+  transform: rotate(45deg);
+}
+
+.chat-body { padding-top: 16px; padding-bottom: 10px; }
+.chat-foot { padding-top: 13px; }
+
+.chips { margin-bottom: 13px; }
+.chip--active { transform: rotate(-.8deg); }
+.chip:nth-child(even).chip--active { transform: rotate(.8deg); }
+.chip--active:hover:not(:disabled) { transform: translateY(-2px) rotate(-.4deg); }
+.chip:nth-child(even).chip--active:hover:not(:disabled) { transform: translateY(-2px) rotate(.4deg); }
+
+.chat-input:focus-visible {
+  border-color: var(--p5-red);
+  box-shadow: inset 4px 0 0 var(--p5-red);
+  outline: none;
+}
+
+.send-btn { transition: background-color 180ms ease, transform 180ms ease, filter 180ms ease; }
+.send-btn:hover:not(:disabled) { transform: translate(2px, -1px) skewX(-2deg); filter: brightness(1.08); }
+.send-btn:active:not(:disabled) { transform: translate(1px, 1px); }
+
+.chip:active:not(:disabled) { transform: translateY(1px) rotate(0); }
+.side-item--hot:active { background: var(--p5-red-soft); transform: translateX(6px); }
+.side-item--history:active { background: linear-gradient(90deg, rgba(230,0,18,.25), transparent 82%); }
+.side-item--history:hover::before,
+.side-item--history:focus-visible::before,
+.side-item--history:active::before { opacity: 1; }
+
+@media (max-width: 900px) {
+  .qa-side { height: auto; padding-left: 0; background: none; }
+  .history-panel { flex: none; min-height: 280px; }
+  .chat-welcome { margin-right: var(--sp-4); margin-left: var(--sp-4); }
+}
+
+@media (max-width: 600px) {
+  .chat-welcome { padding: 16px 20px; }
+  .empty-runner { width: 48px; height: 48px; }
+  .side-item--hot { grid-template-columns: 34px minmax(0, 1fr) 15px; }
+  .hot-en { font-size: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-welcome,
+  .side-item--hot,
+  .hot-en,
+  .hot-mark,
+  .side-item--history,
+  .history-arrow,
+  .send-btn {
+    transition: none;
+  }
+
+  .chat-welcome:hover,
+  .side-item--hot:hover,
+  .side-item--history:hover {
+    transform: none;
+  }
 }
 </style>

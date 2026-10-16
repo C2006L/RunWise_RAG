@@ -49,6 +49,16 @@ public class CheckinController {
         return Result.success(checkinService.createCheckin(userId, dto));
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "修改打卡记录")
+    public Result<Checkin> update(
+            HttpServletRequest request,
+            @PathVariable Long id,
+            @Valid @RequestBody CheckinDTO dto) {
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(checkinService.updateCheckin(userId, id, dto));
+    }
+
     @GetMapping("/list")
     @Operation(summary = "打卡列表(分页)")
     public Result<PageResult<Checkin>> getList(

@@ -1,6 +1,38 @@
 import { USE_MOCK, checkin as mockCheckin } from '../mock'
 import { useUserStore } from '../stores/user'
 import { instance, withAuthRetry } from './request'
+import { formatPace } from '../composables/useFormatDate'
+
+function normalizeCheckin(record) {
+  if (!record) return null
+  const distanceKm = Number(record.distanceKm ?? record.distance ?? 0)
+  const durationMin = Number(record.durationMin ?? record.duration ?? 0)
+  return {
+    id: record.id,
+    date: record.date || record.checkinDate,
+    distanceKm,
+    durationMin,
+    pace: typeof record.pace === 'string' && record.pace.includes("'")
+      ? record.pace
+      : formatPace(distanceKm, durationMin),
+    mood: record.mood || 'good',
+    note: record.note ?? record.remark ?? '',
+    imageUrl: record.imageUrl || '',
+    createTime: record.createTime,
+    updateTime: record.updateTime,
+  }
+}
+
+function toBackendPayload(payload) {
+  return {
+    checkinDate: payload.date,
+    distance: payload.distanceKm,
+    duration: payload.durationMin,
+    mood: payload.mood,
+    remark: payload.note || '',
+    imageUrl: payload.imageUrl || '',
+  }
+}
 
 // 打卡接口层（工程计划 6.3 签名 / 6.2 分流）：USE_MOCK 时转发 mock，组件与 store 无感知
 // mock 通道同样经过 withAuthRetry：token 过期 → 401 → 静默刷新 → 重放，与 axios 拦截器同一队列
@@ -13,8 +45,10 @@ export function getCheckinList(startDate, endDate) {
     )
   }
   return instance
-    .get('/checkin/list', { params: { startDate, endDate } })
-    .then((res) => res.data.data)
+    .get('/checkin/list', { params: { pageNum: 1, pageSize: 500 } })
+    .then((res) => (res.data.data?.list || [])
+      .map(normalizeCheckin)
+      .filter((record) => record.date >= startDate && record.date <= endDate))
 }
 
 // 个人档案统计使用的完整记录集。
@@ -61,6 +95,7 @@ export async function getAllCheckins() {
       pace: record.pace,
       mood: record.mood,
       note: record.remark || '',
+      imageUrl: record.imageUrl || '',
       createTime: record.createTime,
     }))
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -73,7 +108,11 @@ export function getCheckinByDate(date) {
       mockCheckin.getCheckinByDate(date, useUserStore().accessToken)
     )
   }
-  return instance.get(`/checkin/date/${date}`).then((res) => res.data.data)
+  return instance.get('/checkin/list', { params: { pageNum: 1, pageSize: 500 } })
+    .then((res) => {
+      const record = (res.data.data?.list || []).find((item) => item.checkinDate === date)
+      return normalizeCheckin(record)
+    })
 }
 
 // 创建 / 补录打卡：pace 由 api 层推导写入（组件不传 pace）
@@ -83,5 +122,31 @@ export function createCheckin(payload) {
       mockCheckin.createCheckin(payload, useUserStore().accessToken)
     )
   }
-  return instance.post('/checkin', payload).then((res) => res.data.data)
+  return instance.post('/checkin', toBackendPayload(payload)).then(async (res) => {
+    const id = res.data.data
+    const detail = await instance.get(`/checkin/${id}`)
+    return normalizeCheckin(detail.data.data)
+  })
+}
+
+export function updateCheckin(id, payload) {
+  if (USE_MOCK) {
+    return withAuthRetry(() =>
+      mockCheckin.updateCheckin(id, payload, useUserStore().accessToken)
+    )
+  }
+  return instance.put(`/checkin/${id}`, toBackendPayload(payload))
+    .then((res) => normalizeCheckin(res.data.data))
+}
+
+export function uploadCheckinImage(file) {
+  if (USE_MOCK) {
+    return withAuthRetry(() =>
+      mockCheckin.uploadCheckinImage(file, useUserStore().accessToken)
+    )
+  }
+  const formData = new FormData()
+  formData.append('file', file)
+  return instance.post('/files/checkin-image', formData)
+    .then((res) => res.data.data.url)
 }

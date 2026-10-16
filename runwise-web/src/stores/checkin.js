@@ -44,5 +44,18 @@ export const useCheckinStore = defineStore('checkin', {
         this.submitting = false
       }
     },
+    async update(id, payload) {
+      this.submitting = true
+      try {
+        const record = await checkinApi.updateCheckin(id, payload)
+        this.records = { ...this.records, [record.date]: record }
+        return record
+      } finally {
+        this.submitting = false
+      }
+    },
+    uploadImage(file) {
+      return checkinApi.uploadCheckinImage(file)
+    },
   },
 })

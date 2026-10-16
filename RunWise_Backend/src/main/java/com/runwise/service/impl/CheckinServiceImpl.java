@@ -55,11 +55,48 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
         checkin.setMood(dto.getMood());
         checkin.setRemark(dto.getRemark());
         checkin.setImageUrl(dto.getImageUrl());
-        checkin.setImageAudit(dto.getImageUrl() != null ? 0 : 1); // 有图片待审核，无图片直接通过
+        boolean hasImage = dto.getImageUrl() != null && !dto.getImageUrl().trim().isEmpty();
+        checkin.setImageAudit(hasImage ? 0 : 1); // 有图片待审核，无图片直接通过
         save(checkin);
 
         log.info("用户{}打卡成功, date={}, distance={}km", userId, checkinDate, dto.getDistance());
         return checkin.getId();
+    }
+
+    @Override
+    public Checkin updateCheckin(Long userId, Long id, CheckinDTO dto) {
+        Checkin checkin = getById(id);
+        if (checkin == null || !checkin.getUserId().equals(userId)) {
+            throw new BusinessException(ResultCode.CHECKIN_NOT_FOUND);
+        }
+
+        LocalDate checkinDate = LocalDate.parse(dto.getCheckinDate());
+        Checkin sameDay = getOne(new LambdaQueryWrapper<Checkin>()
+                .eq(Checkin::getUserId, userId)
+                .eq(Checkin::getCheckinDate, checkinDate)
+                .ne(Checkin::getId, id));
+        if (sameDay != null) {
+            throw new BusinessException(ResultCode.CHECKIN_ALREADY_EXISTS);
+        }
+
+        BigDecimal pace = new BigDecimal(dto.getDuration())
+                .divide(dto.getDistance(), 2, RoundingMode.HALF_UP);
+        boolean imageChanged = !Objects.equals(checkin.getImageUrl(), dto.getImageUrl());
+
+        checkin.setCheckinDate(checkinDate);
+        checkin.setDistance(dto.getDistance());
+        checkin.setDuration(dto.getDuration());
+        checkin.setPace(pace);
+        checkin.setMood(dto.getMood());
+        checkin.setRemark(dto.getRemark());
+        checkin.setImageUrl(dto.getImageUrl());
+        if (imageChanged) {
+            checkin.setImageAudit(dto.getImageUrl() == null || dto.getImageUrl().trim().isEmpty() ? 1 : 0);
+        }
+        updateById(checkin);
+
+        log.info("用户{}修改打卡记录{}, date={}", userId, id, checkinDate);
+        return checkin;
     }
 
     @Override

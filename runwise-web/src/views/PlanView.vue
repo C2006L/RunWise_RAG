@@ -274,6 +274,13 @@ async function onModalSubmit(payload) {
   flex-direction: column;
 }
 
+.page-head {
+  position: relative;
+  z-index: 1;
+  padding-top: clamp(10px, 1.4vh, 16px);
+  margin-bottom: 0;
+}
+
 .page-kicker {
   font-size: var(--fs-caption);
   letter-spacing: 0.1em;
@@ -293,16 +300,9 @@ async function onModalSubmit(payload) {
   color: var(--p5-text-dim);
 }
 
-.plan-body {
-  padding: var(--sp-5) var(--sp-6) var(--sp-6);
-}
+.plan-body { padding: 22px var(--sp-6) var(--sp-5); }
 
 /* 0-2 装饰层级：装饰层 z-index:0，页头与卡片 z-index:1（装饰永远在卡后面、点不到） */
-.page-head {
-  position: relative;
-  z-index: 1;
-}
-
 :deep(.p5-card-wrap) {
   z-index: 1;
 }
@@ -313,13 +313,18 @@ async function onModalSubmit(payload) {
   z-index: 1; /* 0-2 装饰层级：卡片永远在装饰层（z-index:0）之上 */
 }
 
+.plan-card-zone :deep(.p5-card--redframe) {
+  border-width: 1px;
+  background: var(--p5-panel);
+}
+
 /* ===== 工具行：周切换 + 添加 ===== */
 .plan-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-4);
-  margin-bottom: var(--sp-5);
+  margin-bottom: 16px;
 }
 
 .week-tabs {
@@ -394,22 +399,31 @@ async function onModalSubmit(payload) {
 .plan-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .plan-table th {
-  padding: var(--sp-3) var(--sp-3);
-  font-size: var(--fs-caption);
-  letter-spacing: 0.1em;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-align: left;
   color: var(--p5-text-dim);
   border-bottom: 1px solid var(--p5-line);
 }
 
 .plan-table td {
-  padding: var(--sp-4) var(--sp-3);
-  font-size: var(--fs-sub);
+  padding: 12px;
+  font-size: 13px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
+
+.plan-table th:nth-child(1) { width: 16%; }
+.plan-table th:nth-child(2) { width: 18%; }
+.plan-table th:nth-child(3) { width: 15%; }
+.plan-table th:nth-child(4) { width: 18%; }
+.plan-table th:nth-child(5) { width: 17%; }
+.plan-table th:nth-child(6) { width: 16%; }
 
 .plan-table tr:last-child td {
   border-bottom: none;
@@ -427,6 +441,7 @@ async function onModalSubmit(payload) {
 /* C2：休息日弱化——整行背景再暗一档 */
 .row--rest {
   background: rgba(0, 0, 0, 0.25);
+  opacity: .68;
 }
 
 .row--rest td {
@@ -451,7 +466,8 @@ tr.row--today td:first-child {
 }
 
 .cell-weekday {
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   color: var(--p5-white);
   white-space: nowrap;
 }
@@ -484,14 +500,17 @@ tr.row--today td:first-child {
 
 /* B5：距离数字 Anton 16px 白 + 灰色小单位 */
 .cell-num {
-  font-size: 16px;
+  font-size: 18px;
   color: var(--p5-white);
 }
 
 .km-num {
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--p5-white);
 }
+
+.km-unit { margin-left: 4px; font-size: 10px; color: var(--p5-text-dim); }
 
 .cell-dash {
   color: var(--p5-text-dim);
@@ -508,13 +527,13 @@ tr.row--today td:first-child {
 }
 
 .cell-pace {
+  font-size: 12px;
   color: var(--p5-text-dim);
   white-space: nowrap;
 }
 
-/* ===== C1：行尾操作按钮（非 hover 一律隐藏 + 右侧滑入 0.2s） =====
-   修复说明：原实现附 :focus-within——点击编辑/关闭弹窗后焦点留在按钮上，
-   操作列便永久可见（截图里周一/周三「编辑」常驻的根因）。现仅由行 hover 驱动 */
+/* ===== C1：行尾操作按钮 =====
+   默认低亮但保持可见、可点击；hover / 键盘聚焦时再提高对比度。 */
 .col-actions,
 .cell-actions {
   text-align: right;
@@ -522,25 +541,24 @@ tr.row--today td:first-child {
 }
 
 .cell-actions {
-  opacity: 0;
-  transform: translateX(12px); /* 从右侧滑入 */
+  opacity: .78;
+  transform: none;
   transition:
     opacity 0.2s,
     transform 0.2s;
-  pointer-events: none; /* 隐藏态不响应点击，避免误触 */
+  pointer-events: auto;
 }
 
-.plan-table tbody tr:hover .cell-actions {
+.plan-table tbody tr:hover .cell-actions,
+.plan-table tbody tr:focus-within .cell-actions {
   opacity: 1;
-  transform: translateX(0);
-  pointer-events: auto;
 }
 
 .row-act {
   padding: 2px 4px;
   font-size: var(--fs-caption);
   letter-spacing: 0.08em;
-  color: var(--p5-text-dim);
+  color: #b0b0b6;
   background: none;
   border: none;
   cursor: pointer;
@@ -549,6 +567,12 @@ tr.row--today td:first-child {
 
 .row-act:hover {
   color: var(--p5-red);
+}
+
+.row-act:focus-visible {
+  color: var(--p5-white);
+  outline: 1px solid var(--p5-red);
+  outline-offset: 2px;
 }
 
 .row-act--danger:hover {
@@ -593,16 +617,22 @@ tr.row--today td:first-child {
 /* ===== C3：周合计页脚行（数字 Anton 20px 白，标签灰） ===== */
 /* 提高特异性以压过 .plan-table td 的默认 padding */
 .plan-table td.plan-foot {
-  padding: var(--sp-4) var(--sp-3);
+  padding: 15px 12px 12px;
   text-align: right;
   border-top: 1px solid var(--p5-line);
   border-bottom: none;
 }
 
 .foot-num {
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1;
   color: var(--p5-white);
+}
+
+.plan-foot .foot-num:nth-child(2) {
+  font-size: 30px;
+  line-height: .8;
+  text-shadow: 2px 2px 0 rgba(230, 0, 18, .72);
 }
 
 .foot-label,
@@ -630,6 +660,16 @@ tr.row--today td:first-child {
   text-align: center;
   font-size: var(--fs-sub);
   color: var(--p5-text-dim);
+}
+
+.tt-tag {
+  min-width: 72px;
+  min-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 11px;
+  line-height: 1;
 }
 
 /* 删除二次确认文案（弹窗插槽） */
