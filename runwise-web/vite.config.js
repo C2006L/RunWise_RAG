@@ -15,14 +15,15 @@ export default defineConfig({
     // 多项目并存会形成级联抢占）——本项目固定用 5273，远离默认端口级联区
     port: 5273,
     open: false,
-    // 伤病预防等真实接口联调：/api 透传到本机 Spring Boot(8080)，避免跨域
+    // 伤病预防 / AI 真实接口联调：RunWise 后端固定使用 8081，
+    // 避开本机另一个项目占用的 8080。
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
       },
       '/uploads': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         changeOrigin: true,
       },
     },

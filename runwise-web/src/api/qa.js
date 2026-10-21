@@ -2,6 +2,12 @@ import { USE_MOCK, qa as mockQa } from '../mock'
 import { useUserStore } from '../stores/user'
 import { instance, withAuthRetry } from './request'
 
+// AI 问答可独立切换真实后端，避免为了联调 RAG 而关闭登录等模块的 Mock。
+const useMock =
+  import.meta.env.VITE_QA_USE_MOCK !== undefined
+    ? import.meta.env.VITE_QA_USE_MOCK !== 'false'
+    : USE_MOCK
+
 // 答疑接口层（工程计划 6.3 签名 / 6.2 分流）：USE_MOCK 时转发 mock，组件无感知
 // axios 路径与后端 QaController 逐一对齐：
 // - POST /api/qa/ask（请求体 AskDTO { question }）
@@ -12,7 +18,7 @@ import { instance, withAuthRetry } from './request'
 
 // 提问 → QaAskResult { answer, sources, safetyTip? }
 export function askQuestion(question) {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() => mockQa.ask(question, useUserStore().accessToken))
   }
   return instance.post('/qa/ask', { question }).then((res) => res.data.data)
@@ -20,7 +26,7 @@ export function askQuestion(question) {
 
 // 历史分页 → { list: QaHistoryRecord[], total, pageNum, pageSize }
 export function getHistory(pageNum = 1, pageSize = 10) {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() =>
       mockQa.getHistory(pageNum, pageSize, useUserStore().accessToken)
     )
@@ -32,7 +38,7 @@ export function getHistory(pageNum = 1, pageSize = 10) {
 
 // 问题分类 → QaCategory[]
 export function getCategories() {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() => mockQa.getCategories(useUserStore().accessToken))
   }
   return instance.get('/qa/categories').then((res) => res.data.data)
@@ -40,7 +46,7 @@ export function getCategories() {
 
 // 热门问题 → HotQuestion[]（后端返回全量，此处按 limit 截取）
 export function getHotQuestions(limit = 5) {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() =>
       mockQa.getHotQuestions(limit, useUserStore().accessToken)
     )
@@ -52,7 +58,7 @@ export function getHotQuestions(limit = 5) {
 
 // 回答反馈：feedback 1 赞 / -1 踩 / 0 取消
 export function feedback(id, feedback) {
-  if (USE_MOCK) {
+  if (useMock) {
     return withAuthRetry(() =>
       mockQa.feedback(id, feedback, useUserStore().accessToken)
     )

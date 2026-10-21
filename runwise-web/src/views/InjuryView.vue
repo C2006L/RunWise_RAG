@@ -55,6 +55,16 @@ function selectCategory(key) {
   loadArticles(key)
 }
 
+async function retryLoad() {
+  loadError.value = false
+  try {
+    categories.value = (await injuryApi.getCategories()) || []
+  } catch {
+    // 分类失败不阻塞文章重试；列表接口会给出最终状态。
+  }
+  await loadArticles(currentCategory.value)
+}
+
 // 进详情：query 同步（可分享 / 刷新定位）
 function openDetail(id) {
   router.replace({ query: { ...route.query, article: id } })
@@ -160,7 +170,10 @@ const categoryLabel = computed(
       </div>
 
       <div v-if="loading" class="list-status">文章加载中…</div>
-      <div v-else-if="loadError" class="list-status">文章加载失败，请刷新重试</div>
+      <div v-else-if="loadError" class="list-status list-status--error">
+        <span>文章服务暂时无法连接</span>
+        <button class="retry-btn" type="button" @click="retryLoad">重新加载 →</button>
+      </div>
       <div v-else class="article-list">
         <P5Card
           v-for="(a, i) in articles"
@@ -484,6 +497,31 @@ const categoryLabel = computed(
   text-align: center;
   font-size: var(--fs-sub);
   color: var(--p5-text-dim);
+}
+
+.list-status--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.retry-btn {
+  padding: 8px 22px;
+  color: var(--p5-white);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: var(--p5-red);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.retry-btn:hover,
+.retry-btn:focus-visible {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  outline: none;
 }
 
 /* ===== 详情 ===== */

@@ -41,6 +41,8 @@ RunWise_RAG/
 
 ## 快速开始
 
+完整的多端本地配置和安全说明见 [本地开发配置](docs/LOCAL_DEVELOPMENT.md)。启动 Spring Boot 前必须设置 `DB_PASSWORD`（或兼容的 `MYSQL_PASSWORD`）与 `JWT_SECRET` 环境变量，仓库不再保存真实密码或固定 JWT 密钥。
+
 ### 1. 克隆仓库
 
 ```bash

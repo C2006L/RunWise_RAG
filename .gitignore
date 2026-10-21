@@ -36,6 +36,7 @@ env/
 # Environment Variables
 .env
 *.env.local
+RunWise_Backend/src/main/resources/application-local.yml
 
 # Jupyter Notebook
 .ipynb_checkpoints/
@@ -52,6 +53,8 @@ models/
 # Logs
 *.log
 logs/
+RunWise_Backend/uploads/
+RunWise_Backend/target/
 
 # OS
 .DS_Store
