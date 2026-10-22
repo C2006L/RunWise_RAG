@@ -8,6 +8,10 @@ const useMock =
     ? import.meta.env.VITE_QA_USE_MOCK !== 'false'
     : USE_MOCK
 
+// 本地 RAG 需要先检索知识库，再等待 Ollama 生成答案；首次加载模型时通常会
+// 明显超过全局接口的 10 秒超时。仅放宽提问接口，其他普通接口继续快速失败。
+const QA_ASK_TIMEOUT = 150000
+
 // 答疑接口层（工程计划 6.3 签名 / 6.2 分流）：USE_MOCK 时转发 mock，组件无感知
 // axios 路径与后端 QaController 逐一对齐：
 // - POST /api/qa/ask（请求体 AskDTO { question }）
@@ -21,7 +25,9 @@ export function askQuestion(question) {
   if (useMock) {
     return withAuthRetry(() => mockQa.ask(question, useUserStore().accessToken))
   }
-  return instance.post('/qa/ask', { question }).then((res) => res.data.data)
+  return instance
+    .post('/qa/ask', { question }, { timeout: QA_ASK_TIMEOUT })
+    .then((res) => res.data.data)
 }
 
 // 历史分页 → { list: QaHistoryRecord[], total, pageNum, pageSize }

@@ -13,17 +13,55 @@ os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 from huggingface_hub import snapshot_download
 
-from langchain_community.document_loaders import TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import chromadb
+from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 DATA_DIR = Path(__file__).resolve().parent / "../data/runwise"
 CHROMA_DIR = Path(__file__).resolve().parent / "../chroma_db/runwise"
 EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
+COLLECTION_NAME = "runwise_knowledge_v2"
 
-CHUNK_SIZE = 800
-CHUNK_OVERLAY = 120
+CHUNK_SIZE = 520
+CHUNK_OVERLAP = 80
+
+HEADER_SPLITTER = MarkdownHeaderTextSplitter(
+    headers_to_split_on=[
+        ("#", "h1"),
+        ("##", "h2"),
+        ("###", "h3"),
+        ("####", "h4"),
+    ],
+    strip_headers=False,
+)
+
+
+def load_markdown_sections(file_path: Path, data_path: Path):
+    """按 Markdown 标题保留章节语境，并补充可用于检索过滤的元数据。"""
+    text = file_path.read_text(encoding="utf-8")
+    relative_path = file_path.relative_to(data_path)
+    category = relative_path.parts[0] if len(relative_path.parts) > 1 else "general"
+    sections = HEADER_SPLITTER.split_text(text)
+
+    for section in sections:
+        headings = [
+            section.metadata.get(key, "").strip()
+            for key in ("h1", "h2", "h3", "h4")
+            if section.metadata.get(key, "").strip()
+        ]
+        document_title = headings[0] if headings else file_path.stem
+        section_path = " / ".join(headings) if headings else document_title
+        section.metadata.update(
+            {
+                "source": file_path.name,
+                "source_path": relative_path.as_posix(),
+                "category": category,
+                "document_title": document_title,
+                "section": section_path,
+            }
+        )
+    return sections
 
 
 def main():
@@ -39,36 +77,55 @@ def main():
     print("正在加载文档...")
 
     docs = []
+    loaded_file_count = 0
     for f in sorted(data_path.rglob("*")):
         if f.suffix.lower() in (".md", ".txt") and f.is_file():
             try:
-                loader = TextLoader(str(f), encoding="utf-8")
-                file_docs = loader.load()
+                if f.suffix.lower() == ".md":
+                    file_docs = load_markdown_sections(f, data_path)
+                else:
+                    # 当前知识库以 Markdown 为主；txt 文件作为一个带基础元数据的章节处理。
+                    from langchain_core.documents import Document
+
+                    relative_path = f.relative_to(data_path)
+                    file_docs = [
+                        Document(
+                            page_content=f.read_text(encoding="utf-8"),
+                            metadata={
+                                "source": f.name,
+                                "source_path": relative_path.as_posix(),
+                                "category": relative_path.parts[0]
+                                if len(relative_path.parts) > 1
+                                else "general",
+                                "document_title": f.stem,
+                                "section": f.stem,
+                            },
+                        )
+                    ]
                 docs.extend(file_docs)
+                loaded_file_count += 1
                 print(f"  已加载: {f.name}")
             except Exception as e:
                 print(f"  加载失败 {f.name}: {e}")
-    print(f"加载了 {len(docs)} 个文件")
+    print(f"加载了 {loaded_file_count} 个文件，解析出 {len(docs)} 个标题章节")
 
     if not docs:
         print("[错误] 未加载到任何文档，请检查文件格式")
         sys.exit(1)
 
-    for doc in docs:
-        source = doc.metadata.get("source", "")
-        doc.metadata["source"] = Path(source).name
-
-    print(f"正在分块 (chunk_size={CHUNK_SIZE}, chunk_overlap={CHUNK_OVERLAY})...")
+    print(f"正在分块 (chunk_size={CHUNK_SIZE}, chunk_overlap={CHUNK_OVERLAP})...")
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAY,
-        separators=["\n## ", "\n### ", "\n\n", "\n", "。", "，", " ", ""],
+        chunk_overlap=CHUNK_OVERLAP,
+        separators=["\n\n", "\n", "。", "；", "，", " ", ""],
         length_function=len,
     )
     chunks = splitter.split_documents(docs)
 
     for i, chunk in enumerate(chunks):
-        chunk.metadata["chunk_id"] = i
+        section = chunk.metadata.get("section", chunk.metadata.get("document_title", ""))
+        chunk.page_content = f"章节：{section}\n\n{chunk.page_content.strip()}"
+        chunk.metadata["chunk_id"] = f"{chunk.metadata.get('source_path', 'unknown')}#{i}"
 
     print(f"切分出 {len(chunks)} 个文本块")
 
@@ -94,16 +151,26 @@ def main():
 
     print("正在构建向量索引并存入 ChromaDB ...")
     chroma_path.mkdir(parents=True, exist_ok=True)
-    vectorstore = Chroma.from_documents(
+    client = chromadb.PersistentClient(path=str(chroma_path))
+    try:
+        client.delete_collection(COLLECTION_NAME)
+        print(f"已移除旧的 {COLLECTION_NAME} collection")
+    except Exception:
+        pass
+
+    Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         persist_directory=str(chroma_path),
+        collection_name=COLLECTION_NAME,
     )
 
     print("=" * 50)
     print("索引构建完成!")
-    print(f"  加载文件数: {len(docs)}")
+    print(f"  加载文件数: {loaded_file_count}")
+    print(f"  标题章节数: {len(docs)}")
     print(f"  文本块数:   {len(chunks)}")
+    print(f"  Collection: {COLLECTION_NAME}")
     print(f"  保存路径:   {chroma_path}")
     print("=" * 50)
 
