@@ -10,7 +10,7 @@
  *       换网络后 IP 会变，改这里一处即可。
  * 生产环境需替换为正式域名（必须 HTTPS）。
  */
-export const BASE_URL = 'http://10.27.194.77:8080'
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8081').replace(/\/$/, '')
 
 /** 获取本地存储的 access_token */
 function getToken(): string {
@@ -32,6 +32,7 @@ export function saveTokens(accessToken: string, refreshToken: string) {
 export function clearTokens() {
   uni.removeStorageSync('accessToken')
   uni.removeStorageSync('refreshToken')
+  uni.removeStorageSync('userId')
 }
 
 /** 是否已登录 */
@@ -47,7 +48,12 @@ interface ApiResponse<T = any> {
 }
 
 /** 刷新 token */
+let refreshing: Promise<boolean> | null = null
 async function doRefresh(): Promise<boolean> {
+  if (!refreshing) refreshing = refreshOnce().finally(() => { refreshing = null })
+  return refreshing
+}
+async function refreshOnce(): Promise<boolean> {
   const refreshToken = getRefreshToken()
   if (!refreshToken) return false
   try {
@@ -87,7 +93,7 @@ export async function request<T = any>(
       method,
       data,
       header,
-      timeout: 60000
+      timeout: (url.endsWith('/qa/ask')||url.endsWith('/qa/plan-drafts')) ? 100000 : 15000
     })
 
     const body = res.data as ApiResponse<T>
@@ -102,7 +108,8 @@ export async function request<T = any>(
           url: `${BASE_URL}${url}`,
           method,
           data,
-          header
+          header,
+          timeout: (url.endsWith('/qa/ask')||url.endsWith('/qa/plan-drafts')) ? 100000 : 15000
         })
         const retryBody = retryRes.data as ApiResponse<T>
         if (retryRes.statusCode === 200 && retryBody?.code === 200) {
@@ -111,7 +118,7 @@ export async function request<T = any>(
       }
       // 刷新失败，跳转登录
       clearTokens()
-      uni.reLaunch({ url: '/pages/index/index' })
+      uni.navigateTo({ url: '/pages/account/login' })
       throw new Error('登录已过期')
     }
 

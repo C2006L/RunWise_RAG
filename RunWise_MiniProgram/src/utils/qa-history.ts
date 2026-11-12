@@ -4,6 +4,7 @@ export interface StoredQaMessage {
   missionTitle?: string;
   sources?: string[];
   safetyTip?: string;
+  planDraftId?: string;
 }
 
 export interface QaSession {
@@ -16,6 +17,7 @@ export interface QaSession {
 
 const SESSIONS_KEY = "runwise:qa-sessions:v1";
 const CURRENT_SESSION_KEY = "runwise:qa-current-session:v1";
+const scopedKey = (key: string) => `${key}:user:${uni.getStorageSync('userId') || 'anonymous'}`;
 
 function isValidSession(value: unknown): value is QaSession {
   if (!value || typeof value !== "object") return false;
@@ -36,7 +38,8 @@ function isValidSession(value: unknown): value is QaSession {
 }
 
 export function loadQaSessions(): QaSession[] {
-  const saved = uni.getStorageSync(SESSIONS_KEY);
+  if (!uni.getStorageSync('userId')) return [];
+  const saved = uni.getStorageSync(scopedKey(SESSIONS_KEY));
   if (!Array.isArray(saved)) return [];
   return saved
     .filter(isValidSession)
@@ -49,7 +52,7 @@ export function saveQaSession(session: QaSession): void {
   if (index >= 0) sessions.splice(index, 1, session);
   else sessions.unshift(session);
   sessions.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  uni.setStorageSync(SESSIONS_KEY, sessions.slice(0, 50));
+  uni.setStorageSync(scopedKey(SESSIONS_KEY), sessions.slice(0, 50));
   setCurrentQaSessionId(session.id);
 }
 
@@ -62,10 +65,10 @@ export function createQaSessionId(): string {
 }
 
 export function getCurrentQaSessionId(): string {
-  return uni.getStorageSync(CURRENT_SESSION_KEY) || "";
+  return uni.getStorageSync(scopedKey(CURRENT_SESSION_KEY)) || "";
 }
 
 export function setCurrentQaSessionId(id: string): void {
-  if (id) uni.setStorageSync(CURRENT_SESSION_KEY, id);
-  else uni.removeStorageSync(CURRENT_SESSION_KEY);
+  if (id) uni.setStorageSync(scopedKey(CURRENT_SESSION_KEY), id);
+  else uni.removeStorageSync(scopedKey(CURRENT_SESSION_KEY));
 }

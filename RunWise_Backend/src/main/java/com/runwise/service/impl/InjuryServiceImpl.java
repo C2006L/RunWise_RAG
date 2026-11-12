@@ -44,6 +44,7 @@ public class InjuryServiceImpl extends ServiceImpl<InjuryArticleMapper, InjuryAr
     @Override
     public List<InjuryArticleVO> listArticles(String category) {
         LambdaQueryWrapper<InjuryArticle> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InjuryArticle::getStatus, "PUBLISHED");
         if (category != null && !category.isEmpty() && !"全部".equals(category)) {
             wrapper.eq(InjuryArticle::getCategory, category);
         }
@@ -60,7 +61,7 @@ public class InjuryServiceImpl extends ServiceImpl<InjuryArticleMapper, InjuryAr
     @Override
     public InjuryArticleVO getArticle(Long id) {
         InjuryArticle article = getById(id);
-        if (article == null) {
+        if (article == null || !"PUBLISHED".equals(article.getStatus())) {
             throw new BusinessException(ResultCode.NOT_FOUND, "文章不存在");
         }
         return toVO(article, true);

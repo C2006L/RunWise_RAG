@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import * as authApi from '../api/auth'
+import { useCheckinStore } from './checkin'
 
 // 登录态 store（工程计划 2.2 / 5.1 v1.3）：双 token + userInfo，持久化到 localStorage
 const ACCESS_KEY = 'rw_access_token'
@@ -9,11 +10,11 @@ const USER_KEY = 'rw_user_info'
 // LoginResult（后端 LoginVO）→ 前端 UserInfo 的映射收口（工程计划 5.1：仅此一处做映射）
 function toUserInfo(result, username = '') {
   return {
-    id: String(result.userId),
+    id: String(result.userId ?? result.id),
     username, // 账密登录名，NavBar 一律显示 nickname
     nickname: result.nickname,
-    avatar: result.avatarUrl || '',
-    joinedDays: 128, // mock 固定值；联调后改为按用户创建时间计算
+    avatar: result.avatarUrl || result.avatar || '',
+    joinedDays: result.createTime ? Math.max(1,Math.floor((Date.now()-new Date(result.createTime).getTime())/86400000)+1) : 0,
   }
 }
 
@@ -44,6 +45,7 @@ export const useUserStore = defineStore('user', {
     },
     // 写入会话：登录成功 / 静默刷新成功共用（request.js 回调）
     setSession(result, username) {
+      if(this.userInfo?.id!==String(result.userId ?? result.id)) useCheckinStore().$reset()
       this.accessToken = result.accessToken
       this.refreshToken = result.refreshToken
       this.userInfo = toUserInfo(result, username ?? this.userInfo?.username ?? '')
@@ -52,6 +54,11 @@ export const useUserStore = defineStore('user', {
     async login(username, password) {
       const result = await authApi.login(username, password)
       this.setSession(result, username)
+      return result
+    },
+    async register(username,password) {
+      const result=await authApi.register(username,password)
+      this.setSession(result,username)
       return result
     },
     async fetchProfile() {
@@ -70,6 +77,7 @@ export const useUserStore = defineStore('user', {
     },
     // 清空登录态（登出 / 双 token 失效踢回时调用）
     reset() {
+      useCheckinStore().$reset()
       this.accessToken = ''
       this.refreshToken = ''
       this.userInfo = null

@@ -6,6 +6,7 @@ import RansomNote from "../components/common/RansomNote.vue";
 import StarField from "../components/common/StarField.vue";
 import QaDecor from "../components/decor/QaDecor.vue";
 import QaChatMessage from "../components/business/QaChatMessage.vue";
+import QaPlanComposer from '../components/business/QaPlanComposer.vue';
 import * as qaApi from "../api/qa";
 import * as statsApi from "../api/stats";
 
@@ -65,6 +66,7 @@ const inputText = ref("");
 const chatInput = ref(null); // 输入框元素（聚焦用）
 const chatBody = ref(null);
 const asking = ref(false);
+const conversationId = ref('');
 
 const categories = ref([]);
 const hotQuestions = ref([]);
@@ -217,18 +219,23 @@ async function send(question) {
 async function askInto(msg, question) {
   msg.loading = true;
   msg.error = false;
+  msg.errorMessage = '';
   try {
-    const result = await qaApi.askQuestion(question);
+    const result = await qaApi.askQuestion(question,conversationId.value);
+    conversationId.value=result.conversationId || conversationId.value;
+    msg.recordId=result.id || null;
     msg.loading = false;
     msg.text = result.answer;
     msg.sources = result.sources || [];
     msg.safetyTip = result.safetyTip || null;
+    msg.trainingContext=result.trainingContext;
     scrollToBottom();
     await syncAfterAsk(question, result, msg);
-  } catch {
+  } catch (error) {
     // 失败不静默：气泡转为错误态并提供重试
     msg.loading = false;
     msg.error = true;
+    msg.errorMessage = error.response?.data?.message || error.message || '回答生成失败，请稍后重试';
   }
 }
 
@@ -286,9 +293,25 @@ function askHot(question) {
   fillDraft(question);
 }
 
+function onPlanGenerated(draft){
+  conversationId.value=draft.conversationId;
+  messages.value.push({key:`m${++msgSeq}`,role:'user',text:'请根据我的训练记录制定未来7天计划。'});
+  messages.value.push({key:`m${++msgSeq}`,role:'assistant',text:draft.plan.explanation,sources:draft.plan.sources||[],recordId:draft.recordId,planDraftId:draft.id,planDraft:draft,loading:false,error:false});
+  loadHistoryPage(1);scrollToBottom();
+}
+
 // 历史条目点击 → 该问题填入输入框（可编辑后重发）
-function loadHistoryIntoChat(record) {
-  fillDraft(record.question);
+const openingHistory=ref(false);
+async function loadHistoryIntoChat(record) {
+  if(asking.value||openingHistory.value) return;
+  openingHistory.value=true;
+  try {
+    const records=record.conversationId?await qaApi.getConversation(record.conversationId):[record];
+    conversationId.value=record.conversationId || '';
+    messages.value=records.flatMap(row=>[{key:`m${++msgSeq}`,role:'user',text:row.question},
+      {key:`m${++msgSeq}`,role:'assistant',text:row.answer,sources:row.sources?String(row.sources).split('、'):[],recordId:row.id,feedback:row.feedback,planDraftId:row.planDraftId,loading:false,error:false}]);
+    scrollToBottom();
+  } finally {openingHistory.value=false;}
 }
 </script>
 
@@ -314,6 +337,7 @@ function loadHistoryIntoChat(record) {
       <div class="chat-col">
         <P5Card tag="RUNWISE 助手" tag-rotate="-5deg" frame="red">
           <div class="qa-chat">
+            <button v-if="messages.length" type="button" :disabled="asking||openingHistory" @click="messages=[];conversationId=''">+ 新对话</button>
             <!-- 第一段：欢迎横幅（固定，不随消息滚动） -->
             <button
               v-if="!messages.length"
@@ -375,6 +399,7 @@ function loadHistoryIntoChat(record) {
 
             <!-- 第三段：输入区（贴底，结构不变） -->
             <div class="chat-foot">
+              <QaPlanComposer :conversation-id="conversationId" :disabled="asking||openingHistory" @busy="asking=$event" @generated="onPlanGenerated" />
               <!-- 分类快捷提问（v2.0 二级候选条）：点击分类展开候选问题，点击候选填入草稿 -->
               <div v-if="categories.length" class="chips">
                 <button

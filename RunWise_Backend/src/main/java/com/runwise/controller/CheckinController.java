@@ -13,11 +13,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import org.springframework.validation.annotation.Validated;
+import javax.validation.constraints.*;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.time.LocalDate;
 
 /**
  * 打卡控制器
  */
 @RestController
+@Validated
 @RequestMapping("/api/checkin")
 @Tag(name = "打卡接口")
 public class CheckinController {
@@ -63,10 +69,18 @@ public class CheckinController {
     @Operation(summary = "打卡列表(分页)")
     public Result<PageResult<Checkin>> getList(
             HttpServletRequest request,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "1") @Min(1) Integer pageNum,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(500) Integer pageSize,
+            @RequestParam(required=false) String startDate,
+            @RequestParam(required=false) String endDate) {
         Long userId = (Long) request.getAttribute("userId");
-        return Result.success(checkinService.getCheckinList(userId, pageNum, pageSize));
+        LambdaQueryWrapper<Checkin> query=new LambdaQueryWrapper<Checkin>().eq(Checkin::getUserId,userId);
+        if(startDate!=null) query.ge(Checkin::getCheckinDate,LocalDate.parse(startDate));
+        if(endDate!=null) query.le(Checkin::getCheckinDate,LocalDate.parse(endDate));
+        if(startDate!=null&&endDate!=null&&LocalDate.parse(startDate).isAfter(LocalDate.parse(endDate)))
+            throw new com.runwise.common.BusinessException(com.runwise.common.ResultCode.PARAM_ERROR);
+        Page<Checkin> page=checkinService.page(new Page<>(pageNum,pageSize),query.orderByDesc(Checkin::getCheckinDate));
+        return Result.success(new PageResult<>(page.getRecords(),page.getTotal(),pageNum,pageSize));
     }
 
     @GetMapping("/calendar")

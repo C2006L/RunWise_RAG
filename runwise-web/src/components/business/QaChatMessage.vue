@@ -9,15 +9,26 @@
 // - 气泡微装饰（可读性优先）：1px 灰描边 #2A2A2E + 右上角 8px 白色四角星，
 //   气泡底色 / 排版 / RW 头像 / 来源标签一律不动
 import SparkleStar from "../common/SparkleStar.vue";
+import AnswerMarkdown from './AnswerMarkdown.vue';
+import QaPlanPreview from './QaPlanPreview.vue';
+import {ref} from 'vue';
 
-defineProps({
+const props=defineProps({
   message: {
     type: Object,
     required: true,
   },
 });
 
-const emit = defineEmits(["feedback", "retry"]);
+const emit = defineEmits(["feedback", "retry", "copy"]);
+const copyStatus=ref('');
+async function copyAnswer(){
+  try{
+    if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(props.message.text);
+    else{const field=document.createElement('textarea');field.value=props.message.text;document.body.appendChild(field);field.select();const ok=document.execCommand('copy');field.remove();if(!ok)throw new Error();}
+    copyStatus.value='已复制';
+  }catch{copyStatus.value='复制失败，请手动选择正文';}
+}
 </script>
 
 <template>
@@ -50,7 +61,7 @@ const emit = defineEmits(["feedback", "retry"]);
 
             <!-- 错误气泡 + 重试 -->
             <template v-else-if="message.error">
-              <p class="error-text">回答生成失败，请稍后重试</p>
+              <p class="error-text" role="alert">{{ message.errorMessage || '回答生成失败，请稍后重试' }}</p>
               <button class="retry-btn" type="button" @click="emit('retry')">
                 重试
               </button>
@@ -59,7 +70,10 @@ const emit = defineEmits(["feedback", "retry"]);
             <!-- 正文 + 来源标签 -->
             <template v-else>
               <!-- ai-answer：全局排版规范类（思源黑体 15px / 1.8 行高） -->
-              <p class="answer ai-answer">{{ message.text }}</p>
+              <AnswerMarkdown :text="message.text" />
+              <button class="fb-btn" type="button" @click="copyAnswer">{{copyStatus||'复制回答'}}</button>
+              <p v-if="message.trainingContext" class="data-context">本次参考近28天 {{message.trainingContext.recordCount}} 次真实训练记录。</p>
+              <QaPlanPreview v-if="message.planDraftId" :id="message.planDraftId" :initial="message.planDraft" />
               <div
                 v-if="message.sources && message.sources.length"
                 class="sources"
@@ -149,6 +163,7 @@ const emit = defineEmits(["feedback", "retry"]);
 }
 
 .msg-main {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -157,6 +172,8 @@ const emit = defineEmits(["feedback", "retry"]);
 
 /* ===== 气泡通用 ===== */
 .bubble-wrap {
+  max-width: 100%;
+  width: 100%;
   position: relative; /* 承载右上角四角星（浮出气泡 clip-path 切角） */
 }
 
@@ -327,4 +344,5 @@ const emit = defineEmits(["feedback", "retry"]);
   border-color: var(--p5-red);
   background: var(--p5-red);
 }
+.data-context{color:#bfbcc5;font-size:12px;line-height:1.8;margin-top:10px}
 </style>

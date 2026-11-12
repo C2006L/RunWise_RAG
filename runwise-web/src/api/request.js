@@ -12,7 +12,7 @@ const instance = axios.create({
 // 请求拦截器：自动附加 Bearer accessToken
 instance.interceptors.request.use((config) => {
   const token = useUserStore().accessToken
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token && !config.headers.Authorization) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -33,7 +33,8 @@ instance.interceptors.response.use(
     if (status === 401 && !config.__viaAuthRetry && !config.__skipAuthRetry) {
       config.__viaAuthRetry = true
       await refreshSession()
-      return instance.request(config) // 重放（请求拦截器会附加新 token）
+      config.headers.Authorization = `Bearer ${useUserStore().accessToken}`
+      return instance.request(config)
     }
     if (status >= 500) showToast('服务异常，请稍后重试')
     else if (err.message === 'Network Error') showToast('网络异常，请检查连接')

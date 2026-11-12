@@ -54,6 +54,13 @@ public class JwtUtils {
         return generateToken(userId, openid, refreshTokenExpire, "refresh");
     }
 
+    public String generateAdminToken(Long adminId) {
+        return Jwts.builder().setSubject(String.valueOf(adminId))
+                .claim("scope", "admin").setId(java.util.UUID.randomUUID().toString())
+                .setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis() + accessTokenExpire))
+                .signWith(key, SignatureAlgorithm.HS256).compact();
+    }
+
     private String generateToken(Long userId, String openid, Long expireMs, String type) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
@@ -61,6 +68,7 @@ public class JwtUtils {
         claims.put("type", type);
         return Jwts.builder()
                 .setClaims(claims)
+                .setId(java.util.UUID.randomUUID().toString())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expireMs))
                 .signWith(key, SignatureAlgorithm.HS256)

@@ -1,3 +1,5 @@
+import { request, isLoggedIn } from './request';
+
 export interface CheckinRecord {
   id: number;
   checkinDate: string;
@@ -10,6 +12,7 @@ export interface CheckinRecord {
 }
 
 const STORAGE_KEY = "runwise:checkin-records";
+const cacheKey = () => `${STORAGE_KEY}:user:${uni.getStorageSync('userId') || 'anonymous'}`;
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -19,41 +22,30 @@ export function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function buildInitialRecords(): CheckinRecord[] {
-  const now = new Date();
-  const offsets = [1, 3, 5, 8, 11, 14, 17, 20];
-  const distances = [5.2, 4.0, 6.3, 3.5, 7.1, 5.0, 4.6, 6.0];
-  const durations = [32, 25, 40, 22, 46, 31, 28, 38];
-  const moods = ["适中", "轻松", "适中", "轻松", "吃力", "适中", "轻松", "适中"];
-  const remarks = ["操场 5K", "晨跑恢复", "节奏跑", "慢跑放松", "长距离", "夜跑", "间歇训练", "轻松跑"];
-
-  return offsets.map((offset, index) => {
-    const date = new Date(now);
-    date.setDate(date.getDate() - offset);
-    return {
-      id: index + 1,
-      checkinDate: toDateKey(date),
-      distance: distances[index],
-      duration: durations[index],
-      pace: Number((durations[index] / distances[index]).toFixed(2)),
-      mood: moods[index],
-      remark: remarks[index],
-      imageUrl: "",
-    };
-  });
-}
-
 export function loadCheckinRecords(): CheckinRecord[] {
-  const saved = uni.getStorageSync(STORAGE_KEY);
+  if(!isLoggedIn()) return [];
+  const saved = uni.getStorageSync(cacheKey());
   if (Array.isArray(saved)) return saved as CheckinRecord[];
 
-  const initial = buildInitialRecords();
-  uni.setStorageSync(STORAGE_KEY, initial);
-  return initial;
+  return [];
 }
 
 export function saveCheckinRecords(records: CheckinRecord[]): void {
-  uni.setStorageSync(STORAGE_KEY, records);
+  uni.setStorageSync(cacheKey(), records);
+}
+
+export async function syncCheckinRecords(): Promise<CheckinRecord[]> {
+  if(!isLoggedIn()) return [];
+  const user=uni.getStorageSync('userId');
+  const rows: CheckinRecord[]=[];
+  let page=1,total=0;
+  do {
+    const data=await request<{list:CheckinRecord[];total:number}>(`/api/checkin/list?pageNum=${page}&pageSize=200`);
+    rows.push(...data.list);total=data.total;page++;
+    if(!data.list.length) break;
+  } while(rows.length<total);
+  if(user!==uni.getStorageSync('userId')) return [];
+  saveCheckinRecords(rows);return rows;
 }
 
 export function summarizeCheckins(records: CheckinRecord[]) {

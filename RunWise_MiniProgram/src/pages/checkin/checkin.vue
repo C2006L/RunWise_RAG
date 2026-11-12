@@ -368,10 +368,11 @@ import { onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
 import {
   loadCheckinRecords,
-  saveCheckinRecords,
+  syncCheckinRecords,
   summarizeCheckins,
   type CheckinRecord as CheckinItem,
 } from "@/utils/checkin-data";
+import { request } from '@/utils/request';
 
 interface DayCell {
   date: number;
@@ -594,7 +595,9 @@ function moodVariant(mood: string): string {
   return "white";
 }
 
-function handleSubmit() {
+const submitting=ref(false);
+async function handleSubmit() {
+  if(submitting.value) return;
   const d = Number(form.value.distance);
   const t = Number(form.value.duration);
   if (!Number.isFinite(d) || d <= 0) {
@@ -619,18 +622,12 @@ function handleSubmit() {
     imageUrl: existing?.imageUrl || "",
   };
 
-  if (formMode.value === "edit" && existing) {
-    const index = checkinList.value.findIndex((item) => item.id === existing.id);
-    if (index >= 0) checkinList.value[index] = { ...existing, ...payload };
-    saveCheckinRecords(checkinList.value);
-    toastRef.value?.show("记录已更新", "success");
-  } else {
-    if (existing) {
-      errorMsg.value = "该日期已有训练记录，请使用编辑功能修改";
-      return;
-    }
-    checkinList.value.unshift({ id: Date.now(), ...payload });
-    saveCheckinRecords(checkinList.value);
+  submitting.value=true;
+  try {
+    const editing=formMode.value==='edit' && existing;
+    if(!editing && existing) throw new Error('该日期已有记录，请使用编辑功能');
+    await request(editing?`/api/checkin/${existing.id}`:'/api/checkin',editing?'PUT':'POST',payload);
+    checkinList.value=await syncCheckinRecords();
 
     // 盖章动画（700ms 后清除标记）
     stampedDate.value = date;
@@ -638,11 +635,12 @@ function handleSubmit() {
     stampTimer = setTimeout(() => {
       stampedDate.value = "";
     }, 700);
-    toastRef.value?.show(isTodaySelected.value ? "打卡成功" : "补录成功", "success");
-  }
+    toastRef.value?.show(editing?'记录已更新':isTodaySelected.value ? "打卡成功" : "补录成功", "success");
 
   formMode.value = null;
   resetForm();
+  } catch(error:any) {errorMsg.value=error.message||'保存失败，请重试';}
+  finally {submitting.value=false;}
 }
 
 /* ========== 格式化 ========== */
@@ -761,9 +759,10 @@ function onItemClick(item: CheckinItem) {
   scrollToForm();
 }
 
-onShow(() => {
+onShow(async () => {
   setTabBarIndex(1);
   checkinList.value = loadCheckinRecords();
+  try {checkinList.value=await syncCheckinRecords();} catch {toastRef.value?.show('训练记录同步失败，请稍后重试','error');}
   const app = getApp();
   if (app.globalData?.checkinTab !== undefined) {
     currentTab.value = app.globalData.checkinTab;

@@ -14,4 +14,5 @@ public class LoginVO {
     private String nickname;
     private String avatarUrl;
     private Boolean isNewUser;
+    private java.time.LocalDateTime createTime;
 }

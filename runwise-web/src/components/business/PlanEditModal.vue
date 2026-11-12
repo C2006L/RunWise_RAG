@@ -14,6 +14,8 @@ const props = defineProps({
   mode: { type: String, default: 'add' }, // 'add' | 'edit' | 'confirm'
   weekNo: { type: Number, default: 1 },
   initial: { type: Object, default: null },
+  error: { type: String, default: '' },
+  busy: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['close', 'submit'])
@@ -49,6 +51,7 @@ const isRest = computed(() => form.type === 'rest')
 const typeLabel = computed(() => resolveTrainingType(form.type).label)
 
 function onSubmit() {
+  if(props.busy) return
   if (isConfirm.value) {
     emit('submit', null)
     return
@@ -126,9 +129,10 @@ function onSubmit() {
           </div>
         </template>
 
+        <p v-if="error" role="alert" style="color:#ff8e93">{{error}}</p>
         <div class="pm-actions">
           <button class="pm-btn pm-btn--ghost" type="button" @click="emit('close')">取消</button>
-          <button class="pm-btn pm-btn--red" type="button" @click="onSubmit">
+          <button class="pm-btn pm-btn--red" type="button" :disabled="busy" @click="onSubmit">
             {{
               isConfirm
                 ? '确认删除'

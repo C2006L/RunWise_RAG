@@ -13,6 +13,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 /**
  * 问答控制器
@@ -32,10 +34,7 @@ public class QaController {
     @Operation(summary = "提问")
     public Result<Map<String, Object>> ask(HttpServletRequest request, @Valid @RequestBody AskDTO dto) {
         Long userId = (Long) request.getAttribute("userId");
-        // 如果未登录，使用默认用户ID（方便调试）
-        if (userId == null) {
-            userId = 1L;
-        }
+        requireUser(userId);
         return Result.success(qaService.ask(userId, dto));
     }
 
@@ -58,10 +57,9 @@ public class QaController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         Long userId = (Long) request.getAttribute("userId");
-        // 与 ask() 保持一致：未登录时查默认用户，否则两边 userId 对不上历史永远为空
-        if (userId == null) {
-            userId = 1L;
-        }
+        requireUser(userId);
+        if (pageNum < 1 || pageSize < 1 || pageSize > 100)
+            throw new com.runwise.common.BusinessException(com.runwise.common.ResultCode.PARAM_ERROR);
         return Result.success(qaService.getHistory(userId, pageNum, pageSize));
     }
 
@@ -72,10 +70,26 @@ public class QaController {
             @RequestParam Long id,
             @RequestParam Integer feedback) {
         Long userId = (Long) request.getAttribute("userId");
-        if (userId == null) {
-            userId = 1L;
-        }
+        requireUser(userId);
+        if (feedback < -1 || feedback > 1)
+            throw new com.runwise.common.BusinessException(com.runwise.common.ResultCode.PARAM_ERROR);
         qaService.feedback(userId, id, feedback);
         return Result.success();
+    }
+
+    @GetMapping("/conversation/{id}")
+    public Result<PageResult<QaRecord>> conversation(@RequestAttribute("userId") Long userId,@PathVariable String id,
+            @RequestParam(defaultValue="1") int pageNum) {
+        requireUser(userId);
+        if(!id.matches("[A-Za-z0-9_-]{1,80}") || pageNum<1 || pageNum>10000)
+            throw new com.runwise.common.BusinessException(com.runwise.common.ResultCode.PARAM_ERROR);
+        Page<QaRecord> page=qaService.page(new Page<>(pageNum,100),new LambdaQueryWrapper<QaRecord>()
+                .eq(QaRecord::getUserId,userId).eq(QaRecord::getConversationId,id)
+                .orderByAsc(QaRecord::getCreateTime,QaRecord::getId));
+        return Result.success(new PageResult<>(page.getRecords(),page.getTotal(),pageNum,100));
+    }
+
+    private void requireUser(Long id) {
+        if (id == null) throw new com.runwise.common.BusinessException(com.runwise.common.ResultCode.UNAUTHORIZED);
     }
 }

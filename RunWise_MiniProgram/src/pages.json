@@ -18,6 +18,10 @@
       }
     },
     {
+      "path": "pages/account/login",
+      "style": { "navigationBarTitleText": "账号登录", "navigationBarBackgroundColor": "#0A0A0A", "navigationBarTextStyle": "white" }
+    },
+    {
       "path": "pages/checkin/checkin",
       "style": {
         "navigationBarTitleText": "打卡",

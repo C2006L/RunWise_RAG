@@ -7,6 +7,8 @@ import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import com.runwise.mapper.UserMapper;
+import com.runwise.entity.User;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
@@ -22,14 +24,17 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     private final JwtUtils jwtUtils;
     private final StringRedisTemplate redisTemplate;
+    private final UserMapper userMapper;
 
-    public JwtInterceptor(JwtUtils jwtUtils, StringRedisTemplate redisTemplate) {
+    public JwtInterceptor(JwtUtils jwtUtils, StringRedisTemplate redisTemplate, UserMapper userMapper) {
         this.jwtUtils = jwtUtils;
         this.redisTemplate = redisTemplate;
+        this.userMapper = userMapper;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if ("OPTIONS".equals(request.getMethod())) return true;
         // 1. 从 Header 获取 token
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -46,6 +51,8 @@ public class JwtInterceptor implements HandlerInterceptor {
         // 3. 解析 userId
         Claims claims = jwtUtils.parseToken(token);
         Long userId = claims.get("userId", Long.class);
+        if (userId == null || !"access".equals(claims.get("type")) || claims.get("scope") != null)
+            throw new BusinessException(ResultCode.UNAUTHORIZED);
 
         // 4. 校验 Redis 中是否仍存在（支持主动登出/黑名单）
         String redisKey = "runwise:token:" + userId + ":access";
@@ -53,6 +60,9 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (storedToken == null || !storedToken.equals(token)) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "登录已失效，请重新登录");
         }
+        User user = userMapper.selectById(userId);
+        if (user == null || !Integer.valueOf(1).equals(user.getStatus()))
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "账户不可用，请重新登录");
 
         // 5. 将 userId 放入 request 供 Controller 使用
         request.setAttribute("userId", userId);

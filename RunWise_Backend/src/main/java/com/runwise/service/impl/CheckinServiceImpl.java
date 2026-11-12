@@ -6,11 +6,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.runwise.common.BusinessException;
 import com.runwise.common.PageResult;
 import com.runwise.common.ResultCode;
+import com.runwise.common.TrainingStats;
 import com.runwise.dto.CheckinDTO;
 import com.runwise.entity.Checkin;
 import com.runwise.mapper.CheckinMapper;
+import com.runwise.service.BadgeService;
 import com.runwise.service.CheckinService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,10 +30,14 @@ import java.util.*;
 @Service
 public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> implements CheckinService {
 
+    // 字段注入保持无参构造，兼容现有单元测试的 new CheckinServiceImpl()
+    @Autowired
+    private BadgeService badgeService;
+
     @Override
     public Long createCheckin(Long userId, CheckinDTO dto) {
         // 1. 检查今日是否已打卡
-        LocalDate checkinDate = LocalDate.parse(dto.getCheckinDate());
+        LocalDate checkinDate = validDate(dto.getCheckinDate());
         Checkin existing = getOne(new LambdaQueryWrapper<Checkin>()
                 .eq(Checkin::getUserId, userId)
                 .eq(Checkin::getCheckinDate, checkinDate));
@@ -38,7 +45,7 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
             throw new BusinessException(ResultCode.CHECKIN_ALREADY_EXISTS);
         }
 
-        // 2. 计算配速 (秒/公里)
+        // 2. 计算配速（分钟/公里，与两端既有字段单位一致）
         BigDecimal pace = null;
         if (dto.getDistance().compareTo(BigDecimal.ZERO) > 0) {
             pace = new BigDecimal(dto.getDuration())
@@ -58,6 +65,7 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
         boolean hasImage = dto.getImageUrl() != null && !dto.getImageUrl().trim().isEmpty();
         checkin.setImageAudit(hasImage ? 0 : 1); // 有图片待审核，无图片直接通过
         save(checkin);
+        refreshBadges(userId);
 
         log.info("用户{}打卡成功, date={}, distance={}km", userId, checkinDate, dto.getDistance());
         return checkin.getId();
@@ -70,7 +78,7 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
             throw new BusinessException(ResultCode.CHECKIN_NOT_FOUND);
         }
 
-        LocalDate checkinDate = LocalDate.parse(dto.getCheckinDate());
+        LocalDate checkinDate = validDate(dto.getCheckinDate());
         Checkin sameDay = getOne(new LambdaQueryWrapper<Checkin>()
                 .eq(Checkin::getUserId, userId)
                 .eq(Checkin::getCheckinDate, checkinDate)
@@ -94,6 +102,7 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
             checkin.setImageAudit(dto.getImageUrl() == null || dto.getImageUrl().trim().isEmpty() ? 1 : 0);
         }
         updateById(checkin);
+        refreshBadges(userId);
 
         log.info("用户{}修改打卡记录{}, date={}", userId, id, checkinDate);
         return checkin;
@@ -150,7 +159,7 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
         LocalDate weekStart = LocalDate.now().minusDays(LocalDate.now().getDayOfWeek().getValue() - 1);
         long weekCount = count(new LambdaQueryWrapper<Checkin>()
                 .eq(Checkin::getUserId, userId)
-                .ge(Checkin::getCheckinDate, weekStart));
+                .between(Checkin::getCheckinDate, weekStart, LocalDate.now()));
         stats.put("weekCount", weekCount);
 
         // 连续打卡天数
@@ -158,7 +167,10 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
         stats.put("streak", streak);
 
         // 总公里数
-        List<Checkin> all = list(new LambdaQueryWrapper<Checkin>().eq(Checkin::getUserId, userId));
+        List<Checkin> all = list(new LambdaQueryWrapper<Checkin>().eq(Checkin::getUserId, userId)
+                .le(Checkin::getCheckinDate, LocalDate.now()));
+        stats.put("totalCount",(long)all.size());
+        stats.put("longestStreak",TrainingStats.longest(all.stream().map(Checkin::getCheckinDate).collect(java.util.stream.Collectors.toList()),LocalDate.now()));
         double totalDistance = all.stream()
                 .mapToDouble(c -> c.getDistance().doubleValue())
                 .sum();
@@ -174,7 +186,23 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
             throw new BusinessException(ResultCode.CHECKIN_NOT_FOUND);
         }
         removeById(id);
+        refreshBadges(userId);
         log.info("用户{}删除打卡记录{}", userId, id);
+    }
+
+    /**
+     * 打卡数据变更后同步重算徽章。徽章属于激励功能，
+     * 任何异常都只记录日志，不能让打卡主流程失败。
+     */
+    private void refreshBadges(Long userId) {
+        if (badgeService == null) {
+            return;
+        }
+        try {
+            badgeService.recalculate(userId);
+        } catch (RuntimeException e) {
+            log.warn("重算用户{}徽章失败: {}", userId, e.getMessage());
+        }
     }
 
     /**
@@ -188,21 +216,14 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
             return 0;
         }
 
-        int streak = 0;
-        LocalDate expected = LocalDate.now();
-        for (Checkin c : list) {
-            if (c.getCheckinDate().equals(expected)) {
-                streak++;
-                expected = expected.minusDays(1);
-            } else if (c.getCheckinDate().equals(expected.minusDays(1))) {
-                // 今天还没打卡但昨天打了，也算连续
-                expected = expected.minusDays(1);
-                streak++;
-                expected = expected.minusDays(1);
-            } else {
-                break;
-            }
-        }
-        return streak;
+        return TrainingStats.streak(list.stream().map(Checkin::getCheckinDate)
+                .collect(java.util.stream.Collectors.toList()),LocalDate.now());
+    }
+
+    private LocalDate validDate(String raw) {
+        LocalDate date=LocalDate.parse(raw);
+        if(date.isAfter(LocalDate.now()) || date.isBefore(LocalDate.of(2000,1,1)))
+            throw new BusinessException(ResultCode.PARAM_ERROR,"不允许记录未来日期或2000年以前的训练");
+        return date;
     }
 }

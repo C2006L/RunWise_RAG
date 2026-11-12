@@ -5,7 +5,8 @@ import { useAuth } from "../composables/useAuth";
 
 // 登录页（M2 功能态，工程计划 4.2 / M2）：
 // 本阶段仅功能与基础布局（表单 + 基础红黑配色），海报化视觉（红色斜切分屏、GlitchTitle）在 M7 统一实施
-const { login } = useAuth();
+const { login, register } = useAuth();
+const registering = ref(false);
 
 const form = reactive({ username: "", password: "" });
 const loading = ref(false);
@@ -14,6 +15,8 @@ const errorMsg = ref("");
 function validate() {
   if (!form.username) return "请输入用户名";
   if (!form.password) return "请输入密码";
+  if(registering.value && (!/^[A-Za-z0-9_.-]{3,32}$/.test(form.username)||form.password.length<12))
+    return "用户名需为3–32位字母数字或_.-，密码至少12位";
   return "";
 }
 
@@ -23,15 +26,14 @@ async function handleSubmit() {
   if (errorMsg.value) return;
   loading.value = true;
   try {
-    await login(form.username, form.password);
+    if(registering.value) await register(form.username, form.password);
+    else await login(form.username, form.password);
   } catch (err) {
     // mock 任意非空账密均成功；此分支兜底真实接口失败：
     // 「无账密」类错误 → 引导去小程序绑定；其余 → 提示重试（联调期生效）
     const msg =
       err?.response?.data?.message || err?.message || "登录失败，请稍后重试";
-    errorMsg.value = /未设置|无账密|未绑定/.test(msg)
-      ? "该账号尚未设置密码，请先在微信小程序「我的 → 设置账密」中绑定"
-      : "账号或密码错误，请重试";
+    errorMsg.value = msg;
   } finally {
     loading.value = false;
   }
@@ -43,8 +45,8 @@ async function handleSubmit() {
     <P5Card tag="成员登录" tag-rotate="-5deg">
       <form class="login-card" @submit.prevent="handleSubmit">
         <p class="login-kicker">RUNWISE WEB</p>
-        <h1 class="login-title">登录</h1>
-        <p class="login-desc">账号登录，与小程序数据互通。</p>
+        <h1 class="login-title">{{registering?'创建账号':'登录'}}</h1>
+        <p class="login-desc">使用真实账号保存训练记录。已有小程序账号请先绑定账密。</p>
 
         <label class="field">
           <span class="field-label">用户名</span>
@@ -59,7 +61,7 @@ async function handleSubmit() {
         <label class="field">
           <span class="field-label">密码</span>
           <input
-            v-model.trim="form.password"
+            v-model="form.password"
             type="password"
             autocomplete="current-password"
             placeholder="请输入密码"
@@ -69,11 +71,11 @@ async function handleSubmit() {
         <p v-if="errorMsg" class="login-error">{{ errorMsg }}</p>
 
         <button class="login-submit" type="submit" :disabled="loading">
-          {{ loading ? "登录中…" : "进入 RUNWISE" }}
+          {{ loading ? "正在处理…" : registering ? "创建账号并进入" : "进入 RUNWISE" }}
         </button>
 
         <p class="login-tip">
-          尚未设置密码？请先在微信小程序「我的 → 设置账密」中绑定账号。
+          <button type="button" :disabled="loading" @click="registering=!registering;errorMsg=''">{{registering?'已有账号？返回登录':'首次使用？创建账号'}}</button>
         </p>
       </form>
     </P5Card>

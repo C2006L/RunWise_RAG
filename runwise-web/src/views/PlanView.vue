@@ -20,6 +20,7 @@ const currentWeek = ref(1)
 const loading = ref(true)
 const loadError = ref(false)
 const saving = ref(false)
+const saveError = ref('')
 
 // ===== 弹窗状态（add / edit / confirm-remove 三态复用一个遮罩） =====
 const modal = ref(null) // { mode: 'add' } | { mode: 'edit', day } | { mode: 'confirm', day }
@@ -68,40 +69,56 @@ function tagOf(day) {
 
 // ===== B3：增删改（全部经 planService，组件不碰数据源） =====
 function openAdd() {
+  saveError.value=''
   modal.value = { mode: 'add' }
 }
 
 function openEdit(day) {
+  saveError.value=''
   modal.value = { mode: 'edit', day }
 }
 
 function openConfirm(day) {
+  saveError.value=''
   modal.value = { mode: 'confirm', day }
 }
 
 function closeModal() {
+  if(saving.value) return
   modal.value = null
+  saveError.value=''
 }
 
 async function reload() {
   weeks.value = (await planService.getWeeks()) || []
 }
 
+function dateForWeekday(index) {
+  const start=currentWeekData.value.weekStart
+  const date=new Date(`${start}T12:00:00`)
+  date.setDate(date.getDate()+index)
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+}
+
 async function onModalSubmit(payload) {
+  if(saving.value) return
+  saveError.value=''
   saving.value = true
   try {
     const m = modal.value
     if (m.mode === 'add') {
-      await planService.add({ weekNo: currentWeek.value, ...payload })
+      await planService.add({ weekNo: currentWeek.value, ...payload, date: dateForWeekday(payload.weekdayIndex) })
     } else if (m.mode === 'edit') {
-      await planService.update(m.day.id, payload)
+      const updatePayload={...payload,date:dateForWeekday(payload.weekdayIndex)}
+      if(String(m.day.id).startsWith('empty-')) await planService.add(updatePayload)
+      else await planService.update(m.day.id, updatePayload)
     } else if (m.mode === 'confirm') {
       await planService.remove(m.day.id)
     }
     await reload()
-    closeModal()
-  } catch {
-    loadError.value = true
+    modal.value=null
+  } catch (error) {
+    saveError.value = error.response?.data?.message || error.message || '保存失败，请重试'
   } finally {
     saving.value = false
   }
@@ -261,6 +278,8 @@ async function onModalSubmit(payload) {
       :mode="modal?.mode || 'add'"
       :week-no="currentWeek"
       :initial="modal?.day || null"
+      :error="saveError"
+      :busy="saving"
       @close="closeModal"
       @submit="onModalSubmit"
     />

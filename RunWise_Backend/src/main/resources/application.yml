@@ -74,12 +74,14 @@ runwise:
       base-url: ${OLLAMA_BASE_URL:http://127.0.0.1:11434}
       model: ${OLLAMA_MODEL:qwen2.5:3b}
       temperature: 0.7        # 越低越稳定保守，越高越发散随机（0~2）
-      num-predict: 500        # 最大生成 token 数（约 300~400 汉字），防止跑题说个没完
+      num-predict: 1000       # 普通问答；结构化计划由 Python 使用独立输出预算
 
   # RAG Python 微服务地址（后续正式环境使用）
   rag:
     base-url: ${RAG_BASE_URL:http://localhost:5000}
     enabled: ${RAG_ENABLED:true}
+    # 仅本地开发需要时开启；云 API 错误不会自动换成本地模型。
+    ollama-fallback-enabled: ${LLM_LOCAL_FALLBACK_ENABLED:false}
 
   # 阿里云 OSS 配置 (后续打卡图片上传使用)
   oss:

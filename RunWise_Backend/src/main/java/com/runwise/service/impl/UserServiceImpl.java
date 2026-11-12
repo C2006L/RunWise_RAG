@@ -19,6 +19,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
+import java.util.Arrays;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 /**
  * 用户服务实现
@@ -96,6 +98,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         vo.setNickname(user.getNickname());
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setIsNewUser(isNewUser);
+        vo.setCreateTime(user.getCreateTime());
         return vo;
     }
 
@@ -104,21 +107,31 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!jwtUtils.isValid(refreshToken)) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "refresh_token已过期");
         }
+        io.jsonwebtoken.Claims claims = jwtUtils.parseToken(refreshToken);
+        if (!"refresh".equals(claims.get("type")) || claims.get("scope") != null)
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "需要有效的刷新凭证");
         Long userId = jwtUtils.getUserId(refreshToken);
+        if(userId==null) throw new BusinessException(ResultCode.UNAUTHORIZED);
         User user = getById(userId);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
         }
+        if (!Integer.valueOf(1).equals(user.getStatus()))
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "账户不可用");
 
         String newAccessToken = jwtUtils.generateAccessToken(user.getId(), user.getOpenid());
         String newRefreshToken = jwtUtils.generateRefreshToken(user.getId(), user.getOpenid());
 
         // 更新 Redis
         String redisKey = "runwise:token:" + user.getId();
-        redisTemplate.opsForValue().set(redisKey + ":access", newAccessToken,
-                jwtUtils.getAccessTokenExpire(), TimeUnit.MILLISECONDS);
-        redisTemplate.opsForValue().set(redisKey + ":refresh", newRefreshToken,
-                jwtUtils.getRefreshTokenExpire(), TimeUnit.MILLISECONDS);
+        Long rotated = redisTemplate.execute(new DefaultRedisScript<>(
+                "if redis.call('get',KEYS[2]) ~= ARGV[1] then return 0 end " +
+                "redis.call('psetex',KEYS[1],ARGV[4],ARGV[2]); " +
+                "redis.call('psetex',KEYS[2],ARGV[5],ARGV[3]); return 1", Long.class),
+                Arrays.asList(redisKey + ":access",redisKey + ":refresh"),refreshToken,newAccessToken,newRefreshToken,
+                jwtUtils.getAccessTokenExpire().toString(),jwtUtils.getRefreshTokenExpire().toString());
+        if (!Long.valueOf(1L).equals(rotated))
+            throw new BusinessException(ResultCode.UNAUTHORIZED,"刷新凭证已失效，请重新登录");
 
         LoginVO vo = new LoginVO();
         vo.setAccessToken(newAccessToken);
@@ -127,6 +140,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         vo.setNickname(user.getNickname());
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setIsNewUser(false);
+        vo.setCreateTime(user.getCreateTime());
         return vo;
     }
 
@@ -145,7 +159,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         try {
             String response = HttpUtil.get(url, 5000);
             JSONObject json = JSONUtil.parseObj(response);
-            log.debug("微信登录返回: {}", response);
+            log.debug("微信登录响应已收到");
             if (json.containsKey("errcode") && json.getInt("errcode") != 0) {
                 log.error("微信登录失败: {}", response);
                 return null;

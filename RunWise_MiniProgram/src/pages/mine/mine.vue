@@ -65,7 +65,7 @@
           <text class="achievement-kicker">ACHIEVEMENTS</text>
           <text class="achievement-title">跑者荣誉</text>
         </view>
-        <text class="achievement-progress">{{ unlockedAchievementCount }} / {{ achievementItems.length }}</text>
+        <text class="achievement-progress">{{ unlockedAchievementCount }} / {{ achievementItems.length || 6 }}</text>
       </view>
       <view class="achievement-list">
         <view
@@ -87,7 +87,7 @@
             ></uni-icons>
           </view>
           <text class="achievement-name">{{ item.name }}</text>
-          <text class="achievement-state">{{ item.unlocked ? "已获得" : item.target }}</text>
+          <text class="achievement-state">{{ item.state }}</text>
         </view>
       </view>
     </view>
@@ -117,6 +117,8 @@
     <view class="logout-btn" hover-class="logout-btn--pressed" @tap="onLogout">
       <text class="logout-text">退出登录 / LOG OUT</text>
     </view>
+
+    <RwToast ref="badgeToast" />
   </view>
 </template>
 
@@ -124,16 +126,41 @@
 import { ref, computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
-import { clearTokens } from "@/utils/request";
-import { loadCheckinRecords, summarizeCheckins } from "@/utils/checkin-data";
+import { clearTokens, request, isLoggedIn } from "@/utils/request";
+import { loadCheckinRecords, syncCheckinRecords, summarizeCheckins } from "@/utils/checkin-data";
+import RwToast from "@/components/rw/rw-toast.vue";
+const loggedIn=ref(isLoggedIn());
+const badgeToast = ref<any>(null);
+
+interface BadgeItem {
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  sort: number;
+  metric: string;
+  target: number;
+  unit: string;
+  progress: number;
+  progressText: string;
+  unlocked: boolean;
+  unlockTime?: string;
+  newlyUnlocked?: boolean;
+}
+
+const badges = ref<BadgeItem[]>([]);
 
 onShow(() => {
   setTabBarIndex(3);
   refreshAchievements();
+  refreshBadges();
+  loggedIn.value=isLoggedIn();
+  syncCheckinRecords().then(refreshAchievements).catch(()=>{});
+  if(loggedIn.value) request<any>('/api/user/profile').then(data=>{userInfo.value.nickname=data.nickname||'跑者';userInfo.value.avatarUrl=data.avatarUrl||'';}).catch(()=>{});
 });
 
 const userInfo = ref({
-  nickname: "跑者小明",
+  nickname: "跑者",
   avatarUrl: "",
   joinDays: 28,
 });
@@ -157,35 +184,52 @@ function refreshAchievements() {
 
 const runnerLevel = computed(() => Math.max(1, Math.floor(achievements.value.checkinCount / 5) + 1));
 
-const achievementItems = computed(() => [
-  {
-    key: "first-run",
-    icon: "flag",
-    name: "初次出发",
-    target: "完成首次打卡",
-    unlocked: achievements.value.checkinCount >= 1,
-  },
-  {
-    key: "seven-days",
-    icon: "fire",
-    name: "连续 7 天",
-    target: "连续打卡 7 天",
-    unlocked: achievements.value.longestStreak >= 7,
-  },
-  {
-    key: "hundred-km",
-    icon: "map-pin",
-    name: "百公里",
-    target: "累计跑步 100km",
-    unlocked: achievements.value.totalDistance >= 100,
-  },
-]);
+const badgeIcons: Record<string, string> = {
+  first_checkin: "flag",
+  streak_7: "fire",
+  distance_100: "map-pin",
+  streak_30: "calendar",
+  distance_500: "star",
+  distance_1000: "medal",
+};
+
+async function refreshBadges() {
+  if (!isLoggedIn()) {
+    badges.value = [];
+    return;
+  }
+  try {
+    const data = await request<BadgeItem[]>("/api/badges");
+    badges.value = Array.isArray(data) ? data : [];
+    const newlyUnlocked = badges.value.filter((item) => item.newlyUnlocked);
+    if (newlyUnlocked.length) {
+      badgeToast.value?.show(
+        `解锁成就：${newlyUnlocked.map((item) => item.name).join("、")}`,
+        "success",
+      );
+    }
+  } catch {
+    badges.value = [];
+  }
+}
+
+const achievementItems = computed(() =>
+  badges.value.map((badge) => ({
+    key: badge.code,
+    icon: badgeIcons[badge.code] || badge.icon || "medal",
+    name: badge.name,
+    description: badge.description,
+    state: badge.unlocked ? "已获得" : badge.progressText || badge.description,
+    unlocked: badge.unlocked,
+  })),
+);
 
 const unlockedAchievementCount = computed(
   () => achievementItems.value.filter((item) => item.unlocked).length,
 );
 
 const settingItems = [
+  { key: "login", icon: "locked", label: "登录 / 绑定 Web 账号" },
   { key: "profile", icon: "person", label: "个人资料" },
   { key: "notification", icon: "notification", label: "消息通知" },
   { key: "feedback", icon: "chat", label: "意见反馈" },
@@ -198,6 +242,7 @@ const nicknameInitial = computed(
 );
 
 function onSettingTap(item: (typeof settingItems)[number]) {
+  if(item.key==='login') {uni.navigateTo({url:'/pages/account/login'+(isLoggedIn()?'?mode=bind':'')});return;}
   const routeMap: Record<string, string> = {
     profile: "/pages/mine/profile",
     notification: "/pages/mine/notifications",
@@ -220,7 +265,9 @@ function onSettingTap(item: (typeof settingItems)[number]) {
 
 function onAchievementTap(item: (typeof achievementItems.value)[number]) {
   uni.showToast({
-    title: item.unlocked ? `${item.name} · 已解锁` : item.target,
+    title: item.unlocked
+      ? `${item.name} · 已解锁`
+      : `${item.name} · ${item.state}`,
     icon: "none",
   });
 }
@@ -231,8 +278,7 @@ function onLogout() {
     content: "确定要退出登录吗？",
     success: (res) => {
       if (res.confirm) {
-        clearTokens();
-        uni.showToast({ title: "已退出登录", icon: "success" });
+        request('/api/auth/logout','POST').catch(()=>{}).finally(()=>{clearTokens();loggedIn.value=false;userInfo.value.nickname='跑者';userInfo.value.avatarUrl='';badges.value=[];refreshAchievements();uni.showToast({ title: "已退出登录", icon: "success" });});
       }
     },
   });
@@ -553,14 +599,16 @@ function onLogout() {
 
 .achievement-list {
   display: flex;
-  padding-top: 24rpx;
+  flex-wrap: wrap;
+  padding-top: 6rpx;
 }
 
 .achievement-item {
-  flex: 1;
+  flex: 0 0 33.333%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-top: 22rpx;
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
 

@@ -25,6 +25,7 @@
     >
       <!-- 问答视图 -->
       <view v-show="currentTab === 0" class="qa-view">
+          <rw-plan-composer :conversation-id="activeSessionId" :disabled="loading" @busy="loading=$event" @generated="onPlanGenerated" />
         <!-- 尚未提问：恢复旧版 P5R 四入口与漫画热门问题 -->
         <view v-if="!hasConversation" class="ask-landing">
           <view class="category-grid">
@@ -114,7 +115,9 @@
               <view class="ai-cloud-bubble">
                 <view class="ai-sparkle"></view>
                 <text v-if="msg.missionTitle" class="ai-mission-title">{{ msg.missionTitle }}</text>
-                <text class="ai-cloud-text">{{ msg.content }}</text>
+                <rw-answer :text="msg.content" />
+                <text class="source-item" @tap="copyAnswer(msg.content)">复制回答</text>
+                <rw-plan-preview v-if="msg.planDraftId" :id="msg.planDraftId" />
               </view>
               <!-- 参考来源 -->
               <view class="sources" v-if="msg.sources && msg.sources.length">
@@ -279,7 +282,7 @@ import { ref, computed, nextTick, onMounted } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
 // API 基础地址统一取自 utils/request.ts，禁止在页面内重复硬编码
-import { BASE_URL } from "@/utils/request";
+import { request as authenticatedRequest } from "@/utils/request";
 import {
   createQaSessionId,
   findQaSession,
@@ -299,6 +302,7 @@ interface ChatMessage {
   missionTitle?: string;
   sources?: string[];
   safetyTip?: string;
+  planDraftId?: string;
 }
 
 interface HistoryItem {
@@ -313,6 +317,7 @@ interface HistoryItem {
   answer?: string;
   sources?: string[];
   messages?: ChatMessage[];
+  planDraftId?: string;
   source: "local" | "server";
 }
 
@@ -364,9 +369,6 @@ const HOT_WORD_MAP: Record<string, string> = {
   recovery: "RESET!",
 };
 
-// 获取 Token（暂时为空，后续实现登录后填充）
-const getToken = () => uni.getStorageSync("token") || "";
-
 // 统一请求封装
 const request = async (options: {
   url: string;
@@ -381,27 +383,7 @@ const request = async (options: {
   }
 
   try {
-    const res = await new Promise<any>((resolve, reject) => {
-      uni.request({
-        url: `${BASE_URL}/api${url}`,
-        method,
-        data,
-        header: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
-        timeout: 30000,
-        success: (res) => resolve(res.data),
-        fail: (err) => reject(err),
-      });
-    });
-
-    // 判断业务状态码
-    if (res.code === 0 || res.code === 200) {
-      return res.data;
-    } else {
-      throw new Error(res.message || "请求失败");
-    }
+    return await authenticatedRequest(`/api${url}`, method, data);
   } catch (error: any) {
     console.error("API请求失败:", error);
     apiError.value = error.message || "网络连接失败";
@@ -466,7 +448,13 @@ onMounted(async () => {
 });
 
 // 页面显示时检查是否需要自动聚焦输入框（来自首页"问问题"按钮）
+let conversationOwner=uni.getStorageSync('userId');
 onShow(() => {
+  const owner=uni.getStorageSync('userId');
+  if(owner!==conversationOwner) {
+    messages.value=[];history.value=[];activeSessionId.value='';conversationOwner=owner;
+    restoreCurrentConversation();
+  }
   setTabBarIndex(2);
   const app = getApp();
   if (app.globalData?.qaAutoFocus) {
@@ -591,6 +579,7 @@ const loadHistory = async () => {
         return {
           key: `server-${item.id}`,
           id: item.id,
+          sessionId: item.conversationId || undefined,
           date: toHistoryDate(updatedAt),
           time: toHistoryTime(updatedAt),
           updatedAt,
@@ -598,6 +587,7 @@ const loadHistory = async () => {
           summary: (item.answer || "").slice(0, 72),
           answer: item.answer || "",
           sources: item.sources ? String(item.sources).split("、").filter(Boolean) : [],
+          planDraftId: item.planDraftId,
           source: "server" as const,
         };
       });
@@ -727,7 +717,15 @@ const buildMissionTitle = (question: string) => {
 };
 
 // 发送消息（调用后端RAG接口）
+function copyAnswer(text:string){uni.setClipboardData({data:text});}
+function onPlanGenerated(draft:any){
+  activeSessionId.value=draft.conversationId;
+  messages.value.push({role:'user',content:'请根据我的训练记录制定未来7天计划。'});
+  messages.value.push({role:'assistant',content:draft.plan.explanation,sources:draft.plan.sources||[],planDraftId:draft.id});
+  persistCurrentConversation();scrollToBottom();
+}
 const sendMessage = async (text: string) => {
+  if (loading.value) return;
   const content = text.trim();
   if (!content) return;
 
@@ -744,11 +742,11 @@ const sendMessage = async (text: string) => {
     // 打字指示器气泡出现后滚到底部
     scrollToBottom();
 
-    // 调用 Spring Boot 后端 → 后端调用 Ollama 大模型
+    // Spring Boot 认证与历史 → Python 检索及配置的生成模型
     const response = await request({
       url: "/qa/ask",
       method: "POST",
-      data: { question: content },
+      data: { question: content, conversationId: activeSessionId.value },
     });
 
     // 将AI回答添加到对话
@@ -763,15 +761,10 @@ const sendMessage = async (text: string) => {
     persistCurrentConversation();
     scrollToBottom();
   } catch (error: any) {
-    console.error("提问失败 - 完整错误:", error);
-    console.error("错误信息:", error.message);
-    console.error("错误详情:", JSON.stringify(error));
-
-    // 显示详细错误提示（方便调试）
-    const errorMsg = error.errMsg || error.message || "未知错误";
+    const errorMsg = error.message || "网络连接失败，请稍后重试";
     messages.value.push({
       role: "assistant",
-      content: `请求失败：${errorMsg}\n\n请查看控制台获取详细信息`,
+      content: `请求失败：${errorMsg}`,
     });
 
     // 同时弹出Toast提示
@@ -845,6 +838,7 @@ const onHistoryTap = (item: HistoryItem) => {
         content: item.answer,
         missionTitle: buildMissionTitle(item.question),
         sources: item.sources || [],
+        planDraftId: item.planDraftId,
       },
     ];
   }

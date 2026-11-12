@@ -4,13 +4,17 @@ import { useRouter } from 'vue-router'
 import RansomNote from '../components/common/RansomNote.vue'
 import { useAuth } from '../composables/useAuth'
 import * as checkinApi from '../api/checkin'
+import * as badgeApi from '../api/badge'
 import runnerArt from '../assets/images/hero-runner.png'
 
 const router = useRouter()
 const { store, logout } = useAuth()
 const records = ref([])
+const badges = ref([])
 const loading = ref(true)
+const badgesLoading = ref(true)
 const loadError = ref('')
+const badgesError = ref(false)
 const loggingOut = ref(false)
 
 const pad = (value) => String(value).padStart(2, '0')
@@ -23,8 +27,9 @@ const addDays = (date, amount) => {
 }
 
 onMounted(async () => {
-  const [recordResult] = await Promise.allSettled([
+  const [recordResult, badgeResult] = await Promise.allSettled([
     checkinApi.getAllCheckins(),
+    badgeApi.getBadges(),
     store.isLoggedIn ? store.fetchProfile() : Promise.resolve(),
   ])
 
@@ -33,7 +38,13 @@ onMounted(async () => {
   } else {
     loadError.value = '训练档案暂时无法读取，请稍后刷新。'
   }
+  if (badgeResult.status === 'fulfilled') {
+    badges.value = Array.isArray(badgeResult.value) ? badgeResult.value : []
+  } else {
+    badgesError.value = true
+  }
   loading.value = false
+  badgesLoading.value = false
 })
 
 const summary = computed(() => {
@@ -115,27 +126,31 @@ const fileNumber = computed(() => {
   return id == null ? '---' : String(id).padStart(3, '0').slice(-3)
 })
 
-const achievements = computed(() => [
-  { key: 'first', title: '首次打卡', target: 1, value: summary.value.totalCount, earned: summary.value.totalCount >= 1, note: '完成第一条训练记录' },
-  { key: 'streak', title: '连续 7 天', target: 7, value: summary.value.longestStreak, earned: summary.value.longestStreak >= 7, note: `最长连续 ${summary.value.longestStreak} 天` },
-  { key: 'distance', title: '累计百公里', target: 100, value: summary.value.totalDistance, earned: summary.value.totalDistance >= 100, note: `累计 ${formatDistance(summary.value.totalDistance)} km` },
-  { key: 'weekend', title: '周末跑者', target: 10, value: summary.value.weekendCount, earned: summary.value.weekendCount >= 10, note: `已完成 ${summary.value.weekendCount} 次周末训练` },
-  { key: 'night', title: '夜跑侠', measurable: false, earned: false, note: '训练记录尚未保存起跑时间' },
-  { key: 'full-month', title: '全勤月', target: summary.value.currentMonthDays, value: summary.value.currentMonthCount, earned: summary.value.fullMonthEarned, note: summary.value.fullMonthEarned ? '已完成一次自然月全勤' : `本月 ${summary.value.currentMonthCount}/${summary.value.currentMonthDays} 天` },
-])
+// 徽章解锁状态与进度由服务端 /api/badges 统一计算，前端只负责展示映射。
+const achievements = computed(() => badges.value.map((badge) => ({
+  key: badge.code,
+  title: badge.name,
+  target: Number(badge.target) || 1,
+  value: Number(badge.progress) || 0,
+  earned: Boolean(badge.unlocked),
+  unit: badge.unit || '',
+  note: badge.unlocked
+    ? (badge.unlockTime ? `解锁于 ${String(badge.unlockTime).slice(0, 10)}` : '已解锁')
+    : (badge.progressText || badge.description || ''),
+})))
 
 const earnedCount = computed(() => achievements.value.filter((item) => item.earned).length)
-const achievementRatio = (item) => item.measurable === false ? 0 : Math.min(1, item.value / item.target)
+const achievementRatio = (item) => item ? Math.min(1, item.value / item.target) : 0
 const nextAchievement = computed(() => achievements.value
-  .filter((item) => !item.earned && item.measurable !== false)
+  .filter((item) => !item.earned)
   .sort((a, b) => achievementRatio(b) - achievementRatio(a))[0] || null)
-const nextProgress = computed(() => Math.round(achievementRatio(nextAchievement.value || {}) * 100))
+const nextProgress = computed(() => Math.round(achievementRatio(nextAchievement.value) * 100))
 const nextRemaining = computed(() => {
   const item = nextAchievement.value
-  if (!item) return '全部可统计荣誉已解锁'
+  if (!item) return badgesLoading.value ? '任务数据同步中' : '全部荣誉已解锁'
   const remaining = Math.max(0, item.target - item.value)
-  if (item.key === 'distance') return `还差 ${formatDistance(remaining)} km`
-  if (item.key === 'full-month') return `还差 ${Math.ceil(remaining)} 天`
+  if (item.unit === 'km') return `还差 ${formatDistance(remaining)} km`
+  if (item.unit === '天') return `还差 ${Math.ceil(remaining)} 天`
   return `还差 ${Math.ceil(remaining)} 次`
 })
 
@@ -204,7 +219,9 @@ async function handleLogout() {
           <div class="progress-track"><span :style="{ width: `${nextProgress}%` }"></span></div>
           <div class="progress-meta"><span>{{ nextProgress }}%</span><span>{{ nextRemaining }}</span></div>
         </div>
-        <p v-else class="next-complete">ALL MEASURABLE MISSIONS COMPLETE!</p>
+        <p v-else-if="badgesLoading" class="next-complete">SYNCING MISSION INTEL...</p>
+        <p v-else-if="badgesError" class="next-complete">MISSION INTEL OFFLINE</p>
+        <p v-else class="next-complete">ALL HONORS UNLOCKED!</p>
         <button type="button" class="text-link" @click="router.push('/stats')">查看完整统计 →</button>
       </aside>
     </section>
@@ -212,19 +229,19 @@ async function handleLogout() {
     <section class="achievements-section">
       <header class="section-heading">
         <div><p class="section-kicker">HONOR FILE</p><h2>ACHIEVEMENTS / 荣誉档案</h2></div>
-        <strong>{{ earnedCount }} / {{ achievements.length }} UNLOCKED</strong>
+        <strong>{{ badgesLoading ? '--' : earnedCount }} / {{ badgesLoading ? '--' : achievements.length }} UNLOCKED</strong>
       </header>
       <div class="achievement-grid">
         <article
           v-for="(item, index) in achievements"
           :key="item.key"
           class="achievement"
-          :class="{ earned: item.earned, next: nextAchievement?.key === item.key, unavailable: item.measurable === false }"
+          :class="{ earned: item.earned, next: nextAchievement?.key === item.key }"
         >
           <span class="achievement-index">{{ pad(index + 1) }}</span>
           <span class="achievement-diamond" aria-hidden="true"></span>
           <div><h3>{{ item.title }}</h3><p>{{ item.note }}</p></div>
-          <span class="achievement-state">{{ item.earned ? 'UNLOCKED' : item.measurable === false ? 'NO DATA' : nextAchievement?.key === item.key ? 'NEXT' : 'LOCKED' }}</span>
+          <span class="achievement-state">{{ item.earned ? 'UNLOCKED' : nextAchievement?.key === item.key ? 'NEXT' : 'LOCKED' }}</span>
           <div v-if="nextAchievement?.key === item.key" class="achievement-progress" aria-label="下一成就完成进度">
             <span><i :style="{ width: `${nextProgress}%` }"></i></span>
             <b>{{ nextProgress }}% · {{ nextRemaining }}</b>

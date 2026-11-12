@@ -49,7 +49,7 @@ RAG_MAX_VECTOR_DISTANCE=0.82
 - `RAG_RECALL_SIZE`：语义检索和关键词检索的候选规模。
 - `RAG_MAX_VECTOR_DISTANCE`：Chroma cosine distance 上限，越小越严格。
 
-Ollama 和 `qwen2.5:3b` 仅适合本地联调。上线时可以替换生成模型供应商，检索与知识库部分无需随之重写。
+Ollama 和 `qwen2.5:3b` 用于本地联调。现在可通过 `LLM_PROVIDER=compatible` 切换 Chat Completions 兼容 API，普通问答与计划共用配置，检索与知识库部分无需重写。完整配置及失败行为见 [AI 模型切换与排错](../docs/ai-model-configuration.md)。
 
 ## 重建向量索引
 

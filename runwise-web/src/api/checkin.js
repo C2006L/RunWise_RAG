@@ -45,7 +45,7 @@ export function getCheckinList(startDate, endDate) {
     )
   }
   return instance
-    .get('/checkin/list', { params: { pageNum: 1, pageSize: 500 } })
+    .get('/checkin/list', { params: { pageNum: 1, pageSize: 500, startDate, endDate } })
     .then((res) => (res.data.data?.list || [])
       .map(normalizeCheckin)
       .filter((record) => record.date >= startDate && record.date <= endDate))
@@ -108,7 +108,7 @@ export function getCheckinByDate(date) {
       mockCheckin.getCheckinByDate(date, useUserStore().accessToken)
     )
   }
-  return instance.get('/checkin/list', { params: { pageNum: 1, pageSize: 500 } })
+  return instance.get('/checkin/list', { params: { pageNum: 1, pageSize: 1, startDate:date, endDate:date } })
     .then((res) => {
       const record = (res.data.data?.list || []).find((item) => item.checkinDate === date)
       return normalizeCheckin(record)

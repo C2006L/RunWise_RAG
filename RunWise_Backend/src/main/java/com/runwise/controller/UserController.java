@@ -11,6 +11,8 @@ import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javax.validation.Valid;
+import com.runwise.dto.ProfileUpdateDTO;
 
 /**
  * 用户控制器
@@ -35,8 +37,10 @@ public class UserController {
 
     @PutMapping("/profile")
     @Operation(summary = "更新个人资料")
-    public Result<Void> updateProfile(HttpServletRequest request, @RequestBody User user) {
+    public Result<Void> updateProfile(HttpServletRequest request, @Valid @RequestBody ProfileUpdateDTO input) {
         Long userId = (Long) request.getAttribute("userId");
+        User user = new User();
+        org.springframework.beans.BeanUtils.copyProperties(input, user);
         user.setId(userId);
         userService.updateById(user);
         return Result.success();

@@ -35,6 +35,11 @@ public class InjuryArticle {
     /** 排序号，越小越靠前 */
     private Integer sort;
 
+    /** DRAFT / PUBLISHED / OFFLINE */
+    private String status;
+    private Integer revision;
+    private Long updatedBy;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

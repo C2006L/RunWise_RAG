@@ -9,16 +9,20 @@ import { instance, withAuthRetry } from './request'
 export function login(username, password) {
   if (USE_MOCK) return mockAuth.login(username, password)
   return instance
-    .post('/auth/login-password', { username, password, device: 'web' })
+    .post('/auth/login-password', { username, password, device: 'web' }, {__skipAuthRetry:true})
     .then((res) => res.data.data) // 联调期按后端 Result 包装核对取值路径
 }
 
 // 刷新 token：仅 request.js 的刷新队列内部调用，业务代码不直接使用
+export function register(username,password) {
+  return instance.post('/auth/register',{username,password},{__skipAuthRetry:true}).then(res=>res.data.data)
+}
+
 export function refreshToken() {
   const token = useUserStore().refreshToken
   if (USE_MOCK) return mockAuth.refreshToken(token)
   return instance
-    .post('/auth/refresh', { refreshToken: token }, { __skipAuthRetry: true }) // 标记防拦截器死循环
+    .post('/auth/refresh', null, { headers:{Authorization:`Bearer ${token}`}, __skipAuthRetry: true })
     .then((res) => res.data.data)
 }
 

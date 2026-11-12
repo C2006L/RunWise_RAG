@@ -16,6 +16,8 @@ public class QaRecord {
     private Long id;
 
     private Long userId;
+    private String conversationId;
+    private String planDraftId;
 
     private String question;
 

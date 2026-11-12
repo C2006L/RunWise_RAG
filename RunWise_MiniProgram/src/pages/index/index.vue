@@ -206,11 +206,12 @@
 import { ref, computed } from "vue";
 import { onPullDownRefresh, onShow } from "@dcloudio/uni-app";
 import { setTabBarIndex } from "@/utils/tabbar";
-import { loadCheckinRecords, summarizeCheckins, toDateKey } from "@/utils/checkin-data";
+import { loadCheckinRecords, syncCheckinRecords, summarizeCheckins, toDateKey } from "@/utils/checkin-data";
 
 onShow(() => {
   setTabBarIndex(0);
   refreshHomeData();
+  syncCheckinRecords().then(refreshHomeData).catch(()=>{});
 });
 
 /* ===== 拼贴字母生成（确定性，避免重渲染抖动；规则对齐 Web HeroSection/RansomNote） ===== */
@@ -377,10 +378,7 @@ const onComingSoon = () => {
 };
 
 const onRefresh = () => {
-  // mock 刷新：模拟拉取最新打卡数据
-  setTimeout(() => {
-    uni.stopPullDownRefresh();
-  }, 800);
+  syncCheckinRecords().then(refreshHomeData).catch(()=>{}).finally(()=>uni.stopPullDownRefresh());
 };
 
 onPullDownRefresh(() => {

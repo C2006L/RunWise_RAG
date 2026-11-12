@@ -11,5 +11,9 @@ import javax.validation.constraints.NotBlank;
 public class AskDTO {
 
     @NotBlank(message = "问题不能为空")
+    @javax.validation.constraints.Size(max=500)
     private String question;
+
+    @javax.validation.constraints.Pattern(regexp="[A-Za-z0-9_-]{1,80}")
+    private String conversationId;
 }

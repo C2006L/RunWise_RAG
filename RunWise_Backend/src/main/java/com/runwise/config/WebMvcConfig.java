@@ -1,6 +1,7 @@
 package com.runwise.config;
 
 import com.runwise.interceptor.JwtInterceptor;
+import com.runwise.admin.AdminInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -18,22 +19,30 @@ import java.nio.file.Paths;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
+    private final AdminInterceptor adminInterceptor;
 
     @Value("${runwise.upload-dir:uploads}")
     private String uploadDir;
 
-    public WebMvcConfig(JwtInterceptor jwtInterceptor) {
+    public WebMvcConfig(JwtInterceptor jwtInterceptor, AdminInterceptor adminInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
+        this.adminInterceptor = adminInterceptor;
     }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(adminInterceptor).addPathPatterns("/api/admin/**")
+                .excludePathPatterns("/api/admin/auth/login");
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")
                 .excludePathPatterns(
+                        "/api/admin/**",       // 独立的管理员认证，不能使用跑者 token
                         "/api/auth/login",     // 登录接口不拦截
+                        "/api/auth/login-password",
+                        "/api/auth/register",
                         "/api/auth/refresh",   // 刷新token不拦截
-                        "/api/qa/**",          // 问答模块全部不拦截（调试模式）
+                        "/api/qa/categories",
+                        "/api/qa/hot",
                         "/api/injury/**",      // 伤病预防为公开只读知识库，不拦截
                         "/doc.html",           // Knife4j 文档
                         "/swagger-resources/**",

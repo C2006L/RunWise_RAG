@@ -10,7 +10,12 @@ const useMock =
 
 // 本地 RAG 需要先检索知识库，再等待 Ollama 生成答案；首次加载模型时通常会
 // 明显超过全局接口的 10 秒超时。仅放宽提问接口，其他普通接口继续快速失败。
-const QA_ASK_TIMEOUT = 150000
+const QA_ASK_TIMEOUT = 100000
+
+export const getTrainingContext=()=>instance.get('/qa/training-context').then(res=>res.data.data)
+export const generatePlanDraft=(input)=>instance.post('/qa/plan-drafts',input,{timeout:QA_ASK_TIMEOUT}).then(res=>res.data.data)
+export const getPlanDraft=(id)=>instance.get(`/qa/plan-drafts/${encodeURIComponent(id)}`).then(res=>res.data.data)
+export const confirmPlanDraft=(id)=>instance.post(`/qa/plan-drafts/${encodeURIComponent(id)}/confirm`).then(res=>res.data.data)
 
 // 答疑接口层（工程计划 6.3 签名 / 6.2 分流）：USE_MOCK 时转发 mock，组件无感知
 // axios 路径与后端 QaController 逐一对齐：
@@ -21,12 +26,12 @@ const QA_ASK_TIMEOUT = 150000
 // - POST /api/qa/feedback?id=&feedback=（后端 @RequestParam，参数走 query string）
 
 // 提问 → QaAskResult { answer, sources, safetyTip? }
-export function askQuestion(question) {
+export function askQuestion(question,conversationId) {
   if (useMock) {
     return withAuthRetry(() => mockQa.ask(question, useUserStore().accessToken))
   }
   return instance
-    .post('/qa/ask', { question }, { timeout: QA_ASK_TIMEOUT })
+    .post('/qa/ask', { question, conversationId:conversationId || undefined }, { timeout: QA_ASK_TIMEOUT })
     .then((res) => res.data.data)
 }
 
@@ -40,6 +45,18 @@ export function getHistory(pageNum = 1, pageSize = 10) {
   return instance
     .get('/qa/history', { params: { pageNum, pageSize } })
     .then((res) => res.data.data)
+}
+
+export async function getConversation(id) {
+  const rows=[]
+  let pageNum=1,total=0
+  do {
+    const response=await instance.get(`/qa/conversation/${encodeURIComponent(id)}`,{params:{pageNum}})
+    const data=response.data.data
+    rows.push(...data.list);total=data.total;pageNum++
+    if(!data.list.length) break
+  } while(rows.length<total)
+  return rows
 }
 
 // 问题分类 → QaCategory[]
