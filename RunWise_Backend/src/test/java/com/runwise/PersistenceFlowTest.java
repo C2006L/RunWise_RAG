@@ -55,7 +55,8 @@ class PersistenceFlowTest {
             org.springframework.test.util.ReflectionTestUtils.setField(jwt,"refreshTokenExpire",604800000L);jwt.init();return jwt;
         }
         @SuppressWarnings("unchecked") @Bean StringRedisTemplate redis() {
-            StringRedisTemplate redis=mock(StringRedisTemplate.class);when(redis.opsForValue()).thenReturn(mock(ValueOperations.class));return redis;
+            StringRedisTemplate redis=mock(StringRedisTemplate.class);when(redis.opsForValue()).thenReturn(mock(ValueOperations.class));
+            when(redis.execute(any(org.springframework.data.redis.core.script.RedisScript.class),anyList(),anyString(),anyString(),anyString(),anyString())).thenReturn(1L);return redis;
         }
         @Bean PasswordAuthService passwordAuth(JdbcTemplate jdbc,UserService users,JwtUtils jwt,StringRedisTemplate redis) {return new PasswordAuthService(jdbc,users,jwt,redis);}
     }
@@ -66,6 +67,7 @@ class PersistenceFlowTest {
     @BeforeEach void schema() {
         jdbc.execute("DROP ALL OBJECTS");
         jdbc.execute("CREATE TABLE t_user(id BIGINT AUTO_INCREMENT PRIMARY KEY,openid VARCHAR(64),nickname VARCHAR(64),status INT)");
+        jdbc.execute("CREATE TABLE t_checkin(id BIGINT AUTO_INCREMENT PRIMARY KEY,user_id BIGINT,checkin_date DATE,distance DECIMAL(8,2),deleted INT DEFAULT 0)");
         jdbc.execute("CREATE TABLE t_web_credential(user_id BIGINT PRIMARY KEY,username VARCHAR(32) UNIQUE,password_hash VARCHAR(255))");
         jdbc.execute("CREATE TABLE t_training_plan_item(id BIGINT AUTO_INCREMENT PRIMARY KEY,user_id BIGINT,training_date DATE,type VARCHAR(16),target_km DECIMAL(6,2),note VARCHAR(255),UNIQUE(user_id,training_date))");
         jdbc.execute("CREATE TABLE t_injury_article(id BIGINT AUTO_INCREMENT PRIMARY KEY,title VARCHAR(128),category VARCHAR(32),summary VARCHAR(255),tags VARCHAR(255),sections TEXT,read_minutes INT,sort INT,status VARCHAR(16),revision INT,updated_by BIGINT,deleted INT DEFAULT 0,create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
@@ -109,7 +111,7 @@ class PersistenceFlowTest {
         com.runwise.vo.LoginVO registered=auth.register(credential("Runner"));
         assertEquals(registered.getUserId(),auth.login(credential("runner")).getUserId());
         assertNotEquals("test-password-123",jdbc.queryForObject("SELECT password_hash FROM t_web_credential",String.class));
-        assertThrows(org.springframework.dao.DuplicateKeyException.class,()->auth.register(credential("runner")));
+        assertThrows(BusinessException.class,()->auth.register(credential("runner")));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM t_user",Integer.class));
     }
     @Test void bindingReusesUserAndDisabledAccountCannotLogin() {
@@ -118,5 +120,15 @@ class PersistenceFlowTest {
         jdbc.update("UPDATE t_user SET status=0 WHERE id=99");
         assertThrows(BusinessException.class,()->auth.login(credential("bound")));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM t_user",Integer.class));
+    }
+    @Test void bindingIsIdempotentAndCannotTakeOverAnotherIdentity() {
+        jdbc.update("INSERT INTO t_user(id,openid,nickname,status) VALUES (90,'wechat-a','A',1),(91,'wechat-b','B',1)");
+        auth.bind(90L,credential("shared"));auth.bind(90L,credential("shared"));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM t_web_credential",Integer.class));
+        assertThrows(BusinessException.class,()->auth.bind(91L,credential("shared")));
+        assertThrows(BusinessException.class,()->auth.bind(90L,credential("replace")));
+        assertEquals(90L,auth.login(credential("shared")).getUserId());
+        assertEquals(90L,auth.account(90L).get("userId"));assertEquals(true,auth.account(90L).get("wechatBound"));
+        assertFalse(auth.account(90L).containsKey("password_hash"));
     }
 }

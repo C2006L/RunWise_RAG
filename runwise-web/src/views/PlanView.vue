@@ -229,12 +229,13 @@ async function onModalSubmit(payload) {
                   <span class="status-dot dot--rest"></span>
                   <span class="status-rest">休息日</span>
                 </template>
-                <!-- B-3 进行中：红色切角小标签（白字），替代原红点呼吸 -->
-                <span v-else-if="isToday(d)" class="live-tag">进行中</span>
+                <!-- 根据真实记录判断里程进度，日期本身不代表开始或完成训练 -->
+                <span v-else-if="d.status === 'distance_met'" class="live-tag" :title="d.statusNote">里程达标</span>
+                <span v-else-if="d.status === 'in_progress'" class="live-tag" :title="d.statusNote">已记录 {{ d.actualKm }} km</span>
                 <!-- 待执行：红点 + 灰字（维持） -->
                 <template v-else>
                   <span class="status-dot"></span>
-                  <span>待执行</span>
+                  <span>{{ isToday(d) ? '今日待训练' : '待执行' }}</span>
                 </template>
               </td>
               <!-- B3.3：行 hover 显示编辑/删除 -->

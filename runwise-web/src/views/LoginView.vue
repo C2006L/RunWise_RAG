@@ -76,6 +76,7 @@ async function handleSubmit() {
 
         <p class="login-tip">
           <button type="button" :disabled="loading" @click="registering=!registering;errorMsg=''">{{registering?'已有账号？返回登录':'首次使用？创建账号'}}</button>
+          <p class="bind-note">已有微信训练记录？先在小程序登录原微信账号，并设置共享账密，再在这里登录。请勿重复注册。</p>
         </p>
       </form>
     </P5Card>
@@ -186,4 +187,5 @@ async function handleSubmit() {
   color: var(--p5-text-dim);
   line-height: 1.6;
 }
+.bind-note {font-size:13px;line-height:1.7;color:var(--p5-text-dim);margin-top:16px;}
 </style>

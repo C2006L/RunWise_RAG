@@ -58,6 +58,10 @@ public class AuthController {
     }
     @PostMapping("/logout")
     public Result<Void> logout(HttpServletRequest request) {
-        passwordAuth.logout((Long)request.getAttribute("userId"));return Result.success();
+        passwordAuth.logout((Long)request.getAttribute("userId"),request.getHeader("Authorization").substring(7).trim());return Result.success();
     }
+    @GetMapping("/account")
+    public Result<java.util.Map<String,Object>> account(@RequestAttribute("userId") Long user){return Result.success(passwordAuth.account(user));}
+    @PostMapping("/bind-wechat")
+    public Result<Void> bindWechat(@RequestAttribute("userId") Long user,@Valid @RequestBody LoginDTO input){userService.bindWechat(user,input.getCode());return Result.success();}
 }

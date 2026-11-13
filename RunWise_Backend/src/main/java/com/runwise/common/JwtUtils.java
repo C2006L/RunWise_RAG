@@ -54,6 +54,13 @@ public class JwtUtils {
         return generateToken(userId, openid, refreshTokenExpire, "refresh");
     }
 
+    public String generateSessionToken(Long userId,String openid,String sid,boolean refresh) {
+        return Jwts.builder().claim("userId",userId).claim("openid",openid).claim("sid",sid)
+                .claim("type",refresh?"refresh":"access").setId(java.util.UUID.randomUUID().toString())
+                .setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis()+(refresh?refreshTokenExpire:accessTokenExpire)))
+                .signWith(key,SignatureAlgorithm.HS256).compact();
+    }
+
     public String generateAdminToken(Long adminId) {
         return Jwts.builder().setSubject(String.valueOf(adminId))
                 .claim("scope", "admin").setId(java.util.UUID.randomUUID().toString())

@@ -79,27 +79,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ResultCode.USER_DISABLED);
         }
 
-        // 4. 生成 token
-        String accessToken = jwtUtils.generateAccessToken(user.getId(), openid);
-        String refreshToken = jwtUtils.generateRefreshToken(user.getId(), openid);
-
-        // 5. 存入 Redis（用于黑名单校验和多端登录管理）
-        String redisKey = "runwise:token:" + user.getId();
-        redisTemplate.opsForValue().set(redisKey + ":access", accessToken,
-                jwtUtils.getAccessTokenExpire(), TimeUnit.MILLISECONDS);
-        redisTemplate.opsForValue().set(redisKey + ":refresh", refreshToken,
-                jwtUtils.getRefreshTokenExpire(), TimeUnit.MILLISECONDS);
-
-        // 6. 组装返回
-        LoginVO vo = new LoginVO();
-        vo.setAccessToken(accessToken);
-        vo.setRefreshToken(refreshToken);
-        vo.setUserId(user.getId());
-        vo.setNickname(user.getNickname());
-        vo.setAvatarUrl(user.getAvatarUrl());
-        vo.setIsNewUser(isNewUser);
-        vo.setCreateTime(user.getCreateTime());
-        return vo;
+        return new com.runwise.service.RunnerSessions(jwtUtils,redisTemplate).issue(user,isNewUser);
     }
 
     @Override
@@ -119,29 +99,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!Integer.valueOf(1).equals(user.getStatus()))
             throw new BusinessException(ResultCode.UNAUTHORIZED, "账户不可用");
 
-        String newAccessToken = jwtUtils.generateAccessToken(user.getId(), user.getOpenid());
-        String newRefreshToken = jwtUtils.generateRefreshToken(user.getId(), user.getOpenid());
+        return new com.runwise.service.RunnerSessions(jwtUtils,redisTemplate).rotate(user,refreshToken);
+    }
 
-        // 更新 Redis
-        String redisKey = "runwise:token:" + user.getId();
-        Long rotated = redisTemplate.execute(new DefaultRedisScript<>(
-                "if redis.call('get',KEYS[2]) ~= ARGV[1] then return 0 end " +
-                "redis.call('psetex',KEYS[1],ARGV[4],ARGV[2]); " +
-                "redis.call('psetex',KEYS[2],ARGV[5],ARGV[3]); return 1", Long.class),
-                Arrays.asList(redisKey + ":access",redisKey + ":refresh"),refreshToken,newAccessToken,newRefreshToken,
-                jwtUtils.getAccessTokenExpire().toString(),jwtUtils.getRefreshTokenExpire().toString());
-        if (!Long.valueOf(1L).equals(rotated))
-            throw new BusinessException(ResultCode.UNAUTHORIZED,"刷新凭证已失效，请重新登录");
-
-        LoginVO vo = new LoginVO();
-        vo.setAccessToken(newAccessToken);
-        vo.setRefreshToken(newRefreshToken);
-        vo.setUserId(user.getId());
-        vo.setNickname(user.getNickname());
-        vo.setAvatarUrl(user.getAvatarUrl());
-        vo.setIsNewUser(false);
-        vo.setCreateTime(user.getCreateTime());
-        return vo;
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void bindWechat(Long userId,String code) {
+        String openid=getOpenid(code);
+        if(openid==null||openid.trim().isEmpty())throw new BusinessException(ResultCode.WECHAT_API_ERROR);
+        User current=getById(userId);
+        if(current==null||!Integer.valueOf(1).equals(current.getStatus()))throw new BusinessException(ResultCode.UNAUTHORIZED);
+        if(openid.equals(current.getOpenid()))return;
+        if(current.getOpenid()==null||!current.getOpenid().startsWith("web:"))
+            throw new BusinessException(ResultCode.PARAM_ERROR,"当前账号已绑定其他微信，不能直接替换");
+        User existing=getByOpenid(openid);
+        if(existing!=null)throw new BusinessException(ResultCode.PARAM_ERROR,"此微信已有独立账号，请登录原微信账号绑定账密；暂不合并两份数据");
+        boolean changed=update(new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User>()
+                .eq(User::getId,userId).eq(User::getOpenid,current.getOpenid()).set(User::getOpenid,openid));
+        if(!changed)throw new BusinessException(ResultCode.PARAM_ERROR,"绑定状态已变化，请刷新后重试");
     }
 
     @Override
@@ -152,7 +127,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     /**
      * 调用微信 code2session 接口换取 openid
      */
-    private String getOpenid(String code) {
+    protected String getOpenid(String code) {
         String url = String.format(
                 "https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
                 appid, secret, code);

@@ -1,5 +1,8 @@
 -- 在 business_v2.sql 之后执行一次。备份后再运行；本脚本可重复执行，不会删除已有数据。
 -- 徽章定义表 + 用户解锁记录表 + 6 枚徽章种子数据
+-- 文件为 UTF-8；Windows mysql 客户端的默认会话编码可能不同。
+SET NAMES utf8mb4;
+
 CREATE TABLE IF NOT EXISTS t_badge (
     id          BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
     code        VARCHAR(32)  NOT NULL UNIQUE,

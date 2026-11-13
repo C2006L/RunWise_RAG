@@ -29,6 +29,7 @@ class ModelSettings:
     chat_tokens: int = 1000
     plan_tokens: int = 1100
     json_mode: str = "json_object"
+    thinking: str = "default"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None):
@@ -51,9 +52,12 @@ class ModelSettings:
         except (ValueError, TypeError):
             valid_url = valid_numbers = False
         mode = env.get("LLM_JSON_MODE", "json_object").strip()
+        thinking = env.get("LLM_THINKING", "default").strip().lower() if not local else "default"
+        if thinking not in ("default", "enabled", "disabled"):
+            raise ModelError("MODEL_CONFIG", "LLM_THINKING 只能为 default、enabled 或 disabled。")
         if not valid_url or not valid_numbers or mode not in ("json_object", "json_schema") or not model.strip() or (not local and not key.strip()):
             raise ModelError("MODEL_CONFIG", "模型配置不完整或不合法，请检查服务端地址、模型名、密钥、输出预算和超时配置。")
-        return cls(provider, base.rstrip("/"), model.strip(), key.strip(), timeout, chat_tokens, plan_tokens, mode)
+        return cls(provider, base.rstrip("/"), model.strip(), key.strip(), timeout, chat_tokens, plan_tokens, mode, thinking)
 
 
 def model_info():
@@ -79,6 +83,8 @@ def generate_text(prompt: str, max_tokens: int, structured=False, settings: Mode
         headers["Authorization"] = "Bearer " + settings.api_key
         body = {"model": settings.model, "messages": [{"role": "user", "content": prompt}],
                 "stream": False, "temperature": 0.15, "max_tokens": max_tokens}
+        if settings.thinking != "default":
+            body["thinking"] = {"type": settings.thinking}
         if structured:
             if settings.json_mode == "json_schema" and isinstance(structured, dict):
                 body["response_format"] = {"type": "json_schema", "json_schema": {

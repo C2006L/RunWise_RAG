@@ -12,11 +12,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class RunWiseApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(RunWiseApplication.class, args);
+        org.springframework.context.ConfigurableApplicationContext context=SpringApplication.run(RunWiseApplication.class, args);
+        String port=context.getEnvironment().getProperty("local.server.port",context.getEnvironment().getProperty("server.port","8081"));
         System.out.println("" +
                 "\n========================================" +
                 "\n  RunWise Backend 启动成功" +
-                "\n  API文档: http://localhost:8080/doc.html" +
+                "\n  API文档: http://localhost:"+port+"/doc.html" +
                 "\n========================================");
     }
 }

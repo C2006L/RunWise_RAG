@@ -1,11 +1,15 @@
 <template>
   <view class="account-page">
     <text class="kicker">RUNWISE ACCOUNT</text><text class="title">{{binding?'绑定 Web 账号':'登录 RunWise'}}</text>
-    <text class="description">{{binding?'为当前小程序账号设置登录名和密码，Web 将读取同一份训练数据。':'可使用 Web 账号或微信登录。首次使用请在 Web 创建账号。'}}</text>
+    <text class="description">{{binding?'共享账号保持同一用户身份，Web 与小程序读取同一份训练数据。':'已有 Web 账号请用同一账密登录，再绑定微信；已有微信训练记录请先微信登录，再设置共享账密。'}}</text>
+    <text v-if="account" class="description">用户编号：{{account.userId}} · {{account.username?'已设置账号：'+account.username:'尚未设置账密'}} · {{account.wechatBound?'微信已绑定':'微信未绑定'}}</text>
+    <view v-if="!binding || !account?.username">
     <input v-model="username" placeholder="用户名（3–32位）" maxlength="32" />
     <input v-model="password" placeholder="密码（至少12位）" password maxlength="128" />
     <text v-if="error" class="error">{{error}}</text>
     <button :disabled="busy" @tap="submit">{{busy?'正在处理…':binding?'确认绑定':'账号登录'}}</button>
+    </view>
+    <button v-if="binding && account && !account.wechatBound" :disabled="busy" @tap="bindWechat">绑定当前微信</button>
     <button v-if="!binding" :disabled="busy" @tap="wechat">微信登录</button>
   </view>
 </template>
@@ -14,7 +18,19 @@ import {ref} from 'vue';
 import {onLoad} from '@dcloudio/uni-app';
 import {request,saveTokens,wxLogin,BASE_URL} from '@/utils/request';
 const username=ref(''),password=ref(''),error=ref(''),busy=ref(false),binding=ref(false);
-onLoad(options=>{binding.value=options?.mode==='bind';});
+const account=ref<{userId:number;username:string|null;wechatBound:boolean}|null>(null);
+onLoad(async options=>{binding.value=options?.mode==='bind';if(binding.value)try{account.value=await request('/api/auth/account');}catch(e:any){error.value=e.message||'账号信息读取失败';}});
+async function bindWechat(){
+  if(busy.value)return;busy.value=true;error.value='';
+  try{
+    const answer=await new Promise<boolean>(resolve=>uni.showModal({title:'绑定微信',content:'将当前微信关联到此账号，保留当前用户编号和训练数据。已有其他微信账号数据时会拒绝自动合并。',success:r=>resolve(r.confirm),fail:()=>resolve(false)}));
+    if(!answer)return;
+    const {code}=await uni.login({provider:'weixin'});
+    if(!code)throw new Error('无法获取微信登录凭证');
+    await request('/api/auth/bind-wechat','POST',{code});
+    account.value=await request('/api/auth/account');uni.showToast({title:'绑定成功',icon:'success'});
+  }catch(e:any){error.value=e.message||'绑定失败';}finally{busy.value=false;}
+}
 function finish(){uni.switchTab({url:'/pages/mine/mine'});}
 async function submit(){
   if(busy.value)return;

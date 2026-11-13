@@ -21,4 +21,5 @@ public interface UserService extends IService<User> {
      * 根据 openid 查询用户
      */
     User getByOpenid(String openid);
+    void bindWechat(Long userId,String code);
 }

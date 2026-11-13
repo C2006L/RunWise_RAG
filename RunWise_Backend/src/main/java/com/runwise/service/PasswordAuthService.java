@@ -47,20 +47,25 @@ public class PasswordAuthService {
     }
     @Transactional
     public void bind(Long id,PasswordLoginDTO input) {
+        User user=users.getById(id);
+        if(user==null||!Integer.valueOf(1).equals(user.getStatus()))throw new BusinessException(ResultCode.UNAUTHORIZED);
+        List<Map<String,Object>> own=jdbc.queryForList("SELECT username,password_hash FROM t_web_credential WHERE user_id=?",id);
+        String name=input.getUsername().toLowerCase(Locale.ROOT);
+        if(!own.isEmpty()) {
+            if(name.equals(own.get(0).get("username"))&&PasswordHasher.matches(input.getPassword(),(String)own.get(0).get("password_hash")))return;
+            throw new BusinessException(ResultCode.PARAM_ERROR,"当前账号已设置账密，请使用已有账号登录；此入口不修改密码");
+        }
+        if(jdbc.queryForObject("SELECT COUNT(*) FROM t_web_credential WHERE username=?",Integer.class,name)>0)
+            throw new BusinessException(ResultCode.PARAM_ERROR,"用户名已被其他账号使用，不能自动合并数据");
         jdbc.update("INSERT INTO t_web_credential(user_id,username,password_hash) VALUES (?,?,?)",
                 id,input.getUsername().toLowerCase(Locale.ROOT),PasswordHasher.hash(input.getPassword()));
     }
-    public LoginVO issue(User user,boolean fresh) {
-        String access=jwt.generateAccessToken(user.getId(),user.getOpenid());
-        String refresh=jwt.generateRefreshToken(user.getId(),user.getOpenid());
-        String key="runwise:token:"+user.getId();
-        redis.execute(new DefaultRedisScript<>("redis.call('psetex',KEYS[1],ARGV[3],ARGV[1]); "
-                + "redis.call('psetex',KEYS[2],ARGV[4],ARGV[2]); return 1",Long.class),
-                Arrays.asList(key+":access",key+":refresh"),access,refresh,
-                jwt.getAccessTokenExpire().toString(),jwt.getRefreshTokenExpire().toString());
-        LoginVO result=new LoginVO();result.setAccessToken(access);result.setRefreshToken(refresh);
-        result.setUserId(user.getId());result.setNickname(user.getNickname());result.setAvatarUrl(user.getAvatarUrl());
-        result.setIsNewUser(fresh);result.setCreateTime(user.getCreateTime());return result;
+    public LoginVO issue(User user,boolean fresh) {return new RunnerSessions(jwt,redis).issue(user,fresh);}
+    public void logout(Long id,String token) {new RunnerSessions(jwt,redis).logout(id,token);}
+    public Map<String,Object> account(Long id) {
+        User user=users.getById(id);if(user==null)throw new BusinessException(ResultCode.UNAUTHORIZED);
+        List<String> names=jdbc.queryForList("SELECT username FROM t_web_credential WHERE user_id=?",String.class,id);
+        Map<String,Object> result=new LinkedHashMap<>();result.put("userId",id);result.put("username",names.isEmpty()?null:names.get(0));
+        result.put("wechatBound",user.getOpenid()!=null&&!user.getOpenid().startsWith("web:"));return result;
     }
-    public void logout(Long id) {redis.delete(Arrays.asList("runwise:token:"+id+":access","runwise:token:"+id+":refresh"));}
 }

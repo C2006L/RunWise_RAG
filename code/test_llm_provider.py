@@ -20,6 +20,23 @@ def response(body):
 
 
 class ModelProviderTest(unittest.TestCase):
+    @patch("llm_provider.urlopen")
+    def test_glm_chat_and_plan_send_explicit_thinking_mode_and_correct_endpoint(self, post):
+        settings = ModelSettings.from_env({"LLM_PROVIDER":"compatible", "OPENAI_BASE_URL":"https://open.bigmodel.cn/api/paas/v4/", "OPENAI_API_KEY":"test-only-key", "LLM_MODEL":"glm-4.7-flash", "LLM_THINKING":"disabled"})
+        post.return_value=response({"choices":[{"finish_reason":"stop","message":{"content":"{}","reasoning_content":"not answer content"}}]})
+        for structured in (False, SCHEMA):
+            self.assertEqual("{}",generate_text("JSON test",1800,structured,settings))
+            request=post.call_args.args[0]; body=json.loads(request.data)
+            self.assertEqual("https://open.bigmodel.cn/api/paas/v4/chat/completions",request.full_url)
+            self.assertEqual({"type":"disabled"},body["thinking"])
+            self.assertEqual("glm-4.7-flash",body["model"])
+            if structured: self.assertEqual({"type":"json_object"},body["response_format"])
+
+    def test_glm_requires_key_and_thinking_mode_is_validated(self):
+        config={"LLM_PROVIDER":"compatible","OPENAI_BASE_URL":"https://open.bigmodel.cn/api/paas/v4","LLM_MODEL":"glm-4.7-flash"}
+        with self.assertRaises(ModelError): ModelSettings.from_env(config)
+        with self.assertRaises(ModelError): ModelSettings.from_env(dict(config,OPENAI_API_KEY="test-key",LLM_THINKING="invalid"))
+
     def test_default_stays_local_even_if_cloud_credentials_exist(self):
         settings = ModelSettings.from_env({"OPENAI_API_KEY": "present", "LLM_MODEL": "cloud"})
         self.assertEqual("ollama", settings.provider)

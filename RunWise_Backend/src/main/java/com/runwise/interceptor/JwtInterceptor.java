@@ -55,7 +55,7 @@ public class JwtInterceptor implements HandlerInterceptor {
             throw new BusinessException(ResultCode.UNAUTHORIZED);
 
         // 4. 校验 Redis 中是否仍存在（支持主动登出/黑名单）
-        String redisKey = "runwise:token:" + userId + ":access";
+        String redisKey = com.runwise.service.RunnerSessions.key(userId,claims)+":access";
         String storedToken = redisTemplate.opsForValue().get(redisKey);
         if (storedToken == null || !storedToken.equals(token)) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "登录已失效，请重新登录");

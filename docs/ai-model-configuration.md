@@ -1,5 +1,13 @@
 # AI 模型切换与排错
 
+## GLM 本机接入（2026-11-13）
+
+配置模板见 `code/.env.glm.example`。当前本机 `code/.env` 已切换 `compatible`、地址 `https://open.bigmodel.cn/api/paas/v4`、模型 `glm-4.7-flash`、JSON 模式 `json_object`。请自行填写重新生成的 `OPENAI_API_KEY`，不要将密钥提交到 Git 或发到聊天。
+
+本配置显式使用 `LLM_THINKING=disabled`，普通问答和计划生成均发送 `thinking: {type: disabled}`；其他供应商保持 `default` 时不发送该字段。此参数依据 [GLM 思考模式说明](https://docs.bigmodel.cn/cn/guide/capabilities/thinking-mode)，更换模型需重新核对支持情况。
+
+填好后重启 Python：`venv\Scripts\python.exe code\dev.py rag`。若终端或 IDEA 已设置同名环境变量，请同步修改，因为进程环境优先。Spring 保持 `RAG_ENABLED=true`；仅更换模型时无需重启前端或迁移数据库。Ollama 不再参与当前问答生成，知识检索仍使用本地 BGE/Chroma。未填写 Key 时模型配置检查失败属于预期；真实网络连通和回答质量须填 Key 后验证。
+
 Web / 小程序 → Spring Boot（身份、真实训练摘要、历史、草稿保存）→ Python（知识检索与生成模型）。两端 UI、历史表、计划确认流程不因更换模型而变化。
 
 ## 本地调试

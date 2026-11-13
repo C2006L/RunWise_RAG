@@ -22,11 +22,11 @@ class SessionSecurityTest {
     @SuppressWarnings("unchecked") @BeforeEach void setup() {
         jwt=mock(JwtUtils.class);redis=mock(StringRedisTemplate.class);values=mock(ValueOperations.class);mapper=mock(UserMapper.class);
         when(redis.opsForValue()).thenReturn(values);when(jwt.isValid(anyString())).thenReturn(true);
-        claims=new DefaultClaims();claims.put("type","refresh");claims.put("userId",7L);
+        claims=new DefaultClaims();claims.put("type","refresh");claims.put("userId",7L);claims.put("sid","11111111-1111-1111-1111-111111111111");
         when(jwt.parseToken(anyString())).thenReturn(claims);when(jwt.getUserId(anyString())).thenReturn(7L);
         when(jwt.getAccessTokenExpire()).thenReturn(7200000L);when(jwt.getRefreshTokenExpire()).thenReturn(604800000L);
-        when(jwt.generateAccessToken(anyLong(),anyString())).thenReturn("new-access");
-        when(jwt.generateRefreshToken(anyLong(),anyString())).thenReturn("new-refresh");
+        when(jwt.generateSessionToken(anyLong(),anyString(),anyString(),eq(false))).thenReturn("new-access");
+        when(jwt.generateSessionToken(anyLong(),anyString(),anyString(),eq(true))).thenReturn("new-refresh");
         user=new User();user.setId(7L);user.setOpenid("test-openid");user.setStatus(1);when(mapper.selectById(7L)).thenReturn(user);
         service=new UserServiceImpl(jwt,redis);ReflectionTestUtils.setField(service,"baseMapper",mapper);
     }
@@ -50,7 +50,7 @@ class SessionSecurityTest {
         assertThrows(BusinessException.class,()->interceptor.preHandle(request,new MockHttpServletResponse(),new Object()));
     }
     @Test void accessChecksCurrentAccountStatus() {
-        claims.put("type","access");when(values.get("runwise:token:7:access")).thenReturn("token");user.setStatus(0);
+        claims.put("type","access");when(values.get("runwise:session:7:11111111-1111-1111-1111-111111111111:access")).thenReturn("token");user.setStatus(0);
         MockHttpServletRequest request=new MockHttpServletRequest();request.addHeader("Authorization","Bearer token");
         assertThrows(BusinessException.class,()->new JwtInterceptor(jwt,redis,mapper).preHandle(request,new MockHttpServletResponse(),new Object()));
     }

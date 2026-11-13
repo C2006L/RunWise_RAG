@@ -1,10 +1,17 @@
 """生成层契约测试，不调用真实模型，不写业务数据库。"""
 import unittest
+import os
 from unittest.mock import patch
 from fastapi import HTTPException
 import rag_api as api
 
 class GenerationContractTest(unittest.TestCase):
+    def setUp(self):
+        # Tests must not depend on a developer's real .env provider/key.
+        self.environment = patch.dict(os.environ, {"LLM_PROVIDER": "ollama"})
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+
     @patch.object(api, "generate_text", return_value="## 建议\n- 根据真实记录分析")
     def test_chat_prompt_includes_real_context_and_markdown(self, generate):
         result = api.generate_answer("如何训练", [], [], {"recordCount": 8, "totalKm": 40})
