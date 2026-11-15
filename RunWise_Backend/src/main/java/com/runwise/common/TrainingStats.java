@@ -26,12 +26,13 @@ public final class TrainingStats {
         return best;
     }
     public static Map<String,Object> period(List<Checkin> records,LocalDate start,LocalDate end,String datesKey) {
-        Map<LocalDate,BigDecimal> byDate=new HashMap<>();int count=0;
+        Map<LocalDate,BigDecimal> byDate=new HashMap<>();int count=0;long minutes=0;
         List<LocalDate> allDates=new ArrayList<>();
         for(Checkin record:records) {
             LocalDate date=record.getCheckinDate();allDates.add(date);
             if(!date.isBefore(start)&&!date.isAfter(end)) {
                 byDate.merge(date,record.getDistance(),BigDecimal::add);count++;
+                if(record.getDuration()!=null) minutes+=record.getDuration();
             }
         }
         List<String> dates=new ArrayList<>();List<BigDecimal> distances=new ArrayList<>();BigDecimal total=BigDecimal.ZERO;
@@ -40,6 +41,8 @@ public final class TrainingStats {
             dates.add(date.toString());distances.add(km);total=total.add(km);
         }
         Map<String,Object> result=new LinkedHashMap<>();result.put(datesKey,dates);result.put("distances",distances);
-        result.put("totalKm",total);result.put("checkinCount",count);result.put("streakDays",streak(allDates,end));return result;
+        result.put("totalKm",total);result.put("totalMinutes",minutes);
+        result.put("averagePaceMinPerKm",total.signum()>0?BigDecimal.valueOf(minutes).divide(total,6,java.math.RoundingMode.HALF_UP):null);
+        result.put("checkinCount",count);result.put("streakDays",streak(allDates,end));return result;
     }
 }

@@ -13,6 +13,7 @@ import RansomNote from '../components/common/RansomNote.vue'
 import PlanEditModal from '../components/business/PlanEditModal.vue'
 import PlanDecor from '../components/decor/PlanDecor.vue'
 import * as planService from '../services/planService'
+import { summarizePlanDays } from '../utils/weekly-goal'
 import { resolveTrainingType, WEEKDAY_OPTIONS } from '../constants/trainingTypes'
 
 const weeks = ref([])
@@ -44,11 +45,11 @@ const currentWeekData = computed(() => weeks.value.find((w) => w.weekNo === curr
 // ===== C3：周合计页脚（由表格行自动求和，禁止手写死数值） =====
 const weekSummary = computed(() => {
   const days = currentWeekData.value?.days || []
-  const totalKm = days.reduce((sum, d) => sum + (d.targetKm || 0), 0)
+  const summary = summarizePlanDays(days)
   return {
-    totalKm: totalKm.toFixed(1),
-    trainCount: days.filter((d) => d.type !== 'rest').length,
-    restCount: days.filter((d) => d.type === 'rest').length,
+    totalKm: summary.displayKm,
+    trainCount: summary.trainingCount,
+    restCount: summary.restCount,
   }
 })
 

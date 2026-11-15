@@ -2,6 +2,8 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useCheckinStore } from '../../stores/checkin'
 import { formatDate, formatDateCn, formatPace } from '../../composables/useFormatDate'
+import { recognizeCheckinImage } from '../../api/checkin'
+import TrainingPhoto from './TrainingPhoto.vue'
 
 const emit = defineEmits(['editing-change'])
 
@@ -32,12 +34,63 @@ const errorMsg = ref('')
 const editing = ref(false)
 const imageUploading = ref(false)
 const imageInput = ref(null)
+const recognitionFile = ref(null)
+const recognizing = ref(false)
+const recognized = ref(null)
+let photoVersion = 0
+
+function clearRecognition() {
+  photoVersion += 1
+  recognitionFile.value = null
+  recognized.value = null
+}
+
+function removeImage() {
+  clearRecognition()
+  form.imageUrl = ''
+}
+
+async function recognizePhoto() {
+  if (!recognitionFile.value || recognizing.value || imageUploading.value) return
+  const version = photoVersion
+  recognizing.value = true
+  recognized.value = null
+  errorMsg.value = ''
+  try {
+    const result = await recognizeCheckinImage(recognitionFile.value)
+    if (version === photoVersion) recognized.value = result
+  } catch (error) {
+    if (version === photoVersion) errorMsg.value = error?.response?.data?.message || error?.message || '识别失败，仍可手动填写'
+  } finally {
+    recognizing.value = false
+  }
+}
+
+function applyRecognition() {
+  if (!recognized.value) return
+  if (recognized.value.distanceKm > 0) form.distanceKm = String(Math.round(recognized.value.distanceKm * 100) / 100)
+  if (recognized.value.durationMin > 0) form.durationMin = String(Math.max(1, Math.round(recognized.value.durationMin)))
+  recognized.value = null
+}
+
+function recognizedPace(seconds) {
+  if (!(seconds > 0)) return '未识别'
+  const rounded = Math.round(seconds)
+  return `${Math.floor(rounded / 60)}′${String(rounded % 60).padStart(2, '0')}″/km`
+}
+
+function recognizedDuration(minutes) {
+  if (!(minutes > 0)) return '未识别'
+  const seconds = Math.round(minutes * 60)
+  return `${Math.floor(seconds / 60)}分${String(seconds % 60).padStart(2, '0')}秒`
+}
 
 // 配速随输入实时预览（工程计划 4.4）
 const pacePreview = computed(() => formatPace(form.distanceKm, form.durationMin))
 
 // 切换选中日期 / 记录被更新 → 表单回填或重置
 function fillForm(recordValue = store.selectedRecord) {
+  clearRecognition()
   const r = recordValue
   form.distanceKm = r ? String(r.distanceKm) : ''
   form.durationMin = r ? String(r.durationMin) : ''
@@ -93,11 +146,17 @@ async function handleImageChange(event) {
     return
   }
   imageUploading.value = true
+  clearRecognition()
+  const version = photoVersion
   errorMsg.value = ''
   try {
-    form.imageUrl = await store.uploadImage(file)
+    const url = await store.uploadImage(file)
+    if (version === photoVersion) {
+      form.imageUrl = url
+      recognitionFile.value = file
+    }
   } catch (error) {
-    errorMsg.value = error?.message || '图片上传失败，请稍后重试'
+    if (version === photoVersion) errorMsg.value = error?.message || '图片上传失败，请稍后重试'
   } finally {
     imageUploading.value = false
   }
@@ -165,7 +224,7 @@ async function handleSubmit() {
       </div>
 
       <div v-if="record.imageUrl" class="ck-photo ck-photo--detail">
-        <img :src="record.imageUrl" alt="本次训练照片" />
+        <TrainingPhoto :src="record.imageUrl" />
       </div>
 
       <div class="ck-note">
@@ -254,16 +313,35 @@ async function handleSubmit() {
           @change="handleImageChange"
         />
         <div v-if="form.imageUrl" class="ck-photo">
-          <img :src="form.imageUrl" alt="训练照片预览" />
+          <TrainingPhoto :src="form.imageUrl" />
           <div class="ck-photo-actions">
             <button type="button" @click="chooseImage">更换图片</button>
-            <button type="button" class="is-danger" @click="form.imageUrl = ''">删除图片</button>
+            <button type="button" class="is-danger" @click="removeImage">删除图片</button>
           </div>
         </div>
         <button v-else class="ck-upload" type="button" :disabled="imageUploading" @click="chooseImage">
           {{ imageUploading ? '上传中…' : '+ 上传训练照片' }}
           <small>JPG / PNG / WebP · 最大 5MB</small>
         </button>
+        <button v-if="recognitionFile" class="ck-recognize" type="button"
+          :disabled="recognizing || imageUploading" @click="recognizePhoto">
+          {{ recognizing ? '正在识别截图…' : '◆ 识别距离与配速' }}
+        </button>
+        <small v-if="recognitionFile" class="ck-recognize-hint">点击识别会将此图发送至当前模型服务。请先裁掉不需要的隐私信息。</small>
+        <div v-if="recognized" class="ck-recognition" aria-live="polite">
+          <strong>识别结果 <span>请核对后填入</span></strong>
+          <dl class="ck-recognition-metrics">
+            <div><dt>距离 · km</dt><dd>{{ recognized.distanceKm ?? '未识别' }}</dd></div>
+            <div><dt>运动时长{{ recognized.durationEstimated ? ' · 估算' : '' }}</dt><dd>{{ recognizedDuration(recognized.durationMin) }}</dd></div>
+            <div><dt>截图平均配速</dt><dd>{{ recognizedPace(recognized.paceSecondsPerKm) }}</dd></div>
+          </dl>
+          <p v-for="warning in recognized.warnings" :key="warning" class="ck-recognition-warning">{{ warning }}</p>
+          <small>填入时距离保留两位小数，时长取整分钟（最少1分钟）。配速重新计算，不会自动提交。</small>
+          <div class="ck-recognition-actions">
+            <button class="is-primary" type="button" :disabled="!recognized.distanceKm && !recognized.durationMin" @click="applyRecognition">确认填入表单</button>
+            <button type="button" @click="recognized = null">取消</button>
+          </div>
+        </div>
       </div>
 
       <p class="pace-preview">
@@ -286,6 +364,29 @@ async function handleSubmit() {
 </template>
 
 <style scoped>
+.ck-recognize {
+  align-self: flex-start;
+  padding: 10px 16px;
+  border: 1px solid var(--p5-white);
+  color: var(--p5-white);
+  background: var(--p5-black);
+}
+.ck-recognize:hover:not(:disabled), .ck-recognize:focus-visible { border-color: var(--p5-red); }
+.ck-recognize:disabled { opacity: .6; cursor: wait; }
+.ck-recognize-hint { color: var(--p5-text-dim); line-height: 1.6; }
+.ck-recognition { padding: 16px; border-left: 2px solid var(--p5-red); background: var(--p5-black); line-height: 1.6; }
+.ck-recognition > strong { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; font-size: 16px; }
+.ck-recognition > strong span { color: #bbb; font-size: 12px; font-weight: 400; }
+.ck-recognition-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; padding: 14px 0; margin: 0; }
+.ck-recognition-metrics dt { color: #aaa; font-size: 12px; }
+.ck-recognition-metrics dd { margin: 4px 0 0; color: #fff; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-recognition-warning { padding: 10px 0; border-top: 1px solid #333; color: #eee; font-size: 13px; }
+.ck-recognition small { display: block; color: #aaa; font-size: 12px; }
+.ck-recognition-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ck-recognition-actions .is-primary { background: var(--p5-red); border-color: var(--p5-red); }
+.ck-recognition button { padding: 6px 12px; margin: 8px 8px 0 0; border: 1px solid var(--p5-white); color: var(--p5-white); }
+.ck-recognition button:disabled { opacity: .4; }
+.ck-recognition button:focus-visible { outline: 2px solid var(--p5-red); outline-offset: 2px; }
 .ck-form {
   padding: 22px var(--sp-6) var(--sp-5);
   display: flex;
@@ -549,7 +650,7 @@ async function handleSubmit() {
 .ck-photo {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: end;
   padding: 8px;
@@ -562,16 +663,10 @@ async function handleSubmit() {
   display: block;
 }
 
-.ck-photo img {
-  display: block;
-  width: 100%;
-  max-height: 150px;
-  object-fit: cover;
-}
-
 .ck-photo-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 

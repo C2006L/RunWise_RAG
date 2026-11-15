@@ -1,0 +1,5 @@
+# Initial correctness gate for the existing repository; no bulk formatting.
+target-version = "py311"
+exclude = ["venv", ".venv", ".cache", "models", "chroma_db"]
+[lint]
+select = ["E9", "F63", "F7", "F82"]

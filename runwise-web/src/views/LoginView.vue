@@ -2,23 +2,23 @@
 import { reactive, ref } from "vue";
 import P5Card from "../components/common/P5Card.vue";
 import { useAuth } from "../composables/useAuth";
+import {useRoute} from 'vue-router';
+import {validateAccountForm} from '../../../shared/account-form.mjs';
 
 // 登录页（M2 功能态，工程计划 4.2 / M2）：
 // 本阶段仅功能与基础布局（表单 + 基础红黑配色），海报化视觉（红色斜切分屏、GlitchTitle）在 M7 统一实施
 const { login, register } = useAuth();
 const registering = ref(false);
+const route=useRoute();
 
-const form = reactive({ username: "", password: "" });
+const form = reactive({ username: "", password: "", confirmPassword: "" });
 const loading = ref(false);
 const errorMsg = ref("");
 
 function validate() {
-  if (!form.username) return "请输入用户名";
-  if (!form.password) return "请输入密码";
-  if(registering.value && (!/^[A-Za-z0-9_.-]{3,32}$/.test(form.username)||form.password.length<12))
-    return "用户名需为3–32位字母数字或_.-，密码至少12位";
-  return "";
+  return validateAccountForm(form,registering.value);
 }
+function switchMode(){registering.value=!registering.value;form.password='';form.confirmPassword='';errorMsg.value='';}
 
 async function handleSubmit() {
   if (loading.value) return;
@@ -26,7 +26,7 @@ async function handleSubmit() {
   if (errorMsg.value) return;
   loading.value = true;
   try {
-    if(registering.value) await register(form.username, form.password);
+    if(registering.value) await register(form.username, form.password,form.confirmPassword);
     else await login(form.username, form.password);
   } catch (err) {
     // mock 任意非空账密均成功；此分支兜底真实接口失败：
@@ -46,15 +46,17 @@ async function handleSubmit() {
       <form class="login-card" @submit.prevent="handleSubmit">
         <p class="login-kicker">RUNWISE WEB</p>
         <h1 class="login-title">{{registering?'创建账号':'登录'}}</h1>
-        <p class="login-desc">使用真实账号保存训练记录。已有小程序账号请先绑定账密。</p>
+        <p class="login-desc">{{registering?'创建一个共享账号，即可在 Web 和小程序使用。':'使用共享账号登录，查看你的训练记录。'}}</p>
+        <p v-if="route.query.reason==='unavailable'" class="login-error" role="alert">暂时无法验证登录状态，请检查后端服务后重试。</p>
 
         <label class="field">
-          <span class="field-label">用户名</span>
+          <span class="field-label">账号名</span>
           <input
             v-model.trim="form.username"
             type="text"
             autocomplete="username"
-            placeholder="请输入用户名"
+            placeholder="支持中文、英文或数字，2–32位"
+            maxlength="32"
           />
         </label>
 
@@ -63,21 +65,27 @@ async function handleSubmit() {
           <input
             v-model="form.password"
             type="password"
-            autocomplete="current-password"
-            placeholder="请输入密码"
+            :autocomplete="registering?'new-password':'current-password'"
+            :placeholder="registering?'设置密码，至少12位':'请输入密码'"
+            maxlength="128"
           />
         </label>
 
-        <p v-if="errorMsg" class="login-error">{{ errorMsg }}</p>
+        <label v-if="registering" class="field">
+          <span class="field-label">确认密码</span>
+          <input v-model="form.confirmPassword" type="password" autocomplete="new-password" placeholder="请再次输入密码" maxlength="128" />
+        </label>
+
+        <p v-if="errorMsg" class="login-error" role="alert">{{ errorMsg }}</p>
 
         <button class="login-submit" type="submit" :disabled="loading">
           {{ loading ? "正在处理…" : registering ? "创建账号并进入" : "进入 RUNWISE" }}
         </button>
 
-        <p class="login-tip">
-          <button type="button" :disabled="loading" @click="registering=!registering;errorMsg=''">{{registering?'已有账号？返回登录':'首次使用？创建账号'}}</button>
+        <div class="login-tip">
+          <button type="button" :disabled="loading" @click="switchMode">{{registering?'已有账号？返回登录':'首次使用？创建账号'}}</button>
           <p class="bind-note">已有微信训练记录？先在小程序登录原微信账号，并设置共享账密，再在这里登录。请勿重复注册。</p>
-        </p>
+        </div>
       </form>
     </P5Card>
   </div>

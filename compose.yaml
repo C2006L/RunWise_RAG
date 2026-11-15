@@ -1,0 +1,125 @@
+name: runwise
+x-common: &common
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+  networks: [runwise]
+services:
+  mysql:
+    <<: *common
+    image: mysql:8.0.46
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-runwise}
+      MYSQL_USER: ${DB_USERNAME:-runwise_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      TZ: Asia/Shanghai
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes: ["mysql_data:/var/lib/mysql"]
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysql -h 127.0.0.1 -uroot -Nse "SELECT 1"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+  redis:
+    <<: *common
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    command: [sh, -c, 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  rag:
+    <<: *common
+    build: { context: ., dockerfile: deploy/rag.Dockerfile }
+    environment:
+      LLM_PROVIDER: compatible
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-glm-4v-flash}
+      LLM_THINKING: default
+      LLM_CHAT_MAX_TOKENS: "900"
+      LLM_PLAN_MAX_TOKENS: "900"
+      LLM_TIMEOUT_SECONDS: "70"
+      # Upgrading Chroma must not silently migrate the production index.
+      RAG_VALIDATE_INDEX_SCHEMA: "true"
+    volumes: ["rag_models:/app/models", "rag_index:/app/chroma_db"]
+    healthcheck:
+      test: [CMD, python, -c, "import json,urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:5000/health',timeout=20))['status']=='ok'"]
+      interval: 30s
+      timeout: 25s
+      retries: 5
+      start_period: 180s
+  backend:
+    <<: *common
+    stop_grace_period: 100s
+    build: { context: ., dockerfile: deploy/backend.Dockerfile }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-runwise}
+      DB_USERNAME: ${DB_USERNAME:-runwise_app}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      RAG_BASE_URL: http://rag:5000
+      RUNWISE_UPLOAD_DIR: /app/uploads
+      RUNWISE_ALLOWED_ORIGINS: ${RUNWISE_ALLOWED_ORIGINS:?set RUNWISE_ALLOWED_ORIGINS}
+      WECHAT_APPID: ${WECHAT_APPID:-}
+      WECHAT_SECRET: ${WECHAT_SECRET:-}
+      TZ: Asia/Shanghai
+    volumes: ["uploads:/app/uploads"]
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: [CMD-SHELL, 'curl --fail --silent http://127.0.0.1:8081/internal/health > /dev/null']
+      interval: 20s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+  gateway:
+    <<: *common
+    build: { context: ., dockerfile: deploy/web.Dockerfile }
+    ports: ["127.0.0.1:${HTTP_PORT:-8088}:8080"]
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1:8080/healthz']
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  tls:
+    <<: *common
+    image: caddy:2-alpine
+    profiles: [tls]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      gateway: { condition: service_healthy }
+volumes:
+  mysql_data:
+  redis_data:
+  uploads:
+  rag_models:
+  rag_index:
+  caddy_data:
+  caddy_config:
+networks:
+  runwise:
+    ipam:
+      config: [{ subnet: 172.30.41.0/24 }]

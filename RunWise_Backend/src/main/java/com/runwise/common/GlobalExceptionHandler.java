@@ -66,6 +66,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public Result<Void> duplicate(DuplicateKeyException e) { return Result.error(409, "数据已存在，请刷新后重试"); }
 
+    @ExceptionHandler(org.springframework.data.redis.RedisConnectionFailureException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Result<Void> sessionStoreUnavailable(org.springframework.data.redis.RedisConnectionFailureException e) {
+        log.error("Redis session store unavailable: {}", e.getClass().getSimpleName());
+        return Result.error(503, "会话服务暂不可用，请稍后重试；无需重新注册账号");
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e) {

@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-timeout: 5000
+      validation-timeout: 3000
+  redis:
+    timeout: 2000ms
+  lifecycle:
+    timeout-per-shutdown-phase: 90s
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+knife4j:
+  enable: false
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+runwise:
+  cors:
+    allowed-origins: ${RUNWISE_ALLOWED_ORIGINS}
+logging:
+  level:
+    com.runwise: info
+    org.springframework: warn
+server:
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never

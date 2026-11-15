@@ -25,7 +25,7 @@ const CATEGORY_CANDIDATES = {
   训练计划: {
     injected: (w) =>
       `我这周跑了 ${w.totalKm}km、打卡 ${w.checkinCount} 次，已连续 ${w.streakDays} 天，下周课表怎么安排？`,
-    fallback: "我每周跑 3 次，下周课表怎么安排比较好？",
+    fallback: "如何根据近期训练和恢复情况安排下周课表？",
     rest: [
       "5K 破 25 分钟需要什么样的训练结构？",
       "每周跑步频率和休息日怎么分配最科学？",

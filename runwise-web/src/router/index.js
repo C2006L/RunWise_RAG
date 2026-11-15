@@ -76,12 +76,14 @@ const router = createRouter({
 });
 
 // 全局守卫：isLoggedIn 只校验双 token 存在性，有效性由 api 层（401 → 静默刷新）负责
-router.beforeEach((to) => {
-  const { isLoggedIn } = useUserStore();
-  if (to.meta.requiresAuth && !isLoggedIn) {
-    return { path: "/login", query: { redirect: to.fullPath } };
+router.beforeEach(async (to) => {
+  const store=useUserStore();
+  if (to.meta.requiresAuth) {
+    try {
+      if(!await store.restoreSession())return {path:'/login',query:{redirect:to.fullPath}};
+    }catch{return {path:'/login',query:{redirect:to.fullPath,reason:'unavailable'}};}
   }
-  if (to.path === "/login" && isLoggedIn) {
+  if (to.path === "/login" && store.isLoggedIn && store.sessionVerified) {
     return { path: "/home" };
   }
 });

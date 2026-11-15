@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from chromadb.config import Settings as ChromaSettings
 from pydantic import BaseModel, Field
 from rank_bm25 import BM25Okapi
 
@@ -144,6 +145,19 @@ class SearchHit(BaseModel):
 
 app = FastAPI(title="RunWise RAG API", version="1.0.0")
 
+
+class ImageMetricsRequest(BaseModel):
+    imageBase64: str = Field(min_length=1, max_length=6_990_508)
+
+
+@app.post('/api/rag/image-metrics')
+def image_metrics(request: ImageMetricsRequest):
+    from image_metrics import recognize_image
+    try:
+        return recognize_image(request.imageBase64)
+    except ModelError as exc:
+        raise HTTPException(status_code=400 if exc.code == 'IMAGE_INVALID' else 503, detail=exc.detail()) from None
+
 _load_lock = threading.Lock()
 _vectorstore: Optional[Chroma] = None
 _lexical_lock = threading.Lock()
@@ -176,6 +190,8 @@ def get_vectorstore() -> Chroma:
             persist_directory=str(CHROMA_DIR),
             embedding_function=embeddings,
             collection_name=COLLECTION_NAME,
+            **({"client_settings": ChromaSettings(migrations="validate")}
+               if os.getenv('RAG_VALIDATE_INDEX_SCHEMA') == 'true' else {}),
         )
         return _vectorstore
 
@@ -476,8 +492,8 @@ def health():
         vectorstore = get_vectorstore()
         count = vectorstore._collection.count()
         return {
-            "status": "ok" if info["configured"] else "degraded",
-            "indexReady": True,
+            "status": "ok" if info["configured"] and count > 0 else "degraded",
+            "indexReady": count > 0,
             "chunkCount": count,
             "collection": COLLECTION_NAME,
             **info,

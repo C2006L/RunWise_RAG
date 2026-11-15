@@ -5,6 +5,7 @@ import RansomNote from '../components/common/RansomNote.vue'
 import { useAuth } from '../composables/useAuth'
 import * as checkinApi from '../api/checkin'
 import * as badgeApi from '../api/badge'
+import {getAccount} from '../api/auth'
 import runnerArt from '../assets/images/hero-runner.png'
 
 const router = useRouter()
@@ -16,6 +17,9 @@ const badgesLoading = ref(true)
 const loadError = ref('')
 const badgesError = ref(false)
 const loggingOut = ref(false)
+const account=ref(null),accountError=ref(false)
+async function loadAccount(){accountError.value=false;try{account.value=await getAccount()}catch{accountError.value=true}}
+onMounted(loadAccount)
 
 const pad = (value) => String(value).padStart(2, '0')
 const dateKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
@@ -271,7 +275,11 @@ async function handleLogout() {
       <aside class="account-panel">
         <p class="section-kicker">ACCOUNT</p>
         <h2>设置与账户</h2>
-        <p>{{ store.userInfo?.username || nickname }}</p>
+        <p>共享账号：{{ account?.username || store.userInfo?.username || '尚未设置' }}</p>
+        <p>用户编号 UID：{{ account?.userId ?? store.userInfo?.id ?? '加载中' }}</p>
+        <p>{{ account ? (account.wechatBound?'微信已绑定':'微信尚未绑定，可在小程序账号页完成绑定') : '' }}</p>
+        <p class="account-help">在小程序“我的 → 共享账号 / 微信绑定”核对完整用户编号。两端编号一致，才是同一账号。</p>
+        <button v-if="accountError" type="button" @click="loadAccount">账号信息加载失败，点击重试</button>
         <div class="command-index">COMMAND 01</div>
         <button type="button" :disabled="loggingOut" @click="handleLogout">{{ loggingOut ? '正在退出…' : '退出登录' }}<span>→</span></button>
       </aside>
@@ -281,6 +289,7 @@ async function handleLogout() {
 
 <style scoped>
 .profile-page { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0 110px; color: var(--p5-white); }
+.account-help {font-size:13px;line-height:1.7;color:#bcb9c1;margin:14px 0;}
 .profile-header, .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .profile-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--p5-line); }
 .eyebrow, .section-kicker, .panel-kicker { margin: 0 0 7px; color: var(--p5-red); font-size: 12px; font-weight: 900; letter-spacing: .16em; }

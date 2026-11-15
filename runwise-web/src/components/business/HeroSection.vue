@@ -18,32 +18,38 @@ import { onMounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import JaggedStar from "../../assets/shapes/JaggedStar.vue";
 import RansomNote from "../common/RansomNote.vue";
-import * as statsApi from "../../api/stats";
+import * as planService from "../../services/planService";
+import { currentPlanWeek, summarizePlanDays, summarizeActualWeek } from '../../utils/weekly-goal';
 import * as checkinApi from "../../api/checkin";
-import { formatDate } from "../../composables/useFormatDate";
+import { formatDate, formatPace } from "../../composables/useFormatDate";
 import heroRunnerUrl from "../../assets/images/hero-runner.png";
 
 const router = useRouter();
 const weekly = ref(null);
 const todayRecord = ref(null);
-const WEEK_TARGET_KM = 40;
+const planWeek = ref(null);
+const planFailed = ref(false);
+const todayFailed = ref(false);
+const weekTarget = computed(() => planWeek.value ? summarizePlanDays(planWeek.value.days) : null);
+const weeklyPace = computed(() => weekly.value ? formatPace(weekly.value.totalKm, weekly.value.totalMinutes) || '--' : '--');
 
 onMounted(() => {
-  statsApi
-    .getWeeklyStats()
-    .then((w) => {
-      weekly.value = w;
-    })
-    .catch(() => {});
+  const range = currentPlanWeek();
+  planService.getWeeks().then((weeks) => {
+    planWeek.value = weeks.find((week) => week.weekStart === range.start) || { days: [] };
+  }).catch(() => { planFailed.value = true; });
+  checkinApi.getCheckinList(range.start, range.end)
+    .then((rows) => { weekly.value = summarizeActualWeek(rows, range); }).catch(() => {});
   checkinApi
     .getCheckinByDate(formatDate(new Date()))
     .then((r) => {
       todayRecord.value = r;
     })
-    .catch(() => {});
+    .catch(() => { todayFailed.value = true; });
 });
 
 const todayLine = computed(() => {
+  if (todayFailed.value) return '今日记录加载失败，请进入打卡记录重试';
   const r = todayRecord.value;
   if (!r) return "今日还未打卡 —— 去完成第一次奔跑";
   // r.pace 来自 formatPace，已含 /km 单位，禁止再拼接
@@ -51,10 +57,10 @@ const todayLine = computed(() => {
 });
 
 const weekPercent = computed(() => {
-  if (!weekly.value) return 0;
+  if (!weekly.value || !weekTarget.value?.totalKm) return null;
   return Math.min(
     100,
-    Math.round((weekly.value.totalKm / WEEK_TARGET_KM) * 100),
+    Math.round((weekly.value.totalKm / weekTarget.value.totalKm) * 100),
   );
 });
 
@@ -335,18 +341,18 @@ function gotoCheckin() {
         </p>
         <div class="ck-progress">
           <div class="ck-progress-meta">
-            <span>本周目标进度</span>
-            <span class="p5-num">{{ weekPercent }}%</span>
+            <span>{{ planFailed ? '本周计划加载失败' : weekTarget && !weekTarget.totalKm ? '本周尚未安排训练' : '本周训练计划进度' }}</span>
+            <span class="p5-num">{{ weekPercent === null ? '--' : `${weekPercent}%` }}</span>
           </div>
           <div class="ck-progress-track">
             <div
               class="ck-progress-fill"
-              :style="{ width: weekPercent + '%' }"
+              :style="{ width: (weekPercent ?? 0) + '%' }"
             ></div>
           </div>
         </div>
         <button class="ck-btn" type="button" @click="gotoCheckin">
-          去打卡 →
+          {{ todayRecord ? '查看今日记录 →' : '去打卡 →' }}
         </button>
         <span class="ck-flag" aria-hidden="true"></span>
       </div>
@@ -359,11 +365,11 @@ function gotoCheckin() {
     <button class="data-strip" type="button" @click="router.push('/stats')">
       <span class="ds-text">
         <span class="cjk">本周</span> {{ weekly ? weekly.totalKm : "--" }} /
-        {{ WEEK_TARGET_KM }} KM ──
+        {{ weekTarget ? weekTarget.displayKm : '--' }} KM ──
         <!-- R-9：极窄视口（<480px）整段隐藏配速，保里程与打卡次数可读 -->
         <span class="ds-pace"
           ><span class="cjk">配速</span>
-          {{ weekly ? "7'07\"/km" : "--'--\"/km" }} ──</span
+          {{ weeklyPace }} ──</span
         >
         <span class="cjk">已打卡</span>
         {{ weekly ? weekly.checkinCount : "--" }} <span class="cjk">次</span>

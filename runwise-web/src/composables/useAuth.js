@@ -16,11 +16,11 @@ export function useAuth() {
 
   async function logout() {
     await store.logout()
-    if (route.path !== '/login') await router.replace('/login')
+    if (!store.isLoggedIn && route.path !== '/login') await router.replace('/login')
   }
 
-  async function register(username,password) {
-    await store.register(username,password)
+  async function register(username,password,confirmPassword) {
+    await store.register(username,password,confirmPassword)
     await router.replace('/home')
   }
 

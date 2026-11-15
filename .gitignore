@@ -70,4 +70,5 @@ Thumbs.db
 node_modules/
 dist/
 *.local
+deploy/backups/
 npm-debug.log*

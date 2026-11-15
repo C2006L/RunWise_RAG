@@ -1,0 +1,74 @@
+name: Verify application
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21', cache: maven }
+      - run: mvn -B test
+        working-directory: RunWise_Backend
+  clients:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci && npm test && npm run build
+        working-directory: runwise-web
+      - run: npm ci && npm run build -- --base=/admin/
+        working-directory: runwise-admin
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r deploy/requirements-rag.txt httpx
+      - run: pip check
+      - run: pip install ruff
+      - run: ruff check code deploy
+      - run: python -m unittest discover -s code -p 'test_llm_provider.py'
+      - run: python -m unittest discover -s code -p 'test_image_metrics.py'
+      - run: python -m unittest discover -s code -p 'test_ai*.py'
+      - run: python -m unittest discover -s code -p 'test_audit_policy.py'
+      - run: python -m unittest discover -s deploy/tests
+      - run: pip install pip-audit
+      - name: Collect raw Python audit (findings evaluated by scoped gate)
+        run: |
+          pip-audit --progress-spinner off -f json -o python-audit.json || test -s python-audit.json
+          python code/check_audit_report.py python-audit.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-dependency-audit
+          path: python-audit.json
+  compose:
+    runs-on: ubuntu-latest
+    env:
+      MYSQL_ROOT_PASSWORD: validation-only
+      DB_PASSWORD: validation-only
+      REDIS_PASSWORD: validation-only
+      JWT_SECRET: validation-only-32-characters-not-a-real-key
+      OPENAI_API_KEY: validation-only
+      RUNWISE_ALLOWED_ORIGINS: https://example.test
+      DOMAIN: example.test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose --profile tls config --quiet
+      - run: docker build -f deploy/web.Dockerfile -t runwise-gateway:test .
+      - run: docker run --rm --add-host backend:127.0.0.1 --entrypoint nginx runwise-gateway:test -t
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm audit --package-lock-only --audit-level=high --registry=https://registry.npmjs.org
+        working-directory: runwise-web
+      - run: npm audit --package-lock-only --audit-level=high --registry=https://registry.npmjs.org
+        working-directory: runwise-admin

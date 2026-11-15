@@ -5,6 +5,7 @@ import com.runwise.common.Result;
 import com.runwise.common.ResultCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,7 +35,8 @@ public class FileController {
     private String uploadDir;
 
     @PostMapping("/checkin-image")
-    public Result<Map<String, String>> uploadCheckinImage(@RequestParam("file") MultipartFile file) {
+    public Result<Map<String, String>> uploadCheckinImage(@RequestParam("file") MultipartFile file, @RequestAttribute("userId") Long userId) {
+        if (userId == null || userId <= 0) throw new BusinessException(ResultCode.UNAUTHORIZED);
         if (file.isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "请选择图片");
         }
@@ -47,10 +48,11 @@ public class FileController {
             throw new BusinessException(ResultCode.PARAM_ERROR, "仅支持 JPG、PNG 或 WebP 图片");
         }
 
-        String extension = contentType.equals("image/png") ? ".png"
-                : contentType.equals("image/webp") ? ".webp" : ".jpg";
-        String filename = UUID.randomUUID().toString().replace("-", "") + extension;
-        Path directory = Paths.get(uploadDir).toAbsolutePath().normalize().resolve("checkin");
+        com.runwise.common.UploadedImages.Image image;
+        try { image = com.runwise.common.UploadedImages.sanitize(file.getBytes()); }
+        catch (IOException e) { throw new BusinessException(ResultCode.PARAM_ERROR, "图片读取失败"); }
+        String filename = UUID.randomUUID().toString().replace("-", "") + image.extension;
+        Path directory = Paths.get(uploadDir).toAbsolutePath().normalize().resolve("checkin").resolve(userId.toString());
         Path target = directory.resolve(filename).normalize();
         if (!target.startsWith(directory)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "非法文件名");
@@ -58,10 +60,10 @@ public class FileController {
 
         try {
             Files.createDirectories(directory);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            Files.write(target, image.bytes, java.nio.file.StandardOpenOption.CREATE_NEW);
         } catch (IOException e) {
             throw new BusinessException(ResultCode.SERVER_ERROR, "图片保存失败");
         }
-        return Result.success(Collections.singletonMap("url", "/uploads/checkin/" + filename));
+        return Result.success(Collections.singletonMap("url", "/uploads/checkin/" + userId + "/" + filename));
     }
 }

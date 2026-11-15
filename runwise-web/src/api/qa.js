@@ -5,7 +5,7 @@ import { instance, withAuthRetry } from './request'
 // AI 问答可独立切换真实后端，避免为了联调 RAG 而关闭登录等模块的 Mock。
 const useMock =
   import.meta.env.VITE_QA_USE_MOCK !== undefined
-    ? import.meta.env.VITE_QA_USE_MOCK !== 'false'
+    ? import.meta.env.VITE_QA_USE_MOCK === 'true'
     : USE_MOCK
 
 // 本地 RAG 需要先检索知识库，再等待 Ollama 生成答案；首次加载模型时通常会

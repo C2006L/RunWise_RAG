@@ -150,3 +150,10 @@ export function uploadCheckinImage(file) {
   return instance.post('/files/checkin-image', formData)
     .then((res) => res.data.data.url)
 }
+
+export function recognizeCheckinImage(file) {
+  const data = new FormData()
+  data.append('file', file)
+  return instance.post('/files/recognize-checkin', data, { timeout: 95000 })
+    .then((res) => res.data.data)
+}

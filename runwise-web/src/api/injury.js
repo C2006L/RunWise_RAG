@@ -7,7 +7,7 @@ import { instance, withAuthRetry } from './request'
 // 支持 VITE_INJURY_USE_MOCK 独立开关（便于单独联调本模块），缺省跟随全局 VITE_USE_MOCK
 const useMock =
   import.meta.env.VITE_INJURY_USE_MOCK !== undefined
-    ? import.meta.env.VITE_INJURY_USE_MOCK !== 'false'
+    ? import.meta.env.VITE_INJURY_USE_MOCK === 'true'
     : USE_MOCK
 
 // 文章列表 → InjuryArticle[]（含 categoryLabel）

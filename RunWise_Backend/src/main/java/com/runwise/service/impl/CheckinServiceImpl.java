@@ -33,11 +33,14 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
     // 字段注入保持无参构造，兼容现有单元测试的 new CheckinServiceImpl()
     @Autowired
     private BadgeService badgeService;
+    @org.springframework.beans.factory.annotation.Value("${runwise.upload-dir:uploads}")
+    private String uploadDir = "uploads";
 
     @Override
     public Long createCheckin(Long userId, CheckinDTO dto) {
         // 1. 检查今日是否已打卡
         LocalDate checkinDate = validDate(dto.getCheckinDate());
+        com.runwise.common.UploadedImages.requireOwned(dto.getImageUrl(), null, userId, uploadDir);
         Checkin existing = getOne(new LambdaQueryWrapper<Checkin>()
                 .eq(Checkin::getUserId, userId)
                 .eq(Checkin::getCheckinDate, checkinDate));
@@ -79,6 +82,7 @@ public class CheckinServiceImpl extends ServiceImpl<CheckinMapper, Checkin> impl
         }
 
         LocalDate checkinDate = validDate(dto.getCheckinDate());
+        com.runwise.common.UploadedImages.requireOwned(dto.getImageUrl(), checkin.getImageUrl(), userId, uploadDir);
         Checkin sameDay = getOne(new LambdaQueryWrapper<Checkin>()
                 .eq(Checkin::getUserId, userId)
                 .eq(Checkin::getCheckinDate, checkinDate)

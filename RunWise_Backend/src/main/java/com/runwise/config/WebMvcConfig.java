@@ -24,6 +24,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${runwise.upload-dir:uploads}")
     private String uploadDir;
 
+    @Value("${runwise.cors.allowed-origins:*}")
+    private String allowedOrigins;
+
     public WebMvcConfig(JwtInterceptor jwtInterceptor, AdminInterceptor adminInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
         this.adminInterceptor = adminInterceptor;
@@ -54,7 +57,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(allowedOrigins.split("\\s*,\\s*"))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
@@ -64,6 +67,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize().toUri().toString();
+        // A missing directory has no trailing slash in Path.toUri(). Spring must
+        // still treat it as a directory when the first upload creates it later.
+        if (!uploadPath.endsWith("/")) uploadPath += "/";
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(uploadPath);
     }

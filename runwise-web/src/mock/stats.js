@@ -34,12 +34,13 @@ export async function getWeeklyStats(token, offsetWeeks = 0) {
   const weekDates = []
   const distances = []
   let checkinCount = 0
+  let totalMinutes = 0
   for (let i = 6; i >= 0; i--) {
     const key = formatDate(addDays(windowEnd, -i))
     const record = records.get(key)
     weekDates.push(key)
     distances.push(record ? Math.round(record.distanceKm * 10) / 10 : 0)
-    if (record) checkinCount++
+    if (record) { checkinCount++; totalMinutes += Number(record.durationMin || 0) }
   }
   const totalKm = Math.round(distances.reduce((s, v) => s + v, 0) * 10) / 10
 
@@ -54,6 +55,7 @@ export async function getWeeklyStats(token, offsetWeeks = 0) {
     weekDates,
     distances,
     totalKm,
+    totalMinutes,
     checkinCount,
     streakDays,
   }

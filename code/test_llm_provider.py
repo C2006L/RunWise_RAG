@@ -21,6 +21,27 @@ def response(body):
 
 class ModelProviderTest(unittest.TestCase):
     @patch("llm_provider.urlopen")
+    def test_glm_4v_flash_small_output_budget_and_no_thinking_parameter(self,post):
+        config={'LLM_PROVIDER':'compatible','OPENAI_BASE_URL':'https://open.bigmodel.cn/api/paas/v4','OPENAI_API_KEY':'test-only','LLM_MODEL':'glm-4v-flash'}
+        settings=ModelSettings.from_env(config)
+        self.assertEqual(900,settings.chat_tokens);self.assertEqual(900,settings.plan_tokens)
+        post.return_value=response({'choices':[{'finish_reason':'stop','message':{'content':'{}'}}]})
+        generate_text('JSON',settings.plan_tokens,SCHEMA,settings)
+        body=json.loads(post.call_args.args[0].data)
+        self.assertNotIn('thinking',body);self.assertLessEqual(body['max_tokens'],1024)
+        for extra in ({'LLM_CHAT_MAX_TOKENS':'2400'},{'LLM_THINKING':'disabled'}):
+            with self.assertRaises(ModelError):ModelSettings.from_env(dict(config,**extra))
+    @patch("llm_provider.urlopen")
+    def test_glm_429_codes_distinguish_overload_from_balance_and_rate_limit(self,post):
+        settings=ModelSettings('compatible','https://open.bigmodel.cn/api/paas/v4','glm-4.7-flash','test-only')
+        for code,expected in [('1305','MODEL_OVERLOADED'),('1113','MODEL_BALANCE'),('1302','MODEL_RATE_LIMIT'),('1308','MODEL_QUOTA'),('1315','MODEL_PERMISSION')]:
+            body=json.dumps({'error':{'code':code,'message':'secret provider text'}}).encode()
+            post.side_effect=HTTPError('https://private',429,'private',{},io.BytesIO(body))
+            with self.assertRaises(ModelError) as caught:generate_text('test',1000,settings=settings)
+            self.assertEqual(expected,caught.exception.code)
+            self.assertEqual(code,caught.exception.detail()['providerCode'])
+            self.assertNotIn('secret',str(caught.exception))
+    @patch("llm_provider.urlopen")
     def test_glm_chat_and_plan_send_explicit_thinking_mode_and_correct_endpoint(self, post):
         settings = ModelSettings.from_env({"LLM_PROVIDER":"compatible", "OPENAI_BASE_URL":"https://open.bigmodel.cn/api/paas/v4/", "OPENAI_API_KEY":"test-only-key", "LLM_MODEL":"glm-4.7-flash", "LLM_THINKING":"disabled"})
         post.return_value=response({"choices":[{"finish_reason":"stop","message":{"content":"{}","reasoning_content":"not answer content"}}]})

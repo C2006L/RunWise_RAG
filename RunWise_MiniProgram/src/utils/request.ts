@@ -1,3 +1,7 @@
+import {createSessionGuard,staleSessionError} from '../../../shared/session-guard.mjs'
+const sessionGuard=createSessionGuard()
+export const beginLogin=()=>sessionGuard.invalidate()
+export const isCurrentLogin=(epoch:number)=>sessionGuard.isCurrent(epoch)
 /**
  * 网络请求封装
  * 统一处理 token、错误提示、刷新 token
@@ -23,13 +27,15 @@ function getRefreshToken(): string {
 }
 
 /** 保存 token */
-export function saveTokens(accessToken: string, refreshToken: string) {
+export function saveTokens(accessToken: string, refreshToken: string, refreshed = false) {
+  if(!refreshed)sessionGuard.invalidate()
   uni.setStorageSync('accessToken', accessToken)
   uni.setStorageSync('refreshToken', refreshToken)
 }
 
 /** 清除 token */
 export function clearTokens() {
+  sessionGuard.invalidate()
   uni.removeStorageSync('accessToken')
   uni.removeStorageSync('refreshToken')
   uni.removeStorageSync('userId')
@@ -47,95 +53,51 @@ interface ApiResponse<T = any> {
   message?: string
 }
 
-/** 刷新 token */
-let refreshing: Promise<boolean> | null = null
-async function doRefresh(): Promise<boolean> {
-  if (!refreshing) refreshing = refreshOnce().finally(() => { refreshing = null })
-  return refreshing
+/** Only authentication rejection expires an identity. Network/business errors preserve it. */
+function authError(message:string){return Object.assign(new Error(message),{code:'AUTH_EXPIRED'})}
+function expire(epoch:number):never {
+  if(!sessionGuard.isCurrent(epoch))throw staleSessionError()
+  clearTokens();uni.navigateTo({url:'/pages/account/login'});throw authError('登录已过期')
 }
-async function refreshOnce(): Promise<boolean> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return false
-  try {
-    const res = await uni.request({
-      url: `${BASE_URL}/api/auth/refresh`,
-      method: 'POST',
-      header: { Authorization: `Bearer ${refreshToken}` }
-    })
-    const body = res.data as ApiResponse<{ accessToken: string; refreshToken: string }>
-    if (res.statusCode === 200 && body?.code === 200) {
-      saveTokens(body.data.accessToken, body.data.refreshToken)
-      return true
-    }
-    return false
-  } catch {
-    return false
-  }
+async function doRefresh(epoch:number):Promise<void>{
+  return sessionGuard.refresh(async()=>{
+    if(!sessionGuard.isCurrent(epoch))throw staleSessionError()
+    const token=getRefreshToken()
+    if(!token)throw authError('登录已过期')
+    const res=await uni.request({url:`${BASE_URL}/api/auth/refresh`,method:'POST',header:{Authorization:`Bearer ${token}`},timeout:15000})
+    if(!sessionGuard.isCurrent(epoch)||token!==getRefreshToken())throw staleSessionError()
+    const body=res.data as ApiResponse<{accessToken:string;refreshToken:string}>
+    if(res.statusCode===401||body?.code===401)throw authError('登录已过期')
+    if(res.statusCode!==200||body?.code!==200)throw new Error(body?.message||'登录凭证刷新暂不可用，请重试')
+    saveTokens(body.data.accessToken,body.data.refreshToken,true)
+  })
 }
 
-/** 统一请求方法 */
-export async function request<T = any>(
-  url: string,
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-  data?: any
-): Promise<T> {
-  const header: Record<string, string> = {
-    'Content-Type': 'application/json'
-  }
-  const token = getToken()
-  if (token) {
-    header['Authorization'] = `Bearer ${token}`
-  }
-
+export async function request<T=any>(url:string,method:'GET'|'POST'|'PUT'|'DELETE'='GET',data?:any):Promise<T>{
+  const epoch=sessionGuard.current(),sentToken=getToken()
+  const send=()=>uni.request({url:`${BASE_URL}${url}`,method,data,
+    header:{'Content-Type':'application/json',...(getToken()?{Authorization:`Bearer ${getToken()}`}:{})},
+    timeout:(url.endsWith('/qa/ask')||url.endsWith('/qa/plan-drafts'))?100000:15000})
   try {
-    const res = await uni.request({
-      url: `${BASE_URL}${url}`,
-      method,
-      data,
-      header,
-      timeout: (url.endsWith('/qa/ask')||url.endsWith('/qa/plan-drafts')) ? 100000 : 15000
-    })
-
-    const body = res.data as ApiResponse<T>
-
-    // 401 尝试刷新 token
-    if (res.statusCode === 401) {
-      const refreshed = await doRefresh()
-      if (refreshed) {
-        // 重试请求
-        header['Authorization'] = `Bearer ${getToken()}`
-        const retryRes = await uni.request({
-          url: `${BASE_URL}${url}`,
-          method,
-          data,
-          header,
-          timeout: (url.endsWith('/qa/ask')||url.endsWith('/qa/plan-drafts')) ? 100000 : 15000
-        })
-        const retryBody = retryRes.data as ApiResponse<T>
-        if (retryRes.statusCode === 200 && retryBody?.code === 200) {
-          return retryBody.data as T
-        }
-      }
-      // 刷新失败，跳转登录
-      clearTokens()
-      uni.navigateTo({ url: '/pages/account/login' })
-      throw new Error('登录已过期')
+    let res=await send()
+    if(!sessionGuard.isCurrent(epoch))throw staleSessionError()
+    let body=res.data as ApiResponse<T>
+    if(res.statusCode===401||body?.code===401){
+      try{if(sentToken===getToken())await doRefresh(epoch)}
+      catch(error:any){if(error?.code==='AUTH_EXPIRED')expire(epoch);throw error}
+      if(!sessionGuard.isCurrent(epoch))throw staleSessionError()
+      res=await send()
+      if(!sessionGuard.isCurrent(epoch))throw staleSessionError()
+      body=res.data as ApiResponse<T>
+      if(res.statusCode===401||body?.code===401)expire(epoch)
     }
-
-    if (res.statusCode === 200 && body?.code === 200) {
-      return body.data as T
-    }
-
-    // 业务错误
-    const msg = body?.message || '请求失败'
-    uni.showToast({ title: msg, icon: 'none' })
-    throw new Error(msg)
-  } catch (err: any) {
-    // 网络错误
-    if (err?.errMsg?.includes('request:fail')) {
-      uni.showToast({ title: '网络连接失败', icon: 'none' })
-    }
-    throw err
+    if(res.statusCode===200&&body?.code===200)return body.data as T
+    const message=body?.message||'请求失败'
+    uni.showToast({title:message,icon:'none'});throw new Error(message)
+  }catch(error:any){
+    if(!sessionGuard.isCurrent(epoch)&&error?.code!=='AUTH_EXPIRED')throw staleSessionError()
+    if(error?.errMsg?.includes('request:fail'))uni.showToast({title:'网络连接失败，请稍后重试',icon:'none'})
+    throw error
   }
 }
 
@@ -161,9 +123,10 @@ export function del<T = any>(url: string): Promise<T> {
 
 /** 微信登录 */
 export async function wxLogin(): Promise<boolean> {
+  const epoch=beginLogin()
   // 1. 获取微信 code
   const { code } = await uni.login({ provider: 'weixin' })
-  if (!code) return false
+  if (!code || !isCurrentLogin(epoch)) return false
 
   // 2. 调用后端登录接口
   try {
@@ -172,6 +135,7 @@ export async function wxLogin(): Promise<boolean> {
       method: 'POST',
       data: { code }
     })
+    if(!isCurrentLogin(epoch))return false
     const body = res.data as ApiResponse<{ accessToken: string; refreshToken: string; userId: number }>
     if (res.statusCode === 200 && body?.code === 200) {
       const { accessToken, refreshToken, userId } = body.data

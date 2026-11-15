@@ -14,12 +14,11 @@ export function login(username, password) {
 }
 
 // 刷新 token：仅 request.js 的刷新队列内部调用，业务代码不直接使用
-export function register(username,password) {
-  return instance.post('/auth/register',{username,password},{__skipAuthRetry:true}).then(res=>res.data.data)
+export function register(username,password,confirmPassword) {
+  return instance.post('/auth/register',{username,password,confirmPassword},{__skipAuthRetry:true}).then(res=>res.data.data)
 }
 
-export function refreshToken() {
-  const token = useUserStore().refreshToken
+export function refreshToken(token = useUserStore().refreshToken) {
   if (USE_MOCK) return mockAuth.refreshToken(token)
   return instance
     .post('/auth/refresh', null, { headers:{Authorization:`Bearer ${token}`}, __skipAuthRetry: true })
@@ -27,15 +26,16 @@ export function refreshToken() {
 }
 
 // 获取用户信息：mock 通道同样经过 withAuthRetry（token 无效 → 静默刷新 → 重放，与 axios 拦截器同一队列）
-export function getProfile() {
+export function getProfile(options = {}) {
   if (USE_MOCK) {
     return withAuthRetry(() => mockAuth.getProfile(useUserStore().accessToken))
   }
-  return instance.get('/user/profile').then((res) => res.data.data)
+  return instance.get('/user/profile',{__bootstrapAuth:Boolean(options.bootstrap)}).then((res) => res.data.data)
 }
+export const getAccount=()=>instance.get('/auth/account').then(res=>res.data.data)
 
 // 登出
-export function logout() {
+export function logout(token = useUserStore().accessToken) {
   if (USE_MOCK) return mockAuth.logout()
-  return instance.post('/auth/logout').then(() => undefined)
+  return instance.post('/auth/logout', null, {headers:{Authorization:`Bearer ${token}`},__skipAuthRetry:true}).then(() => undefined)
 }

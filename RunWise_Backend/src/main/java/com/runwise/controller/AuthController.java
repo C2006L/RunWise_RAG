@@ -49,11 +49,11 @@ public class AuthController {
         return Result.success(passwordAuth.login(input));
     }
     @PostMapping("/register")
-    public Result<LoginVO> register(@Valid @RequestBody PasswordLoginDTO input) {
+    public Result<LoginVO> register(@Valid @RequestBody com.runwise.dto.RegisterDTO input) {
         return Result.success(passwordAuth.register(input));
     }
     @PostMapping("/bind-password")
-    public Result<Void> bind(@Valid @RequestBody PasswordLoginDTO input,HttpServletRequest request) {
+    public Result<Void> bind(@Valid @RequestBody com.runwise.dto.RegisterDTO input,HttpServletRequest request) {
         passwordAuth.bind((Long)request.getAttribute("userId"),input);return Result.success();
     }
     @PostMapping("/logout")

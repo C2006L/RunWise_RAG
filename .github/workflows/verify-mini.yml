@@ -1,0 +1,16 @@
+# Separate, manual-only maintenance workflow. Not part of Web release gates.
+name: Optional mini-program checks
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  mini:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci && npm test && npm run type-check && npm run build:mp-weixin
+        working-directory: RunWise_MiniProgram
+      - run: npm audit --package-lock-only --audit-level=high --registry=https://registry.npmjs.org
+        working-directory: RunWise_MiniProgram

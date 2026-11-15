@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 /** 确定性的保存边界，模型不能绕过。保守上限不代表医学审核。 */
 @Component
 public class PlanDraftValidator {
-    public static final String VERSION="conservative-week-v1";
+    public static final String VERSION="conservative-week-v2";
     public void validateRequest(PlanDraftRequest request,LocalDate today) {
         if(request.getStartDate().isBefore(today.plusDays(1)) || request.getStartDate().plusDays(6).isAfter(today.with(DayOfWeek.MONDAY).plusDays(27)))
             throw new BusinessException(ResultCode.PARAM_ERROR,"开始日期最早为明天，且完整7天须位于当前四周课表内");
@@ -35,7 +35,7 @@ public class PlanDraftValidator {
         for(int i=0;i<7;i++) {
             PlanItemDTO day=plan.getDays().get(i);
             if(day==null || day.getDate()==null || !day.getDate().equals(input.getStartDate().plusDays(i))) invalid("日期必须连续且与请求一致");
-            if(!Arrays.asList("easy","tempo","interval","long","rest").contains(day.getType()) || day.getTargetKm()==null) invalid("训练类型或距离无效");
+            if(!Arrays.asList("easy","rest").contains(day.getType()) || day.getTargetKm()==null) invalid("当前基础周仅支持轻松跑与休息");
             BigDecimal km=day.getTargetKm();boolean rest="rest".equals(day.getType());
             if(km.stripTrailingZeros().scale()>2 || km.signum()<0 || (rest&&km.signum()!=0) || (!rest&&km.compareTo(new BigDecimal("0.01"))<0)
                     || km.compareTo(longest)>0 || km.compareTo(new BigDecimal("300"))>0) invalid("单次距离超过现有记录依据或休息日不为0");

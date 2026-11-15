@@ -229,7 +229,7 @@ const unlockedAchievementCount = computed(
 );
 
 const settingItems = [
-  { key: "login", icon: "locked", label: "登录 / 绑定 Web 账号" },
+  { key: "login", icon: "locked", label: "共享账号 / 微信绑定" },
   { key: "profile", icon: "person", label: "个人资料" },
   { key: "notification", icon: "notification", label: "消息通知" },
   { key: "feedback", icon: "chat", label: "意见反馈" },
@@ -278,7 +278,9 @@ function onLogout() {
     content: "确定要退出登录吗？",
     success: (res) => {
       if (res.confirm) {
-        request('/api/auth/logout','POST').catch(()=>{}).finally(()=>{clearTokens();loggedIn.value=false;userInfo.value.nickname='跑者';userInfo.value.avatarUrl='';badges.value=[];refreshAchievements();uni.showToast({ title: "已退出登录", icon: "success" });});
+        const pending=request('/api/auth/logout','POST');
+        clearTokens();loggedIn.value=false;userInfo.value.nickname='跑者';userInfo.value.avatarUrl='';badges.value=[];refreshAchievements();
+        pending.catch(()=>{});uni.showToast({title:'已退出登录',icon:'success'});
       }
     },
   });

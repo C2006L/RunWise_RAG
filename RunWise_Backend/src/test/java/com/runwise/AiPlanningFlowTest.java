@@ -56,6 +56,12 @@ class AiPlanningFlowTest {
         assertEquals("APPLIED",drafts.confirm(7L,id).get("status"));assertEquals(7,count());
         drafts.confirm(7L,id);assertEquals(7,count());
     }
+    @Test void baseWeekCannotAcceptAnUnexpectedQualityWorkout(){
+        generated.getDays().get(0).setType("interval");
+        assertThrows(BusinessException.class,()->drafts.generate(7L,input));
+        assertEquals(0,count());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM t_ai_plan_draft",Integer.class));
+    }
     @Test void draftCannotBeOpenedOrSavedByAnotherUser(){
         String id=(String)drafts.generate(7L,input).get("id");
         assertThrows(BusinessException.class,()->drafts.detail(8L,id));assertThrows(BusinessException.class,()->drafts.confirm(8L,id));assertEquals(0,count());

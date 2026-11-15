@@ -201,7 +201,7 @@
 <script setup lang="ts">
 /**
  * 首页 —— P5R 改造 v2（20260918 舞台重构：女孩 C 位 + 无框拼贴大字入口，对齐 Web HeroSection menu-item）
- * 数据逻辑与跳转语义保持原样，P2 接后端后替换 mock 数据源。
+ * 训练记录由后端同步；本地缓存按当前userId隔离。
  */
 import { ref, computed } from "vue";
 import { onPullDownRefresh, onShow } from "@dcloudio/uni-app";
@@ -251,7 +251,7 @@ const titleChars = TITLE_TEXT.split("").map((ch, i) => ({
   block: i === 2 || i === 7, // 红垫块固定 2 处（禁逐字换色，禁倾斜超 ±4°）
 }));
 
-/* ===== 数据（mock，P2 接后端） ===== */
+/* ===== 初始空状态；onShow从当前账号的真实记录刷新 ===== */
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 const _now = new Date();
 const todayDate = ref(
@@ -261,17 +261,17 @@ const todayDate = ref(
 );
 
 const todayCheckin = ref({
-  checkedIn: true,
-  distance: 5.2,
-  duration: 32,
-  pace: "6'09\"",
-  streak: 7,
+  checkedIn: false,
+  distance: 0,
+  duration: 0,
+  pace: "--",
+  streak: 0,
 });
 
 const weekStats = ref({
-  distance: 12.5,
-  count: 3,
-  duration: 98,
+  distance: 0,
+  count: 0,
+  duration: 0,
 });
 
 function refreshHomeData() {

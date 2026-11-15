@@ -1,0 +1,9 @@
+{
+  "profile": "embedded-rag",
+  "expires": "2026-12-15",
+  "package": "chromadb",
+  "version": "1.5.9",
+  "ids": ["PYSEC-2026-311", "PYSEC-2026-3814", "PYSEC-2026-3815", "PYSEC-2026-3813"],
+  "reason": "These advisories describe the separate Chroma HTTP server collection/configuration/tenant authorization endpoints. RunWise uses an embedded PersistentClient behind its own JSON-only RAG API, does not run the Chroma HTTP server, does not publish the RAG port, and does not accept user model repositories or trust_remote_code configuration.",
+  "limitations": "This is a narrow deployment-specific reachability assessment, not a claim that Chroma has no vulnerabilities. New advisories, versions, public RAG ports or a Chroma server require renewed review. Raw audit results must be retained."
+}

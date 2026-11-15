@@ -6,6 +6,14 @@ from fastapi import HTTPException
 import rag_api as api
 
 class GenerationContractTest(unittest.TestCase):
+    def test_empty_index_is_not_reported_as_ready(self):
+        with patch.object(api, 'model_info', return_value={'configured': True}), patch.object(api, 'get_vectorstore') as store:
+            store.return_value._collection.count.return_value = 0
+            self.assertEqual('degraded', api.health()['status'])
+            self.assertFalse(api.health()['indexReady'])
+            store.return_value._collection.count.return_value = 3
+            self.assertEqual('ok', api.health()['status'])
+
     def setUp(self):
         # Tests must not depend on a developer's real .env provider/key.
         self.environment = patch.dict(os.environ, {"LLM_PROVIDER": "ollama"})
